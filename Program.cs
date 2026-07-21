@@ -17,27 +17,6 @@ file static class xquinn_prgrm_Main
         if (IApp.IApps(args))
             return;
         Core.InitializeXQuinn(false, Core.DefaultToString);
-         ConsoleTest.Test<CallInterpTest>();
-       // var map = MemberMap.New(typeof(MemberMap),false,false,false);
-       // ConsoleTools.WriteMany(map.Select(x=>new ReflectionReader(x)));
-
-      // ConsoleTools.WriteMany(Core.ChangedTypeNames);
-
-
+        //ConsoleTest.Test<CallInterpTest>();
     }
-}
-
-public class OtherInstance
-{
-    
-}
-public class Instance
-{
-
-    static Instance obj = new();
-    int Field = 15;
-
-    static int Method(int i) => i;
-
-    int Ret() => 22;
 }

@@ -10,21 +10,21 @@ public static class Core
 {
     // public static bool DefaultWhere(Type t) => t.Namespace !=
     // public static readonly ImmutableArray<string> BadNames = ["Object", "Method", "Element", "Field", "Parameter", "TypeString", "Token", "Core"];
-    public static readonly IReadOnlySet<string> ChangedTypeNames;
-    static readonly HashSet<string> _changedNames;
-    static Core()
-    {
-        _changedNames = [];
-        ChangedTypeNames = _changedNames.AsReadOnly();
-    }
+    public static IReadOnlySet<string>? ChangedTypeNames => _namesreadonly;
+    static IReadOnlySet<string>? _namesreadonly;
+    static HashSet<string>? _changedNames;
 
     public static void PrintChangedTypeNames(string path)
     {
-        Write.SafetyCheck(path);
-        using StreamWriter writer = new(path);
-        foreach (string name in ChangedTypeNames)
+        if (_namesreadonly != null)
         {
-            writer.WriteLine(name);
+            Write.SafetyCheck(path);
+            using StreamWriter writer = new(path);
+
+            foreach (string name in _namesreadonly)
+            {
+                writer.WriteLine(name);
+            }
         }
     }
     public static string? DefaultToString(Type t)
@@ -39,6 +39,8 @@ public static class Core
                 return null;
             else
             {
+                _changedNames ??= [];
+                _namesreadonly ??= _changedNames.AsReadOnly();
                 string name = $"xq_{t.Name}";
                 _changedNames.Add(name);
                 return name;

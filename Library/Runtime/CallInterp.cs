@@ -138,16 +138,18 @@ public class CallInterpreter
     /// Turns strings into ASTs.
     /// </summary>
     public readonly InvocationLexer Lexer = new();
-    Dictionary<string, MethodInfo>? _overloads;
     /// <summary>
     /// A dictionary of all overload methods found in the current loaded type or instance.
     /// </summary>
-    public IReadOnlyDictionary<string, MethodInfo>? Overloads;
+    public IReadOnlyDictionary<string, MethodInfo>? Overloads => _overloadsreadonly;
+    IReadOnlyDictionary<string, MethodInfo>? _overloadsreadonly;
+    Dictionary<string, MethodInfo>? _overloads;
 
     /// <summary>
     /// A dictionary of all stored instances.
     /// </summary>
-    public IReadOnlyDictionary<string, object>? InstanceIndex;
+    public IReadOnlyDictionary<string, object>? InstanceIndex => _instanceindexreadonly;
+    IReadOnlyDictionary<string, object>? _instanceindexreadonly;
     Dictionary<string, object>? _instanceIndex;
     /// <summary>
     /// The currently loaded instance from which you can invoke instance and static methods.
@@ -181,9 +183,9 @@ public class CallInterpreter
     public void Clear()
     {
         //sszLexer.Clear();
-        InstanceIndex = null;
+        _instanceindexreadonly = null;
         _instanceIndex = null;
-        Overloads = null;
+        _overloadsreadonly = null;
         _overloads = null;
         Book = null;
         _instance = null;
@@ -209,7 +211,7 @@ public class CallInterpreter
                 throw new ArgumentException("No instance is loaded.");
             string key = input.Substring(1);
             _instanceIndex ??= new(StringComparer.OrdinalIgnoreCase);
-            InstanceIndex ??= _instanceIndex.AsReadOnly();
+            _instanceindexreadonly ??= _instanceIndex.AsReadOnly();
             if (_instanceIndex.TryGetValue(key, out object? val))
             {
                 if (!ReferenceEquals(val, Instance))
@@ -227,7 +229,7 @@ public class CallInterpreter
             _instanceIndex.Remove(key);
             if (_instanceIndex.Count == 0)
             {
-                InstanceIndex = null;
+                _instanceindexreadonly = null;
                 _instanceIndex = null;
             }
             return null;
@@ -429,7 +431,7 @@ public class CallInterpreter
         LoadedParameters = null;
         LoadedMethod = null;
         Map = MapType(LoadedType!, out Dictionary<string, MethodInfo>? overloads);
-        Overloads = overloads?.AsReadOnly();
+        _overloadsreadonly = overloads?.AsReadOnly();
         _overloads = overloads;
     }
 
