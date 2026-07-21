@@ -1,0 +1,172 @@
+
+// public sealed class ModuleMap
+// {
+//     public readonly Module ManifestModule;
+
+//     public readonly bool IsFullName;
+//     ModuleMap(Module manifest, Dictionary<string, MemberMap> data, bool fullname) : base(data)
+//     {
+//         ManifestModule = manifest;
+//         IsFullName = fullname;
+//     }
+
+//     public override IEnumerator<MemberInfo> GetEnumerator()
+//     {
+//         foreach (var pair in NestedDictionaries)
+//         {
+//             yield return pair.Value.Data;
+//             foreach (var element in pair.Value)
+//                 yield return element;
+//         }
+//     }
+
+//     public MemberMap? FindTypeMap(Type typ)
+//     {
+//         if (IsFullName)
+//         {
+//             if (typ.FullName != null)
+//                 return FindTypeMap(typ.FullName);
+//         }
+//         else
+//             return FindTypeMap(typ.Name);
+//         return null;
+//     }
+
+//     public Type? FindType(string name)
+//     {
+//         return FindTypeMap(name)?.Type;
+//     }
+
+//     public MemberMap? FindTypeMap(string name)
+//     {
+
+//         if (TryGetValue(name, out var data))
+//             return data;
+//         return null;
+//     }
+//     public static ModuleMap New(Type t, bool fullname) => New(t.Module, fullname);
+//     public static ModuleMap New(Module manifest, bool fullname)
+//     {
+//         Type[] types = manifest.GetTypes();
+//         Dictionary<string, MemberMap> metadata = new(types.Length, StringComparer.OrdinalIgnoreCase);
+//         ResolveModule(metadata, types, fullname);
+//         return new ModuleMap(manifest, metadata, fullname);
+//     }
+
+//     static void ResolveModule(Dictionary<string, MemberMap> metadata, Type[] types, bool fullname)
+//     {
+//         foreach (var type in types)
+//         {
+//             if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute)))
+//             {
+//                 //List<MemberInfo> typedata = ReflectionMapper<Type>.ResolveTypeMembers(type);
+//                 //  typedata.Insert(0, new MemberInfo(type));
+//                 var obj = MemberMap.New(type, true, false, false);
+//                 if (!fullname)
+//                     metadata[type.Name] = obj;
+//                 else if (type.FullName != null)
+//                     metadata[type.FullName] = obj;
+//             }
+//         }
+//     }
+
+
+
+
+}
+
+
+
+
+
+// public static class TypeCache
+// {
+//     public readonly static List<Type> Types = [.. AppDomain.CurrentDomain.GetAssemblies().SelectMany(x => x.GetTypes())];
+
+//     public static Type? FindType(string name, bool fullname = true, StringComparison comp = StringComparison.OrdinalIgnoreCase)
+//     {
+//         foreach (var type in Types)
+//         {
+//             if (fullname)
+//             {
+//                 if (type.FullName?.Equals(name, comp) ?? false)
+//                     return type;
+//             }
+//             else
+//             {
+//                 if (type.Name.Equals(name, comp))
+//                     return type;
+//             }
+
+//         }
+
+//         return null;
+//     }
+
+//     public static Type FindTypeOrThrow(string name, bool fullname = true, StringComparison comp = StringComparison.OrdinalIgnoreCase)
+//     {
+//         Type? type = FindType(name, fullname, comp);
+//         return type ?? throw new ArgumentException($"No type named {name} found in AppDomain.");
+//     }
+// }
+
+
+
+// public static class AppDomainCache
+// {
+//     /// <summary>
+//     /// The cache. It is recommended not to modify TypeMaps in this cache, use TypeMap.Copy() if you intend to filter or remove data from an extracted TypeMap (i will maybe make a readonly typemap, or i will make this private and make FindTypeMap only return copies).
+//     /// </summary>
+//     public readonly static IReadOnlyList<MetadataMap> Maps;
+
+//     static readonly List<MetadataMap> _maps; //initially it was intended to expand if it detects a type who's module isnt in the Map, but now it does not anymore, in practice this is immutable
+
+//     static AppDomainCache()
+//     {
+//         _maps = [.. AppDomain.CurrentDomain.GetAssemblies()
+//         .Select(x => x.ManifestModule).Select(MetadataMap.New)];
+//         Maps = _maps.AsReadOnly();
+//     }
+//     public static Type? FindType(string name, bool fullname = true, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+//     {
+//         foreach (var map in Maps)
+//         {
+//             Type? obj = map.FindType(name, fullname, comparison);
+//             if (obj != null)
+//                 return obj;
+//             else
+//             {
+//                 //   Type? type = Type.GetType(name);
+//                 //   if (type != null)
+//                 //   {
+//                 //     _maps.Add(MetadataMap.New(type.Module));
+//                 //      return type;
+//                 //  }
+//             }
+//         }
+//         return null;
+//     }
+
+//     public static TypeMap? FindTypeMap(Type type)
+//     {
+//         foreach (var map in Maps)
+//         {
+//             var obj = map.FindTypeMap(type);
+//             if (obj != null)
+//                 return obj;
+//         }
+//         return null;
+//     }
+
+//     public static Type FindTypeOrThrow(string name, bool fullname = true, StringComparison comparison = StringComparison.OrdinalIgnoreCase)
+//     {
+//         return FindType(name, fullname, comparison) ?? throw new ArgumentException($"No type named {name} found in AppDomain.");
+//     }
+
+//     public static TypeMap FindTypeMapOrThrow(Type type)
+//     {
+//         return FindTypeMap(type) ?? throw new ArgumentException($"Type map for {type.FullName} not found in AppDomain.");
+
+//     }
+
+// }

@@ -1,0 +1,416 @@
+// using System.Reflection;
+// using System.Text;
+// using XQuinn.Extensions;
+// using XQuinn.Reflection;
+// using HarmonyLib;
+// using XQuinn.Collections;
+// using System.Runtime.CompilerServices;
+// 
+
+// namespace XQuinn.Parsing;
+
+
+
+// //Default Slice is ','
+// public abstract class StringParser<T>
+// {
+
+//     public virtual string Input { get => _input; set => _input = value; }
+//     string _input = null!; //example: 32,true,hello would parse as byte 32, bool true, and string "hello" if you were not using a typematc
+//     public char Slice = ',';
+
+//     public StringParser() //for staging purposes, should always get an input provided before calling methods, or will throw
+//     {
+//     }
+//     public StringParser(string input)
+//     {
+//         Input = input;
+//     }
+//     /// <summary>
+//     /// Should check if slice is not null before calling.
+//     /// </summary>
+//     /// <returns></returns>
+//     protected T?[]? GetParsedArrayInternal()
+//     {
+//         string[] inputs = Input.Split(Slice); ; ;//I am thinking that, maybe, it should throw if the string doesnt actually contain the slice char
+//         T?[] objects = new T[inputs.Length];
+//         for (int i = 0; i < objects.Length; i++)
+//         {
+//             ParseString(objects, inputs, i);
+
+//         }
+//         return objects;
+//     }
+
+
+//     protected abstract void ParseString(T?[] objects, string[] inputs, int i);
+// }
+
+
+// public abstract class MemberParser<T> : StringParser<T> where T : MemberInfo
+// {
+
+//     public virtual ModuleMap? Map { get => _map; set => _map = value; }
+//     ModuleMap? _map;
+
+//     public MemberParser()
+//     {
+
+//     }
+//     public MemberParser(string input) : base(input)
+//     {
+
+//     }
+
+//     public MemberParser(ModuleMap map, string input) : base(input)
+//     {
+//         Map = map;
+//     }
+//     public Type? GetType(string input, bool thrownull = true)
+//     {
+//         Type? type = Map == null ? AccessTools.TypeByName(input) : Map.NestedDictionaries.Keys.FirstOrDefault(x => x.FullName?.EqualsCaseless(input) ?? false);
+//         return type ?? (thrownull ? throw new ArgumentException($"There is no type by the name of {input}") : null);
+//     }
+// }
+// //Type:Name:Param1,Param2,Param3
+
+// //Default CallSlice is :
+
+// /// <summary>
+// /// Will find a method in the provided MetadataMap or will search the appdomain based on string input.
+// /// </summary>
+// public sealed class MethodParser : MemberParser<MethodInfo>
+// {
+
+//     ValueParser? ValueParser;
+//     const char CallSlice = ':';
+//     const char AltSlice = '/';
+//     MemberMap? LoadedType;
+//     MethodInfo? Method;
+//     object?[]? Args;
+//     public MethodParser()
+//     {
+
+//     }
+
+//     public MethodParser(string input) : base(input)
+//     {
+
+//     }
+
+//     public MethodParser(ModuleMap map, string input) : this(input)
+//     {
+//         Map = map;
+//     }
+
+//     [MethodImpl(MethodImplOptions.NoInlining)]
+//     public static bool RethrowInvoke(MethodInfo mthd, params object?[]? args) //may add the option to throw exceptions if it cannot find the method
+//     {
+//         try
+//         {
+//             mthd.Invoke(null, args);
+//         }
+//         catch (TargetInvocationException ex) //memory leak prevention, though im not sure if this is fully necessary
+//         {
+//             var inner = ex.InnerException;
+//             throw new ReflectedMethodException($"Method {mthd.Name} threw exception: {inner?.GetType().FullName} {inner?.Message} {inner?.StackTrace}");
+//         }
+//         return true;
+//     }
+
+//     public object? TryInvoke() 
+//     {
+//         Run();
+//         object? obj = null;
+//         try
+//         {
+//             obj = Method!.Invoke(null, Args);
+//         }
+//         catch
+//         {
+
+//         }
+//         return obj;
+//     }
+//     public object? Invoke()
+//     {
+//         Run();
+//         return Method!.Invoke(null, Args);
+//     }
+
+//     public MethodInfo GetMethod()
+//     {
+//         Run();
+//         return Method!;
+//     }
+
+//     void Run()
+//     {
+//         if (Method == null)
+//             LoopArrayInternal();
+//     }
+
+//     void LoopArrayInternal()
+//     {
+//         string[] inputs = Input.Split(CallSlice);
+//         // if (inputs.Length < 2)
+//         // {
+//         //     throw new ArgumentException("Invalid format. Must have at least two declarations. Example: Type:Name:Param1/Param2/Param3, string is split at ':' .");
+//         // }
+//         for (int i = 0; i < inputs.Length; i++)
+//         {
+//             Parse(inputs, i);
+//         }
+//     }
+
+//     protected override void ParseString(MethodInfo?[] objects, string[] inputs, int i)
+//     {
+//         throw new NotImplementedException();
+//     }
+//     void Parse(string[] inputs, int i)
+//     {
+
+//         if (i == 0) //GetType will throw if Loadedtype cannot be found
+//             LoadedType = MemberMap.New(GetType(inputs[i])!, true, true, false, ReflectionGroup.Method, x => { if (x is MethodInfo info) return info.IsStatic; return false; });
+//         else if (i == 1)
+//             Method = LoadedType![ReflectionGroup.Method].FirstOrDefault(x => x.Name.EqualsCaseless(inputs[i]))?.As<MethodInfo>() ?? throw new ArgumentException($"Method named {inputs[i]} could not be found in type {inputs[0]} or is nonstatic.");
+//         else if(i == 3) //standard format is type:method:params, so if your shit is parameterless, type:method works.
+//         {
+
+//             MethodParser parser = new() { Map = Map };
+//             ValueParser ??= new() { Input = inputs[i], MethodParser = parser, Slice = AltSlice };
+//             ValueParser.UpdateParameters(Method!);
+//             Args = ValueParser.GetParsedArray();
+
+//         }
+//     }
+// }
+
+
+
+
+// /// <summary>
+// /// Parses strings for primitive types and strings and then returns the result as an object array. Only supports primitive types, enums and strings. No ins, outs or refs.
+// /// </summary>
+// public sealed class ValueParser : StringParser<object?>
+// {
+//     ParameterInfo[] TypeMatch = null!;
+
+//     //you can reassign these fields to parse different strings and match different methods if you want
+//     public MethodParser? MethodParser;
+
+//     public bool RethrowInvocation; //not sure how this will work - will need to pass this argument down from dynamicinvoker
+
+//     public ValueParser() : base()
+//     {
+//         //MethodParser = new();
+//     }
+
+//     ValueParser(string input) : base(input)
+//     {
+//     }
+//     public object?[]? GetParsedArray()
+//     {
+//         return TypeMatch.Length == 0 ? null : TypeMatch.Length == 1 ? [ParseOneString()] : GetParsedArrayInternal();
+//     }
+
+//     public static ValueParser New(string input, MethodBase method)
+//     {
+//         ValueParser parser = new(input);
+//         parser.UpdateParameters(method);
+//         return parser;
+//     }
+
+
+//     public void UpdateParameters(MethodBase method)
+//     {
+//         var parameters = method.GetParameters();
+//         if (ValidateParameters(parameters, method, true))
+//         {
+//             TypeMatch = parameters;
+//         }
+//     }
+
+//     public static bool ValidateParameters(ParameterInfo[] parameters, MethodBase method, bool throwfail)
+//     {
+//         if (parameters.Any(x => x.IsOut || x.IsIn || x.ParameterType.IsByRef))
+//             return throwfail ? throw new NotSupportedException($"Parameters for method {new ReflectionData(method)} are not supported - cannot process in, out or parameters.") : false;
+//         //  if (parameters.Any(x => !x.ParameterType.IsPrimitive && !x.ParameterType.IsEnum && x.ParameterType != typeof(string) && !NullableType(x)))
+//         //      return throwfail ? throw new NotSupportedException($"Parameters for method {new ReflectionData(method)} are not supported. Only accepts enums, primitives and strings.") : false;
+//         return true;
+//     }
+
+
+
+//     // static bool NullableType(ParameterInfo param)
+//     // {
+//     //     if (param.ParameterType.IsGenericType && param.ParameterType.GetGenericTypeDefinition() == typeof(Nullable<>))
+//     //     {
+//     //         Type? underlying = Nullable.GetUnderlyingType(param.ParameterType);
+//     //         if (underlying != null)
+//     //             return underlying.IsPrimitive || underlying.IsEnum || underlying == typeof(string);
+//     //     }
+//     //     return false;
+//     // }
+
+//     object? ParseOneString()
+//     {
+//         object? parsed = ParseParameter(Input!, TypeMatch[0].ParameterType);
+//         // CheckMatch(parsed, Input);
+//         return parsed;
+//     }
+//     protected override void ParseString(object?[] objects, string[] inputs, int i)
+//     {
+//         if (inputs.Length != TypeMatch.Length)
+//         {
+//             throw new TargetParameterCountException($"String input does not match size of parameter array. String array size: {inputs.Length}. Parameter array size: {TypeMatch.Length}"); //i want to add a 
+//         }
+
+//         objects[i] = ParseParameter(inputs[i], TypeMatch[i].ParameterType);
+//     }
+//     ///Should add int128, nint,nuint,and half support
+//     /// I dont know about letting you create reference types yet
+//     object? ParseParameter(string strng, Type type) //need half and int128 support
+//     {
+//         if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
+//         {
+//             if (strng == "null")
+//                 return null;
+//             Type? underlying = Nullable.GetUnderlyingType(type);
+//             if (underlying != null)
+//                 return ParseParameter(strng, underlying);
+//         }
+//         if (type == typeof(string))
+//             return strng;
+//         if (type.IsEnum && Enum.TryParse(type, strng, out object? enumeration))
+//             return enumeration;
+//         if ((type == typeof(bool)) && bool.TryParse(strng, out bool boolean))
+//             return boolean;
+//         if ((type == typeof(char)) && char.TryParse(strng, out char utf16))
+//             return utf16;
+//         if ((type == typeof(byte)) && byte.TryParse(strng, out byte uint8))
+//             return uint8;
+//         if ((type == typeof(sbyte)) && sbyte.TryParse(strng, out sbyte sint8))
+//             return sint8;
+//         if ((type == typeof(short)) && short.TryParse(strng, out short sint16))
+//             return sint16;
+//         if ((type == typeof(ushort)) && ushort.TryParse(strng, out ushort uint16))
+//             return uint16;
+//         if ((type == typeof(int)) && int.TryParse(strng, out int sint32))
+//             return sint32;
+//         if ((type == typeof(uint)) && uint.TryParse(strng, out uint uint32))
+//             return uint32;
+//         if ((type == typeof(long)) && long.TryParse(strng, out long sint64))
+//             return sint64;
+//         if ((type == typeof(ulong)) && ulong.TryParse(strng, out ulong uint64))
+//             return uint64;
+//         if ((type == typeof(float)) && float.TryParse(strng, out float float32))
+//             return float32;
+//         if ((type == typeof(double)) && double.TryParse(strng, out double float64))
+//             return float64;
+//         // if (type == typeof(decimal) && decimal.TryParse(strng, out decimal float128))
+//         //  return float128; //Not a primitive type
+//         if (MethodParser == null)
+//             throw new InvalidOperationException($"Parameter {strng} is a method call, but MethodParser is null");
+//         MethodParser.Input = strng;
+//         object? result = RethrowInvocation ? MethodParser.TryInvoke() : MethodParser.Invoke();
+//         return result;
+//         //string data = new ReflectionData(type).ToString();
+//         //throw new FormatException($"Tried to parse {strng} to {data}, but value could not parse to {data}.");
+//     }
+
+
+//     //this is all old verificaiton logic that doesnt really need to get used anymore
+//     //since typematching is handled in ParseParameter
+//     //before we would actually parse the object, then check the parsed objects type
+//     //which created bugs if we parsed the value "99" to byte but a method was actually calling for an sbyte, then it would fail to invoke and throw
+//     //ParseParameter matches the parsing to the exact type that the parametertype is
+
+//     // bool VerifyType(object parsed, int? i) => i != null ? TryCast(parsed, TypeMatch![i.Value].ParameterType) : TryCast(parsed, TypeMatch![0].ParameterType);
+
+//     // static bool TryCast(object parsed, Type t)
+//     // {
+//     //     bool canCast = true;
+//     //     try
+//     //     {
+//     //         Convert.ChangeType(parsed, t);
+//     //     }
+//     //     catch
+//     //     {
+//     //         canCast = false;
+//     //     }
+//     //     return canCast;
+//     // }
+
+//     // void CheckMatch(object parsed, string slice, int? i = null)
+//     // {
+//     //     if (TypeMatch != null)
+//     //     {
+//     //         Type type = parsed.GetType();
+//     //         if (!VerifyType(parsed, i))
+//     //         {
+//     //             string exception = GetException(slice, i, type);
+//     //             throw new ArgumentException(exception);
+//     //         }
+//     //     }
+//     // }
+
+//     // string GetException(string slice, int? i, Type type)
+//     // {
+//     //     StringBuilder sb = new();
+//     //     sb.Append($"Input {slice} ");
+//     //     if (i != null)
+//     //     {
+//     //         sb.Append($"at position {i.Value} ");
+//     //     }
+
+//     //     sb.Append($"is the wrong parameter type - returned {type}, which cannot cast to ");
+//     //     if (i != null)
+//     //         sb.Append($"{TypeMatch![i.Value].ParameterType}");
+//     //     else
+//     //         sb.Append($"{TypeMatch![0].ParameterType}");
+//     //     return sb.ToString();
+//     // }
+
+
+// }
+
+
+// public sealed class TypeParser : MemberParser<Type>
+// {
+//     public TypeParser() : base()
+//     {
+
+//     }
+
+//     /// <summary>
+//     /// Type Names in your Input string should include namespace and be case sensitive.
+//     /// </summary>
+//     /// <returns></returns>
+//     public TypeParser(string input) : base(input)
+//     {
+
+//     }
+
+//     public TypeParser(ModuleMap map, string input) : this(input)
+//     {
+//         Map = map;
+//     }
+
+
+//     public Type[] GetParsedArray()
+//     {
+
+//         return GetParsedArrayInternal()!;
+//         // Type type = GetType(Input)!; //will throw if null
+//         // Type[] arr = [type];
+//         // return arr;
+//     }
+
+//     protected override void ParseString(Type?[] objects, string[] inputs, int i)
+//     {
+//         objects[i] = GetType(inputs[i])!; //will throw if null
+//     }
+
+
+// }

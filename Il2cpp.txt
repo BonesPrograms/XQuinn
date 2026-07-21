@@ -1,0 +1,7 @@
+3) vwar will require il2cpp versions of typebook typemap typecache etc im not sure how callinterpreter will handle that, because your main method might call a il2cpp type, but what if you insert a normal type as a parameter? i think i can do it, i would have to seriously expand the system, like it would be able to hotswap between il2cpp and normal on the fly, LoadedMethod will have 2 fields one for il2cpp one for normal, same with the Type and TypeBook etc, when u insert type names it checks both, if it cant find the type in either then it will throw, i think that works, if the type comes from the il2cpp cache, then i will switch to code that uses il2cpp reflection, i can do this for the main method as well as methods as parameters, all in a single type that supports both normal and il2cpp reflection IL2CPPCallInterp
+
+LoadType wont have to change much, it will try to find the name as a normal type first, and if it cant, itll check the il2cpp book and run the code to get the il2cpptype instead of the type
+Will need to have lots of null checks and shit lol, to make sure were running off the right version. I will pretty much need clone code for IL2CPP type everywhere, including checking typecache, typebooks, finding methods, making MemberMaps, yes memberMap will need an Il2CPP version, etc. Can probably set a boolean to make it easy on myself "IL2CPPLoaded" 
+MrBeast
+
+if il2cpp is an independent assembly not part of unity ima get it and make the il2cpp versions in xquinn. Then we net6 lmao

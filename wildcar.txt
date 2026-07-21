@@ -1,0 +1,34 @@
+filename.ext: Exact file match.
+filename.*: Specific name, any extension.
+prefix*: Starts with phrase, any extension.
+prefix*.ext: Starts with phrase, specific extension.
+prefix?: Starts with phrase, plus zero or one character.
+*suffix: Ends with phrase, any extension.
+*suffix.ext: Ends with phrase, specific extension.
+?suffix.ext: Ends with phrase, preceded by zero or one character.
+*middle*: Contains phrase anywhere in name or extension.
+*middle*.ext: Contains phrase anywhere in name, specific extension.
+start*end.ext: Starts and ends with specific phrases.
+????.ext: Names up to four characters long.
+data??.ext: Specific prefix followed by up to two characters.
+a?b.ext: Specific characters separated by zero or one character.
+*part1*part2*: Multiple phrases appearing in chronological order.
+?start*end?.ext:  Fixed core phrases with single-character bounds and flexible middles.
+
+https://learn.microsoft.com/en-us/office/client-developer/access/desktop-database-reference/using-wildcard-characters-in-string-comparisons
+
+https://learn.microsoft.com/en-us/dotnet/api/system.io.directory.enumeratefiles?view=net-10.0
+
+
+"*"	All files in the directory. 	Directory.EnumerateFiles(path, "*")
+"*.txt"	Files ending in .txt.	Directory.EnumerateFiles(path, "*.txt")
+"data*"	Files starting with "data".	Directory.EnumerateFiles(path, "data*")
+"*log*"	Files containing "log" anywhere.	Directory.EnumerateFiles(path, "*log*")
+"file?.txt"	Files like "file1.txt", "fileA.txt" (single char).	Directory.EnumerateFiles(path, "file?.txt")
+"file??.txt"	Files like "file01.txt", "fileAB.txt" (two chars).	Directory.EnumerateFiles(path, "file??.txt")
+"*.*"	Files containing a dot (typically all files with extensions).	Directory.EnumerateFiles(path, "*.*")
+"report_202?.doc"	Files like "report_2024.doc", "report_2029.doc".	Directory.EnumerateFiles(path, "report_202?.doc")
+"img_*.png"	Files starting with "img_" and ending in .png.	Directory.EnumerateFiles(path, "img_*.png")
+"a*b*c.txt"	Files starting with "a", containing "b", ending in .txt.	Directory.EnumerateFiles(path, "a*b*c.txt")
+"???.jpg"	Files with exactly 3 characters before .jpg.	Directory.EnumerateFiles(path, "???.jpg")
+"*2024*"	Files containing "2024" anywhere in the name.	Directory.EnumerateFiles(path, "*2024*")

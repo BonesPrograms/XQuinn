@@ -1,0 +1,37 @@
+I am a fan of reflection and invoking methods at runtime via reflection. XQuinn has various types to make reflection easier and faster, and as well as various types for accessing
+and invoking methods at runtime with string inputs.
+
+XQuinn's main runtime/reflection offers:
+
+CallInterpreter - Load a type and invoke it's methods at runtime via string with parameter support. Can invoke static methods, or load an instance to invoke instance methods.
+This relies on TypeCache to function, types you want to access must be cached in the TypeCache. You may also insert your own TypeBook to have it searched first before the TypeCache,
+though it should be noted this is specifically to avoid memory leakage and is a feature tightly coupled to DynamicInvoker. 
+
+TypeCache - Input types into a cache that keys them by string name, allows you to quickly reflect those types by string at runtime without having
+to traverse the appdomain - requires explicit user input, ie. you must cache your desired types manually using the exposed methods in TypeCache. Not case sensitive.
+Object, string and primitive types are cached by default with their keyword names rather than their true type names. Keys cannot be removed once cached - if there is a conflict,
+you will have to rename your key before insertion, which is easily done using a TypeBook filter if you are inserting more than one type.
+
+TypeBook - Input an assembly, module, or an enumerable of types to have it automatically create a string name dictionary for fast lookup. Can choose to have it save type names
+as full names, or short names. Not case sensitive. Can add an optional filter to return specific names for specific types, particular in case of short-name conflicts where you
+might need to have a specific type return a different name than it's actual shortname.
+
+RuntimeCommand - Mark a class and method with an attribute to invoke it by string at runtime with parameter support, static only. Useful if you want to expose "cheat" methods to
+clients rather than exposing an entire CallInterpeter to them. Similar to the TypeCache, you must manually register your runtime commands with the global cache. 
+
+DynamicInvoker - A simple version of a hot reloader, load an assembly into the runtime call methods from it, automatically reloads the assembly
+if it detects that the assembly has been updated. Uses CallInterpeter so it supports parameters and loading different types. Automatically creates a TypeBook from your loaded assembly for 
+fast lookup, but does not cache your types in TypeCache (to avoid memory leakage).
+
+ILReader - Convert a method to "readable" IL and print it to a .log or .txt file.
+
+ReflectionReader - Get a readable and informative string for a MemberInfo object. Also can serve as a general wrapper for MemberInfo objects, with overrides for equality
+and other helpful methods for organizing readouts from a list.
+
+InstanceReader - Read an instance's values at runtime and print it to a .log or .txt file.
+
+MemberMap - Get a map of specified members from a type (or even private members from it's bases), organized in a dictionary of lists, with one list per member group. These lists can be easily
+keyed by a MemberGroup enum. allows filtering for deeper specification on what kind of members to retrieve beyond what BindingFlags and MemberGroup can offer. Very useful if you intend to 
+get multiple members from a type. 
+
+

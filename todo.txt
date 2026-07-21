@@ -1,0 +1,392 @@
+//How does  work if you have a field that is nonprimitive like a reference type?
+
+
+patching & unpatching harmony w hot reload:
+
+Use call interpreter and the registry index to change types during the experiment. First I will load an external type which has a patcher that patches one of my types, I will run its patcher (i willl need access to the typebook that dynamicinvoker keeps to access the exteranl types by stringname for loading so make it internal). Then I will reload types to the type it patched and run to see if it was patched. Then I will reload the external type (no asembly updating so nothing is reloaded by dynainvoker) and run a seperate method that unpatches. Then we reload the experiment type and see if it was unpatched.
+
+does shutdown run on any type reload, or only when it is reloading the entire assembly? dynamicinvoker question
+
+when im totally done (after doing all todos): Events, Emit, ASPNet, Foundry, and BS5 , expressionntrees
+
+
+Assignemnt Syntax
+Field syntax
+Qudassemblyquestion
+Vwar
+
+Assignemnt syntax:fucked. because you can assign instace = static, static = instance, static = static, instance = instance, lots of checks.
+Not to mention the assignment can be a primitive, so it could be static = 22, instance = "hello"
+I will probably want to make a sort of "Assignment Parser" than can lex assignment syntax similarly to the invocation lexer i think
+Of course you can also assign via method, instance = method(), so the assignment lexer will like, include an invocation lexer for the assignment. Fucking hell
+
+Right now youre better off using properties, you can probably call the get and set methods for properties and assign to them lol
+
+actually want to test that - invoking property getters/setters, you can probably use a property getter to return an instance, also, speaking of which, static vs instance getters i dont think i ever used a static property before lol? not true in qud i use one for the playerfinder i think
+
+Field syntax:
+Will need to add a "Findfield", will want to cache fields, also, will want to uhm, a new Field parameter object
+the option for you to input a fieldname as a nonload just to return the value
+
+Indexer Support:
+
+Inherited Field/Method support:
+
+Qudassembly
+Can you upload a compiled assembly and have it load
+Can it just be a classlib or does it have to be specifically generated from mods.csproj
+
+Vwar
+Get the Vwar executing assembly. Im probably gonnna cache the interop assembly tho
+
+Instance Syntax:
+Dont give a shit right now, but it should technically be a thing.
+
+Caching methods (Already said no):
+If you invoke the same method inside of itself, I dont care, because I dont actually do that in real C# code, so we wont cache that
+
+
+
+
+
+
+
+
+
+
+// 1. Define your target method group
+var methodGroup = Console.WriteLine;
+
+// 2. Cast the group to a specific delegate type to resolve ambiguity
+Action<string> exactMethod = methodGroup;
+
+// 3. Extract the MethodInfo directly from the delegate
+System.Reflection.MethodInfo methodInfo = exactMethod.Method;
+
+Console.WriteLine(methodInfo.Name); // Outputs: WriteLine
+DELEGATE SUPPORT: Turning MethodInfo objects into Delegates at runtime, with absolutely no compile time type parameters/declarations
+To create and invoke a delegate dynamically at runtime without knowing its signature at compile time, you can use Expression.GetDelegateType. This allows you to construct the exact delegate type dynamically based on the MethodInfo parameters and return type.Once you have the dynamic delegate type, you can use Delegate.CreateDelegate() and invoke it dynamically via its DynamicInvoke method.
+using System;
+using System.Linq;
+using System.Linq.Expressions;
+using System.Reflection;
+
+public class DynamicRunner
+{
+    public static void Main()
+    {
+        // Example setup: We have a method name and an instance of an unknown object
+        object targetObject = new Calculator();
+        string methodName = "Multiply"; // Let's pretend this comes from user input/config
+        object[] methodArguments = new object[] { 6, 7 }; // Arguments determined at runtime
+
+        // 1. Reflect the method from the object's type
+        MethodInfo methodInfo = targetObject.GetType().GetMethod(methodName);
+
+        // 2. Dynamically build the delegate type signature using Expression Trees
+        // Combine parameter types and the return type into an array
+        Type[] parameterTypes = methodInfo.GetParameters().Select(p => p.ParameterType).ToArray();
+        Type returnType = methodInfo.ReturnType;
+
+        // Automatically resolves to the correct Func<> or Action<> type at runtime
+        Type delegateType = Expression.GetDelegateType(parameterTypes.Concat(new[] { returnType }).ToArray());
+
+        // 3. Create the strongly-typed delegate instance
+        Delegate dynamicDelegate = Delegate.CreateDelegate(delegateType, targetObject, methodInfo);
+
+        // 4. Invoke it dynamically
+        object result = dynamicDelegate.DynamicInvoke(methodArguments);
+
+        Console.WriteLine($"Result: {result}"); // Outputs: Result: 42
+    }
+}
+
+// Dummy class for the example
+public class Calculator
+{
+    public int Multiply(int a, int b) => a * b;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+TC OR
+I can wrap TryInvoke in a trycatch, get any exeptions that dynamicinvoker throws, and log them as strings to prevent it actually throwing
+
+
+My WebAPI assembly will be called QuinnNet
+Aw too bad I cant make this into my web api thing but i guess this is better as a dependency yeh
+MotoQuinn MonoQuinn
+
+Download Bep6 DevTools
+
+Important
+//set up iapp string arvgs
+//Thread Safety issues -typecache and typebook and some of my other shit like runtimecommand prob isnt thread safe lol
+Callinterp whitespace issues, RuntimeCommand issues, Typebook issues, TypeCache issues, InvokerInterace issues, InstanceReader ( see the files )
+typecache and typebook and some of my other shit like runtimecommand prob isnt thread safe lol
+how to check if eventinfo and propinfo is private + seeing how membermap handles that currently
+//-13 re add the "Shutdown" call for DynaInvoker
+//-12 File types - better waysa to know if a type is a file scoped type
+//-11 Should CallInterp TraverseBaseForPrivate?
+//-10 Inherited methods arent working in Call Interpreter for some reason.
+//-9 Does Instance Reader get duplicates? And should InstanceReader use FlattenHierachy? prob not a big deal since we do declaredonly
+//-8 Should we TraverseBaseForPrivate in Call Interpreter?
+//-7 Need to make my shit like TypeCache  typebook and runtimecommand thread-safe.
+//-6 Instance Reader does not properly read Struct fields, it reads them like primitives.
+//-5 an "Add" version of RuntimeCommand that allows people to add commands as their assembly is loaded instead of racing to be the first to initialize
+//This would help support RuntimeCommands in a system where the executing assembly isnt actually initializing them but reference assemblies are
+//Fix the fact that call interp throws if you return an int method for an int? parameter
+//-4 also test if it DOESNT support delegates (CallInterpeter)
+-3 dditional: will metadatareader ever be able to read constraints and rules for generics?
+//-2 Support for system,object parameters in call interp? What?
+-1 . There is a bug with call interp - if you have a method that takes a nullable int param, and you insert a method that returns int, it says there is a param mismatch
+0.Dynamic invoker - tes calling shutdown
+1. PrintIL() - add a ThrowIfWhiteSpace for path
+2. NullTrim - When checking for null in valueparser, trim the string of whitespace
+3. Decimal Support - Remove decimal support from ValueParser, it is not primitive.
+4. This Extensions - see how ILReader and ReflectionData display This in extensions (explicitThis/implicitThis property?). See if ValueParser can typematch This parameters,
+or how invoking This methods via reflection works (you typically need the object as a parameter like any other).
+5. ILReader Ctor support
+6. Check if AccessTools.TypeByName returns null on failure, if it can cause memory leaks (stores typedata in caches), and if it is caseless.
+8. Considering having Listionary return a KVP that holds the key and element, and having NestedListionary return a nested KVP that holds both keys and the element.
+These would both come with tostring overloads that interpolates together the tostrings of each individual type in its pairing and returns it (in order key,tnestedkey,tnestedvalue)
+9. Add reading In,Out,and Ref parameters to MetadataReader
+10. Enable default parameter values for ValueParser - if param has a default value and input is empty or doesnt exist, it will replace that input with the default value
+11. See how to check generic constraints, use them in MetadataReader and DynamicInvoker. See if you can find a way to allow the user to input generic type parameters in 
+ValueParser (prob using TypeParser lol).
+12. IsAssignableFrom vs IsAssignableTo
+13. IApps should all provide a ToString with their name, which is called to organize them into an IApp dictionary (string keys, Type values).
+14. Convert most of my static based classes to instance based modular versions
+
+15?. Something about "Verifiyng object arrays" in stringparser/valueparser i think? DOnt know. Also, if I try to DYnamicInvoke a method without params, will there
+be any issues? I dont think so, it returns an empty object array, not a null one though, so im wondering if that will be a problem. If it is ill just have it return null
+if parameterlength is 0
+
+16. I just realized - if we use BCL as a dependency for bones, then my plugin updater may also need a way to know what dependencies an assembly has so it can transfer those over as well.
+This will be easy I will just add a dependencies.xml to the actual project folder and that will have the names of the dlls they are dependent on which obviously can be collected
+from their debug bin after build. Aside from that I can use ..\..\ to tag the BCL assembly in the csproj file for bones so i dont need to worry about finding the source dll
+Speaking of which I also considered that I may need to convert BCL to an IL2cpp plugin to load it with bones, im not sure. It will def need to be net6.
+
+17. GetParsedArray should be able to return a null array - for ValueParser, if typematch length is 0, it returns null
+29. Parameter support for RuntimeCommands?
+19. Thinking of loading namesapces for stringinterp - like a using statement it gets the name from that namespace, so u can load system for example.
+20. Params keyword support? Like for methods that use the params keyword. Idk how that works, I can say this - arrays are a class so it will expect a method return.
+Since the params keyword compiles as an object[]. Not sure how that works at runtime tho, it may just not know what size of array you want
+21. I want to log all exceptions - maybe there is a common"Throw" method i can patch with harmony?
+
+BS:
+Readonly Fields, FIleStream Fields, and namespaces
+
+Readonly fields : Using attribute initonly we should note in metadatareader if a field is readonly
+
+Filetream fields : can i use a fieldstream as a field if i close at the end of my types main method chain and no other stream accesses the file?
+
+Namespaces: We gotta add namespaces option to metadatareader, i think that if you show namespaces in .log, then it makes the type name blue
+
+EMIT BS:
+
+today honestly i want to do just a little parusal into emit
+and then a little parusal into how i could update my system to allow me to perform transpiling - i think i could at the very least generate a new method based on the old one that has my modifications, idk about patching the original one yet
+
+prefixes and postfixes seem phenomenally easy if im able to use a transpiler to add them into the methods il lol 
+the only issue is labels, i could fix standard 32bit labels by increasing them by the size of my insertion, but idk how to handle that with shortform labels, i could probably do sign extension on them and then add the insertion size  (def wanna double check waht their actual jump value looks like, im pretty sure it is an sbyte all i can say)
+of course those also arent real labels, i think the real key here is that i will need to ILGenerate labels, makeing them the operand of the jump, and then somehow assigning that label to an actual bytecode somewhere else (i can probably just index the bytecode using our original size of insertion idea and then assign its label liek that), maybe i can try to see how harmony handles labels, they use a list 
+standard issue learning reflection.emit will teach me how to use labels so that knowledge will help me with this stuff i think
+learn about GC and JIT
+
+the only issue is labels, i could fix standard 32bit labels by increasing them by the size of my insertion, but idk how to handle that with shortform labels, i could probably do sign extension on them and then add the insertion size 
+of course those also arent real labels, i think the real key here is that i will need to ILGenerate labels, makeing them the operand of the jump, and then somehow assigning that label to an actual bytecode somewhere else (i can probably just index the bytecode using our original size of insertion idea and then assign its label liek that), maybe i can try to see how harmony handles labels, they use a list 
+standard issue learning reflection.emit will teach me how to use labels so that knowledge will help me with this stuff i think
+learn about GC and JIT
+
+
+OBEJC TREADER BS:
+Also kind of thinking that object reader shouldnt recurse over class objects and read their fields, unless its reading them in a collection 
+Also wtf i wonder how object reader handles string and int fields i think those are just read as basics 
+
+
+IL BS:
+also test if my "bytecode chain" actually works
+
+
+//Using .inis? I personally dont need them, if i want to configure shit based off data, i would probably use XML
+
+
+NotImportant
+i wonder how explicit implementations work with callinterp
+can i see nullability on class params (string? param)   
+How does call interp work with dynamic
+HOW TO PARSE flag enums from strings?
+-2 I think readobject needs support for reading decimals
+-1 More Sb params, less SB return methods
+0. Double check that specifiedmembers.Any() is working and that empty memberlists arent added to typemaps
+1. Never convert Types (or really any memberinfo? especially not types tho) to Strings, turn them into ReflectionData first.
+2. A logger that hooks into the AppDomain and logs all thrown exceptions, or exceptions only thrown by my assembly/code called by my assembly. I had an idea that maybe there is a main
+Throw method that I can patch using Harmony.
+3. 7. (Goofy) I had an idea to store all string keys as ToLower, then convert all index attempts to ToLower before indexing. So that way I dont need to do EqualsCaseless with Arrays.
+Question is, is this more efficient than looping through the entire list to find a caseless string match?
+4. RuntimeCommands that default to using the method's name if no name has been assigned
+5. TypeCode, TypeDelegator, Type vs TypeInfo, TypeBuilder, TypeConverter/Convert
+6. (Qud) My laggy experimental spottergen can use a combination of structs (int x and y instead of cell, int id instead of gameobject reference) and enumeration to be less laggy
+7. BindingFlags option for filtering TypeMaps
+8. Method that allows changing DLLPath in DynamicReloader, performs a full unload and reload for you
+9. TypeCleanup, my iapps and reloader have messy code
+10. Expanded wrapper methods for NestedListionary that takes double-key inputs
+11. More SB parameters, less returning new SB instances
+12. Arrays vs Lists. Ordered Dictionaries.
+13. Jagged array with a 64bit indexer (64BitArray)
+14. I want to create multiple shortcuts of BCL that take string args - these args would be the name of the IApp you want to run from that shortcut, so i can skip selection
+15. Memory leak tests - I want to track assembly unloading (see below)
+16. Test : If you get a private dictionary by reflection, can you cast it to a dictionary, then add to it, and will it effect the main value (maybe you have to use setvalue for that, and reassign the dictionary to the field, but if its  static? readonly i wouldnt wanna do that)
+17. Delete all IApps from git
+18. IList and IDictionary for public APIs?
+19. Clean up whacky code - my dllcopy delegate for qud (or vwar?) is fucked
+20. Explicit/implicit casting from MemberInfo to ReflectionData?
+21. Add more "noThrow" options to my codebase
+22. What do Explicit Implementations look like in MetadataReader
+23. A "method parser" that takes a type name, method name, and parameters. Dont see why this is necessary but it would have roughly the same constraints as dynamicinvoker.
+22. Can you parse int 32 from the string 0x32
+23. Read a generic method in IL
+24. Might add a 'NoThrow' option to GetParsedArray and DynamicInvoker.Invoke that wraps them in a trycatch
+25. I might let my Qud IApps and VWar IApps create more directories instead of just expecting them, but this requires some investigation
+26. I should probably note in the docs that qudupdater uses mods.xml to decide which mods to update
+27. Use generics where possible, try to use it over using object to avoid boxing.
+28. A vietnamwar objectreader port that cycles through child components
+29.goofy idea: virtual variable index. you can load the instance in callinterp to a variable index and reference it as a parameter later
+//30. decoupling call interp to seaprate reflection and parsing and the pub interface
+
+
+//Caseless:
+Generally speaking, method names are caseless. Type names generally always require namespace, but can sometimes be caseless (For StringParsing and DynInvoking)
+
+
+Learning
+1. Learn more about assemblyLoadContext
+2. Learn more about Reading IL, parameterinfo indexing, etc
+3. Learn exactly how inlining can mess up DynamicInvoker
+4. Foundry,WebApp
+6. Enum power of 2
+7. Reassining a methods method body, bonesharmony
+8. Creating methods with Emit
+9. How params in IL works (params - 1), how This works in IL
+10. how to use HasFlag as an OR instead of an AND
+
+UpNext
+1. BonesDimmer
+2. BonesBinarySerializer (Reflection based and universal?) (want it to be like qud IScribed where you can add/remove fields, change inheritance and shit)
+3. An IApp that automatically rebuilds any program referencing BCL (not really necessary for vietnam war and not really necessary for IApps since theyre all part of BCL now)
+4. Extract ObjectReader from caves of qud. I dont think we can reasonably extract "Invoke" and "Field".
+5. Foundry, Web Apps ASPNet
+6. Combine all my projects into a solution
+
+if (isByRef && !isOut)
+                Console.WriteLine($"{param.Name} is 'ref'");
+            else if (isByRef && isOut)
+                Console.WriteLine($"{param.Name} is 'out'");
+            else
+                Console.WriteLine($"{param.Name} is normal");
+
+
+FuNTest:
+
+Testing: applying, and unapplying harmony patches at runtime using an assembly loaded by dynamicinvoker (id probably call a void method that invokes the patch, and shutdown
+would run unpatch)
+
+i wonder:
+ok so in my dynamically invoked method
+I access a static list that is currently active in the runtime that im being invoked in
+I add one of my custom objects to that list
+Then we reload my assembly, and i try to access that object and cast it back/check if its type matches the one in my assembly
+However i wil lchange it like add new methods and shit
+We will see if my recompiled asembly is still able to recognize the old version of its own type
+And whether or not that would cause errors if i try to invoke new methods on it or access new fields
+
+
+15:
+
+going to add some reference types to some test static lists i set up, some will be net or bcl types, others will be from the hotloaded assembly (probably added to <object> Lists), were going to see if it actually leaks and what references we're allowed to leave behind
+
+also going to reference BCL in the hotloaded assembly and see if that causes any problems
+
+also wondering if theres any other clever way for me to test if an assembly is still in memory aside from the weakreference thing. Like AppDomain.GetAssemblies then i just read it and see if the hotload assembly's name is there twice or something
+
+
+
+Main:
+
+ this, assemblyloadcontext, and uh, enum power of 2, and uh, more explanation on how jit inlining was fucking my shit? was it even really fucking my shit? yeah actually 
+ i think it was, it was not the recursion causing the problem, it def had to do with gc collection, though before i did 5 gc cycles and it didnt work, so idk, the more
+  i split it up the btter i guess, maybe i can try to rebreak it lol. i think it def was inlining tho - if im lucky maybe i have some of the buggy ones on github and
+   i can go view them and see whats wrong! or just ask the ai to explain how inlining could break dynamicinvoker/dynamicreload and why we had to split up our methods 
+   so mcuh and add noinling clauses. originally had a lot of virtuals and i would have methods in like tight loops, calling reload would also call load and unload immediately, 
+   now it breaks it up just a bit more and you dont oveverride the virtuals and call the base anymore, you override bastracts that get called separately by the base type
+
+
+
+
+   Mod Ideas:
+
+   mod idea for vwar (search this) - squad respawn command, and a command that resets support timer, also an infinite charge pr99, also a command that boosts my xp if he doesnt have one
+gun audio mod
+cheat to instantly heal and spawn squad on me
+nva radio bugfix
+ladder fix
+white flash for US
+Vwar find the spawn command for npcs - either spawns troops or spawns ur squad
+RallyFix
+
+Suppression Mechanics
+
+test - using appdomain loadedassemblies as a static field is risky if ur loading assemblies after program start
+
+in fact im gonna look into how he displays inventory and i want to display all my methods and you select them by pressing a key relative to their index num, then it gives a chat input for the params
+
+
+My own Dimmer app
+
+
+Rally fix
+
+mod idea for vwar (search this) - squad respawn command, and a command that resets support timer, also an infinite charge pr99, also a command that boosts my xp if he doesnt have one
+
+no radio cooldown mod / reset radio cooldown command for vwar, and infinite pr99 charge mod
+
+rising front - first idea is making our own command console similar to vietnamwar enter
+
+infintie supplies, fastravel for us, fastravel cooldown reset, instant squad respawn command, infinite pr charge, and support cooldown reset modwar 
+rankup hack and control all nearby units hack
+
+idea patch that lets carnivores eat plants and patch that lets vampires eat raw meat!
+
+
+Loading assemblies dynamically at runtime, recompiling them, reloading them, running their methods using reflection
+
+
+rising front mods
+toggle sprint crouch
+alternative rotation key
+ability to disable/cancel orders ?
+scenario on that one other foggy map with dead trees
+ingame CLI
+vwar mods
+gun audio mod
+cheat to instantly heal and spawn squad on me
+nva radio bugfix
+ladder fix
+white flash for US
+
+
+just realized a critical rule of my serializer - we do NOT use directories, so if two files cs/xml(?) have the same name, it will break. i should prob add a warning that totally stops it and tells you that there are file name conflicts
