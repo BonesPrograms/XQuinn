@@ -1,0 +1,24 @@
+Beginning read of fields in _xquinn_cor.StructHolder
+
+
+Beginning read for fields of type _xquinn_cor.StructHolder.
+Reading FIELD "en" from type StructHolder:
+Type: EnumTest
+Value: "Wednedsay"
+Declared in: StructHolder
+Attributes Private
+
+Reading FIELD "str" from type StructHolder:
+Type: Struct
+Value: _xquinn_cor.Struct
+Declared in: StructHolder
+Attributes Private
+
+"str" is a reference type, reading fields.
+Beginning read for fields of type _xquinn_cor.Struct.
+Reading FIELD "num" from type Struct:
+Type: Int32
+Value: 5
+Declared in: Struct
+Attributes Private
+

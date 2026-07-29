@@ -1,0 +1,25 @@
+I am a fan of reflection and accessing objects at runtime via reflection. XQuinn has various types to make reflection easier and faster, and as well as various types for accessing
+objects and invoking methods at runtime with string inputs.
+
+XQuinn's main runtime/reflection offers:
+
+CallInterpreter - Load a type or an instance at runtime via strings and invoke it's methods. Syntax guide is in the file.
+
+TypeCache - Pre cache types by string for faster string based reflection at runtime. Not case sensitive.
+
+TypeBook - Convert a collection of types to a caseless string name dictionary for caching.
+
+RuntimeCommand - Mark a class and method with an attribute to invoke it by string at runtime with parameter support, static only. 
+
+DynamicInvoker - A simple version of a hot reloader, load an assembly into the runtime call methods from it, automatically reloads the assembly
+if it detects that the assembly has been updated.
+
+ILReader - Convert a method to "readable" IL and print it to a .log or .txt file.
+
+ReflectionReader - Get a readable and informative string for a MemberInfo object. Also can serve as a general wrapper for MemberInfo objects, with overrides for equality
+and other helpful methods for organizing readouts from a list.
+
+InstanceReader - Read an instance's values at runtime and print it to a .log or .txt file.
+
+MemberMap - Get a map of specified members from a type, organized in a dictionary of lists, with one list per member group. 
+

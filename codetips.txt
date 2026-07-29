@@ -1,0 +1,19 @@
+Generic Initialization::
+
+You can only use public parameterless constructors w/ the generic new() constraint. However you can use object initializers to do the rest of the work, assinging to fields as if you were 
+constructing. I also had an idea for "coyping generic list" by initializing it and then adding to the list in a foreach, though I think that thought hasnt been fully thought out yet
+Remember that in the future when trying to instance stuff using generics.
+
+
+Covariant return types:
+
+If a virtual method in a base type returns the base type as it's return value, an inheritor can override that method to return it's own type instead. If you click tab
+the IDE won't do that automatically, it is manual. Also, if you're calling the base method as part of the override, you need to cast the return value to the inheritor type.
+
+
+Ref:
+I made the mistake of passing a null local variable to a method and then assigning to it within that method, expecting it to assign the value to the variable in the original method
+because it was a reference type. It was not assigning and I didnt understand why. The solution was passing the variable as ref.
+
+
+optimal struct max size is 16 bytes

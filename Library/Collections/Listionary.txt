@@ -1,0 +1,227 @@
+// using System.Collections;
+// using System.Collections.ObjectModel;
+
+// namespace XQuinn.Collections;
+
+
+
+// //i thought it was annoying having to type out Listionary<Key,Value> if you are not actually using an inheritor of listionary in your type and are just using
+// //a normal listionary instance
+// //so this one does that part for you
+
+
+// // public class NestedListionary<TKey, TNestedKey, TNestedValue> : BaseNestedListionary<TKey, Listionary<TNestedKey, TNestedValue>, TNestedKey, TNestedValue> where TKey : notnull where TNestedKey : notnull
+// // {
+// //     public NestedListionary(Dictionary<TKey, Listionary<TNestedKey, TNestedValue>> listionaries) : base(listionaries)
+// //     {
+
+// //     }
+// // }
+
+// /// <summary>
+// /// A dictionary where the values are listionaries.
+// /// </summary>
+// /// <typeparam name="TKey"></typeparam>
+// /// /// <typeparam name="TListionary">This allows you to assign an inheritor of Listionary as the value.</typeparam>
+// /// <typeparam name="TNestedKey">This should match the TNestedKey type parameter in your Listionary.</typeparam>
+// /// <typeparam name="TNestedValue">This should match the TNestedValue type parameter in your Listionary.</typeparam>
+// /// 
+
+// public abstract class BaseNestedListionary<TKey, TListionary, TNestedKey, TNestedValue> : IEnumerable<TNestedValue>, IEnumerable where TListionary : Listionary<TNestedKey, TNestedValue> where TKey : notnull where TNestedKey : notnull
+// {
+
+//     public int Count => NestedDictionaries.Count;
+
+//     // public int? CountListionary(TKey key)
+//     // {
+//     //     if (NestedDictionaries.TryGetValue(key, out TListionary? listionary))
+//     //         return listionary.Count;
+//     //     return null;
+//     // }
+//     // public int? CountList(TKey key, TNestedKey nestedKey)
+//     // {
+//     //     if (NestedDictionaries.TryGetValue(key, out TListionary? listionary))
+//     //         return listionary.CountList(nestedKey);
+//     //     return null;
+//     // }
+//     public virtual Dictionary<TKey, TListionary> NestedDictionaries { get => _nesteddics; set => _nesteddics = value; }
+//     Dictionary<TKey, TListionary> _nesteddics;
+//     public BaseNestedListionary(Dictionary<TKey, TListionary> listionaries)
+//     {
+//         _nesteddics = listionaries;
+//     }
+
+//     IEnumerator IEnumerable.GetEnumerator()
+//     {
+//         return GetEnumerator();
+//     }
+//     public virtual IEnumerator<TNestedValue> GetEnumerator() //as you can see the key becomes inaccessible upon enumeration
+//     {
+//         foreach (var pair in NestedDictionaries)
+//         {
+//             foreach (var element in pair.Value)
+//                 yield return element;
+//         }
+//     }
+
+//     public virtual TListionary this[TKey key]
+//     {
+//         get => NestedDictionaries[key];
+//         set => NestedDictionaries[key] = value;
+//     }
+
+//     /// <summary>
+//     /// TryGetValue wrapper.
+//     /// </summary>
+//     /// <param name="type"></param>
+//     /// <param name="data"></param>
+//     /// <returns></returns>
+//     public virtual bool TryGetValue(TKey key, out TListionary? data)
+//     {
+//         NestedDictionaries.TryGetValue(key, out data);
+//         return data != null;
+//     }
+
+//     /// <summary>
+//     /// ContainsKey wrapper.
+//     /// </summary>
+//     /// <param name="type"></param>
+//     /// <returns></returns>
+//     public virtual bool ContainsKey(TKey key) => NestedDictionaries.ContainsKey(key);
+// }
+
+
+// /// <summary>
+// /// Wrapper class that simplifies enumerating a dictionary of lists. 
+// /// </summary>
+
+// public class Listionary<TKey, TNestedValue> : IEnumerable<TNestedValue>, IEnumerable where TKey : notnull //will need to implement IDicitonary<K,List<V>>
+// {
+
+//     //.ToListDictionary()?
+//     //should this class be abstract?
+//     //it would be a little painful setting up a listdictionary but i could see someone wanting to use it once they've had their shit set up
+//     //could maybe make it easier to set up a list dictionary in the constructor
+//     //not requriing you to start with a whole dictionary already maybe or somethng idk
+//     //you can currently instance it like a normal dictionary and assign with the indexer in a forach so i think thats fine for building a listdictionary
+
+//     public virtual Dictionary<TKey, List<TNestedValue>> NestedLists { get => _nestedlists; set => _nestedlists = value; }
+//     Dictionary<TKey, List<TNestedValue>> _nestedlists;
+//     public int Count => NestedLists.Count;
+
+//     // public int? CountList(TKey key)
+//     // {
+//     //     if (NestedLists.TryGetValue(key, out List<TNestedValue>? list))
+//     //         return list.Count;
+//     //     return null;
+//     // }
+
+//     public Listionary()
+//     {
+//         _nestedlists = [];
+//     }
+//     public Listionary(Dictionary<TKey, List<TNestedValue>> dic)
+//     {
+//         _nestedlists = dic;
+//     }
+
+//     /// <summary>
+//     /// Will remove keys if the filter leaves their paired list empty.
+//     /// </summary>
+//     /// <param name="filter"></param>
+//     /// <returns></returns>
+//     public virtual Listionary<TKey, TNestedValue> Copy(Func<TNestedValue, bool> filter) => Copy<Listionary<TKey, TNestedValue>>(filter);
+//     public virtual Listionary<TKey, TNestedValue> Copy() => Copy<Listionary<TKey, TNestedValue>>();
+//     protected T Copy<T>() where T : Listionary<TKey, TNestedValue>, new()
+//     {
+//         T copybase = [];
+//         foreach (var pair in NestedLists)
+//         {
+//             copybase[pair.Key] = [.. pair.Value];
+//         }
+//         return copybase;
+//     }
+//     protected T Copy<T>(Func<TNestedValue, bool> filter) where T : Listionary<TKey, TNestedValue>, new()
+//     {
+//         T copybase = [];
+//         foreach (var pair in NestedLists)
+//         {
+//             IEnumerable<TNestedValue> values = pair.Value.Where(filter);
+//             if (values.Any())
+//                 copybase[pair.Key] = [.. values];
+//         }
+//         return copybase;
+//     }
+
+// //public abstract class BaseListionary<TKey, TList, TNestedValue> : IEnumerable<TNestedValue>, IEnumerable where TList : IList<TNestedValue> where TKey : notnull //will need to implement IDicitonary<K,List<V>>
+
+//     // public virtual BaseListionary<TKey, TList, TNestedValue> Copy() believe this was where TList: IList<TNestedValue> ?
+//     // {
+//     //     Dictionary<TKey, TList> copybase = [];
+//     //     foreach (var pair in NestedLists)
+//     //     {
+//     //         copybase[pair.Key] = [.. pair.Value];
+//     //     }
+//     //     return new(copybase);
+//     // }
+
+//     // public virtual BaseListionary<TKey, TList, TNestedValue> Copy(Func<TNestedValue, bool> filter)
+//     // {
+//     //     Dictionary<TKey, TList> copybase = [];
+//     //     foreach (var pair in NestedLists)
+//     //     {
+//     //         copybase[pair.Key] = [.. pair.Value.Where(filter)];
+//     //     }
+//     //     return new(copybase);
+//     // }
+
+//     // public virtual BaseListionary<TKey, TList, TNestedValue> Copy(Func<TNestedValue, bool> filter)
+//     // {
+//     //     Dictionary<TKey, TList> copybase = [];
+//     //     foreach (var pair in NestedLists)
+//     //     {
+//     //         TList list = new(pair.Value.Where(x => filter(x)));
+//     //     }
+//     // }
+
+//     //i am thinking we could do an abstraction of "hasvalue" that iterates through each key's list
+//     //just want to be able to know which val is associated with which key
+//     IEnumerator IEnumerable.GetEnumerator()
+//     {
+//         return GetEnumerator();
+//     }
+//     public virtual IEnumerator<TNestedValue> GetEnumerator() //as you can see the key becomes inaccessible upon enumeration
+//     {
+//         foreach (var pair in NestedLists)
+//         {
+//             foreach (var element in pair.Value)
+//                 yield return element;
+//         }
+//     }
+
+//     public virtual List<TNestedValue> this[TKey key]
+//     {
+//         get => NestedLists[key];
+//         set => NestedLists[key] = value;
+//     }
+
+//     /// <summary>
+//     /// TryGetValue wrapper.
+//     /// </summary>
+//     /// <param name="type"></param>
+//     /// <param name="data"></param>
+//     /// <returns></returns>
+//     public virtual bool TryGetValue(TKey key, out List<TNestedValue>? data)
+//     {
+//         NestedLists.TryGetValue(key, out data);
+//         return data != null;
+//     }
+
+//     /// <summary>
+//     /// ContainsKey wrapper.
+//     /// </summary>
+//     /// <param name="type"></param>
+//     /// <returns></returns>
+//     public virtual bool ContainsKey(TKey key) => NestedLists.ContainsKey(key);
+
+// }
