@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Text;
 using XQuinn.NetConsole;
+using XQuinn.Parsing;
+using XQuinn.Parsing.AST;
 using XQuinn.Reflection;
 using XQuinn.Runtime;
 
@@ -67,6 +69,30 @@ internal abstract class ConsoleTest
     protected virtual void Display(StringBuilder sb) => Console.WriteLine(sb);
     protected abstract void Test(string obj);
 }
+
+internal class LexTest : ConsoleTest
+{
+    InvocationLexer lex = new();
+    protected override void Test(string obj)
+    {
+        Method method = lex.ParameterTemplate(obj);
+        Read(method);
+    }
+
+    static void Read(Method method)
+    {
+        Console.WriteLine($"{method.ToString()} {method.GetType()}");
+        foreach (var param in method.Params)
+        {
+            if (param is Method mth)
+                Read(mth);
+            else
+                Console.WriteLine($"{param.ToString()} {param.GetType()}");
+
+
+        }
+    }
+}
 internal class RuntimeCommandTest : ConsoleTest
 {
     protected override void Test(string obj)
@@ -93,7 +119,7 @@ internal class CallInterpTest : ConsoleTest
     {
         Console.WriteLine("::");
         Console.WriteLine($"Loaded Type: {interp.LoadedType}");
-                Console.WriteLine($"Loaded method {interp.LoadedMethod}");
+        Console.WriteLine($"Loaded method {interp.LoadedMethod}");
         object? ret = interp.Interface(obj);
         Console.WriteLine("Invoked:");
         Console.WriteLine($"Returned: {ret}");

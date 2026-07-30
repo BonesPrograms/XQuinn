@@ -7,7 +7,7 @@ Use call interpreter and the registry index to change types during the experimen
 
 does shutdown run on any type reload, or only when it is reloading the entire assembly? dynamicinvoker question
 
-when im totally done (after doing all todos): Events, Emit, ASPNet, Foundry, and BS5 , expressionntrees
+when im totally done (after doing all todos): Events, Emit, ASPNet, Foundry, and BS5 , expressionntrees, Ref
 
 
 Assignemnt Syntax
@@ -134,8 +134,36 @@ MotoQuinn MonoQuinn
 
 Download Bep6 DevTools
 
+CallInterP: Private base fields and methods
+Private Base Fields And Methods: WE cannot support them due to name duplication errors. Unless I were to filter it so that if you have a private field or method who's declaringtype is not equal to the MMap type, then maybe it appends it like "base_name"
+
+Call interp: Local access
+Local Calling/Loading:
+
+so if im reading an arbitrary and i see a methodstart, i know immediately im reading a method, but this method wont have a typename so the interpreter will assume that it belongs to the loaded type
+however this creates ambiguity with fields, the lexer cannot know that an arbitrary is a field or an enum or a bool
+this will allow me to get rid of _. instance call syntax, and typename.methodname call syntax for static methods that belong to the loaded type
+
+loading:
+so if i get a value that does not have memberaccess and has a method start, then i know its a method from the loaded type
+fields would be the same, loading is actually easy i thought itd be hard
+
+so *fieldname or *methodname for loaded static
+or _fieldname or _methodname for loaded instance
+dont need to worry about ._ syntax anymore if i figure out local calling
+
+
+Lexer:
+methods actually can have a whitespace trail between the name and the ( but ima not worry abt that rn.the reason its like this is because SkipWhitespaceTrail look for a terminator, not a method start
+
+
 Important
-//-18 Wont support Indexer syntax, may support assignment syntax, but id need an assignemnt interpreter for that
+//How this params work in ILReader, and the -1 thing, and assloadcontext, and enum power of 2
+//-21 Local calls: See above
+//-20 Overload Support: Id need to get the approximate type of each parameter first, then find the method wherein those approximate types can implicitly cast to the parameter types
+//And add casting support.
+//-19 I was gonna add a way for you to send the name of a key in the instance index to have it be used as a parameter. Arbitraries would work just fine for this.
+//-18 Wont support Indexer syntax, may support assignment syntax, but id need an assignemnt interpreter/lexer for that. Id probably take a lot of stuff from lex and put it into a base type - id probably also want to change the way i read stuff. The spaghetti way I do it now where I read by char, set flags, and expect the main loop to handle the next incoming data packet, probably wont work well with inheritance, idk
 //-17 idea - if one of your parameters has the same value as one of the keys in the invocation index, it returns that key's instance
 //-15 inherited call interpreter that checks if an inserted typename is in my changed typenames hashset, if it is, it automatically appends xq_ to the typename for me, so i dont have to do it myself
 //-13 This param support? (CallInterp)

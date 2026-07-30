@@ -68,31 +68,41 @@ public sealed class InvocationLexer
     Method? Main;
 
     Method? CurrentMethod;
-
     char Value;
+    bool Start = true;
 
-    bool FinishedReadChar;
+    //Primary reading rulesets - determine how to lex incoming data based on context
     bool ReadingChar;
-    bool BeganFirstRead;
     bool ReadingArbitrary;
-    bool ReadingDigit;
-    bool Start;
-    bool ReadFloat;
-    bool MethodBegan;
-    bool MethodTerminated;
-    bool ReadingString;
-
-    bool EndString;
-
     bool ReadingIdentifier;
+    bool ReadingDigit;
+    bool ReadingString;
+    
+    //These are supporting flags for rulesets, some rulesets have specific rules for specific characters, or need to be read around declaration characters
+    bool ReadingIdentifierLead;
+    bool ReadFloat;
+    bool FinishedReadChar;  //Finishers/Enders are primarily for catching trailing garbage data or skipping whtiespace - ex Method("hello"  , 22, 33 s)
+    bool EndString;         //the trailing whitespace after "hello" willbe skipped, and the trailing s after 33 will cause an exception
+
+    bool BeganFirstRead; //This is a very specific flag that allows you to have leading whitespace for the main method name. Pretned | is string start. you can do |   call("hello")vb kjmhnnnnnnnnnnmm
+    // You need this flag to help differentiate if the whitespace is leading, or inside the method name itself, which is of course
+    //illegal.
+
+    //These are for getting context on parameter values. Once a method begins or a parameter/method terminates, one of these is true, and we wait until we receive a character that gives us context on what will be read next.
+    //Once we receive context, a Reading flag is set to true related to that specific context, and these flags are set to false, to prevent context getting reset in the middle of a read.
+    bool MethodBegan;
+    bool Terminated;
 
     int ReadingSubparamsOf;
-
     int LastReadingValue; //this is used to track how deeply we are reading parameters
                           //so if readingsubparamsof == 2, we are reading a method that is the parameter of a method that is a parameter of the "main" method. ie. Method(typename:MethodTwo(typename:MethodThree())) //reading methodThree gives us a reading value of 2
                           //once were done reading (we see a Terminate op), we decrement ReadingSubParams
                           //             //and if lastreadingvalue is > readingsubparams,it lets us know "okay, we just finished reading method params, return to the method
                           //that we were reading before we started reading this one"
+
+
+
+
 
     //I want to explain the difference between appending, and creating a parameter real quick
     //ANd specifically, why you should not jump to append once you finish reading a parameter
@@ -109,8 +119,8 @@ public sealed class InvocationLexer
     public Method ParameterTemplate(string invocation)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(invocation, nameof(invocation));
-        Clear();
         int i = 0;
+        Clear(); //this is specifically to support trycatch, though otherwise not necessary because it always clears at the end to avoid holding onto stale data
         while (i < invocation.Length)
         {
             Value = invocation[i];
@@ -151,17 +161,16 @@ public sealed class InvocationLexer
             }
             else if (Value == Whitespace)
                 goto Increment;
-            else if (MethodTerminated || MethodBegan)
+            else if (Terminated || MethodBegan)
             {
                 GetContext();
                 if (ReadingChar) //chars are read in a special way
                     goto Increment; //currently the Char Value is CharDeclr, we do not append char declaration communicators, so we skip this one
             }
-            if (LastReadingValue > ReadingSubparamsOf)// && CurrentMethod!._nest != null) //not necessary because the reading counter prevents this by its logic
+            if (LastReadingValue > ReadingSubparamsOf)
             {
                 CurrentMethod = CurrentMethod!._paramOf;
                 LastReadingValue--;
-                goto Increment; //this prevents a bug where the system reads an empty char in a specific circumstance - when terminating a method that is a parameter. so if your call looks like Method(22, "hello", GetMethod(), 15) - the system wouldve stored the empty space between ) and , after GetMethod( . now it skips storing the empty slot
             }
             if (Value == MethodTerminate)
             {
@@ -170,22 +179,46 @@ public sealed class InvocationLexer
             }
             if (Termination(Value))
             {
-                ReadParam();
-                ReadingArbitrary = false;
-                MethodTerminated = true;
-                goto Increment;
-
-            }
-        Append:
-            if (!ReadingString && !ReadingDigit && !ReadingChar) //ReadingDigit already handles illegals, ReadChar and ReadString can accept any illegal character
-                ValidIdentifier(Value, invocation, i);
+                if (sb.Length != 0) //subparameters can cause bugs. Ex. Method(Method1(Method2("hello")), Method3())
+                {                                                                           //the )), can cause huge bugs since its multiple terminators in a row
+                    ReadParam();                                                            //it will append empty values as parameters and cause mismatches
+                    ReadingArbitrary = false;                                                //so we always check sb length before doing params
+                    Terminated = true;                                                       //however it does allow a quirk where calls like call("hello",22,,true,,,) lex correctly, all the empty parameters are completely ingored
+                }                                                                           //even though standard C# would cause a compilation error, as you can see currently i cant really handle doing that
+                goto Increment;                                                                //otherwise wed be back at square one wouldnt we? though i do want to upgrade to that soon, for now it is a nonissue as far as im concerned
+                                                                                                //its the only circumstance wherein the system skips invalid inputs
+            }                                                                                      //aside from the SECRET fact that you can terminate parameters using ) method termination
+        Append:                                                                                 //you can have cursed inputs like call("hello")22)true) and  those will lex correctly, though it would probably cause an issue with subparameters because ) counts as method termination
+            if (!ReadingArbitrary && !ReadingChar && !ReadingDigit && !ReadingString && !ReadingIdentifier && !Start)
+                ValidIdentifier(Value, invocation, i); //this prevents collection of garbage data. see below for more info
             sb.Append(Value);
         Increment:
             i++;
         }
         FatalLexicalError(invocation);
-        return Main!;
+        Method primary = Main!;
+        Clear();
+        return primary;
     }
+    //so the way the system used to work, if all reading flags were false, it would passively append any value it receives except whitespace and it didnt care what it was
+    //so for example if you give us the string $44a
+    // upon seeing '$', the system thinks nothing, appends
+    //upon seeing '4', the system says "this is a digit", begins reading like a digit
+    //upon seeing 'a', the system says "digits cant contain letters" and throws
+    //if you were to give us the string $44, it would accept '44' as a digit, but it would actually be storing the value '$44'
+    //but obviously $44 would fail any int.tryparse check
+
+    //the reason this happens is because of how we obtain context
+    //letters, @, _, StringDelcr ", CharDeclr ' and digits all immediately tell the system "hey we are reading something, divert to the methods that control how that thing is read"
+    //this covers most things in C# (except math and stuff but you cant do expressions here obviously)
+    //illegals such as nonalphanumerics that arent @, _, " and ' dont tell the system that we are reading anything,
+    //in essence, they are completely dead and invalid characters that have no input on whats going on
+    //because they provide no information, no ruleset/restrictions are activated that usually prevent illegal input
+    //so now, instead of just passively appending them, we throw if we arent reading anything and receive one of them
+    //now the system is restricted and will only ever accept valid identifiers/digits/strings/etc
+    //and the "leading illegals" bug issue i had is solved henceforth
+
+
 
     bool ReadChar(ref int i, string invocation)
     {
@@ -211,8 +244,8 @@ public sealed class InvocationLexer
             else
             {
                 FinishedReadChar = true;
-                i++;
-                return true;
+                i++; //here we are counting past the second apostrophe, however the current value is still the actual char value inserted by the user
+                return true; //so char value will append, and on next loop, it will skip the apostrophe and get a valid char
             }
         }
         else if (Value == Whitespace)
@@ -221,6 +254,7 @@ public sealed class InvocationLexer
         }
         if (FinishedReadChar)
         {
+            FinishedReadChar = false;
             ReadingChar = false;
         }
         return false;
@@ -238,7 +272,7 @@ public sealed class InvocationLexer
             ReadingArbitrary = true; //enums, bools, identifiers and true arbitrary values are *initially* read as arbitraries. 
         if (ReadingDigit || ReadingString || ReadingArbitrary || ReadingChar)//if all these bools are false, that means we havent read anything of value, and can continue waiting for context
         {
-            MethodTerminated = false;
+            Terminated = false;
             MethodBegan = false;
         }
     }
@@ -246,13 +280,16 @@ public sealed class InvocationLexer
     {                                                  //a true arbitrary is an input value that is not yet representing a data type, a string, a field, or a method. in essence it does not represent a valid C# construct
         if (Value == Whitespace)                        //true arbitraries will always fail to parse in call interpreter without special overloads to support their value
             SkipWhitespaceTrail(ref i, invocation);
-        if (Value == MemberAccess)
+        else if (Value == MemberAccess)
         {
-            ValidMemberAccess(invocation, i);
+            ReadingIdentifierLead = true;
+            // ValidMemberAccess(invocation, i);
             ReadingIdentifier = true;
             ReadingArbitrary = false;
             return true;
         }
+        else if (!Termination(Value))
+            ValidIdentifier(Value, invocation, i);
         return false;
     }
 
@@ -260,15 +297,15 @@ public sealed class InvocationLexer
     {
         if (Value == Whitespace)
             SkipWhitespaceTrail(ref i, invocation);
-        if (Value == MemberAccess)
+        if (Value == MemberAccess && !ReadingIdentifierLead)
         {
-            ValidMemberAccess(invocation, i);
+            ReadingIdentifierLead = true;
             return true;
         }
         if (Termination(Value))
         {
-            MethodTerminated = true;
-            ReadField(invocation);
+            Terminated = true;
+            ReadField();
             return false;
         }
         if (Value == MethodStart)
@@ -277,6 +314,13 @@ public sealed class InvocationLexer
             ReadMethod(invocation); //unfortunately i cant know at compile time if you insert one of these 4 communicators into your identifier mistakenly, or if youre using it as a terminator/namespace accessor
             return false;           //so if you mess that up, it will fail to resolve somwhere in CallInterpreter, you will either get a parameter count mismatch, or it will say it cannot find the type/member with that name.
         }
+        if (ReadingIdentifierLead)
+        {
+            ReadingIdentifierLead = false;
+            ValidIdentifierFirstCharOrThrow(Value, invocation, i);
+        }
+        else
+            ValidIdentifier(Value, invocation, i);
         return true;
     }
 
@@ -365,7 +409,7 @@ public sealed class InvocationLexer
             Value = invocation[i];
             return true;
         }
-        else if(Value == StringDeclr)
+        else if (Value == StringDeclr)
         {
             EndString = true;
         }
@@ -378,9 +422,9 @@ public sealed class InvocationLexer
     // };
 
 
-    void ReadField(string invocation)
+    void ReadField()
     {
-        string typename = SplitMemberAccess(invocation, out string fieldname);
+        string typename = ResolveMemberAccess(out string fieldname);
         TypeString type = new(typename);
         Field field = new(fieldname, CurrentMethod, type);
         sb.Length = 0;
@@ -391,7 +435,7 @@ public sealed class InvocationLexer
 
     void ReadMethod(string invocation)
     {
-        string typename = SplitMemberAccess(invocation, out string methodname);
+        string typename = ResolveMemberAccess(out string methodname);
         TypeString type = new(typename);
         Method method = new(methodname, CurrentMethod, type);
         sb.Length = 0;
@@ -438,34 +482,29 @@ public sealed class InvocationLexer
         } //if we dont do this, then values like 22 2 will parse to 222 because we otherwise skip whitespace
     }
 
-    string SplitMemberAccess(string invocation, out string member) //returns typename, outputs the accessed member
+    string ResolveMemberAccess(out string member) //returns typename, outputs the accessed member
     {
         string lexOutput = sb.ToString();
         sb.Length = 0;
-        int lastAccessorIndex = 0;//this value will never be invalid, there will always be at least one memberaccess communicator
-        ValidIdentifierFirstCharOrThrow(lexOutput[0], invocation, null);
-        for (int i = 0; i < lexOutput.Length; i++)
+        int lastAccessorIndex = 0;
+        for (int i = 1; i < lexOutput.Length; i++)
         {
             char val = lexOutput[i];
             if (val == MemberAccess)
             {
                 lastAccessorIndex = i;
-                val = lexOutput[i + 1];
-                ValidIdentifierFirstCharOrThrow(val, invocation, null);
-                i++;
             }
-            else if (i != 0)
-                ValidIdentifier(val, invocation, null);
+
         }
         member = lexOutput.Substring(lastAccessorIndex + 1);
         string typename = lexOutput.Remove(lastAccessorIndex);
         return typename;
     }
-    bool ValidMemberAccess(string invocation, int i)
-    {
-        char next = invocation[i + 1]; //this reads ahead but does not increment the index because the next value will need to be appended and append always increments, so you will end up skipping ahead of a character and missing it
-        return ValidIdentifierFirstCharOrThrow(next, invocation, i); //it occurs to me now that we could do it properly by doing sb.Append right inside of here, along with some other stuff but i dont want to cause none of the other methods do it directly
-    }
+    // bool ValidMemberAccess(string invocation, int i)
+    // {
+    //     char next = invocation[i + 1]; //this reads ahead but does not increment the index because the next value will need to be appended and append always increments, so you will end up skipping ahead of a character and missing it
+    //     return ValidIdentifierFirstCharOrThrow(next, invocation, i); //it occurs to me now that we could do it properly by doing sb.Append right inside of here, along with some other stuff but i dont want to cause none of the other methods do it directly
+    // }
 
     bool ValidIdentifierFirstCharOrThrow(char next, string invocation, int? i)
     {
@@ -525,14 +564,13 @@ public sealed class InvocationLexer
         ReadingChar = false;
         ReadingArbitrary = false;
         MethodBegan = false;
-        MethodTerminated = false;
+        Terminated = false;
         ReadingSubparamsOf = 0;
         LastReadingValue = 0;
         sb.Length = 0;
     }
 
 }
-
 
 
 

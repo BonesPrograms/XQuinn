@@ -14,6 +14,7 @@ using System.Text;
 
 namespace _xquinn_cor
 {
+    
     file static class xquinn_prgrm_Main
     {
         static void Main(string[] args)
@@ -36,7 +37,7 @@ namespace Lexing.Gapers
 
         static int Num = 1;
 
-        public static void Char(char i)
+        public static void Char(char i,char d)
         {
             Console.WriteLine(i);
         }
@@ -45,6 +46,11 @@ namespace Lexing.Gapers
             Console.WriteLine(x);
         }
 
-        static Char Get() => 'c';
+        static char Oth(char x, char y)
+        {
+            Console.WriteLine($"Oth invoked with {x} and {y}");
+            return y;
+        }
+        static Char Get(char i) => 'c';
     }
 }
