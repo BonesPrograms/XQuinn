@@ -158,6 +158,7 @@ methods actually can have a whitespace trail between the name and the ( but ima 
 
 
 Important
+-22 Default value support (CallInterp)
 //How this params work in ILReader, and the -1 thing, and assloadcontext, and enum power of 2
 //-21 Local calls: See above
 //-20 Overload Support: Id need to get the approximate type of each parameter first, then find the method wherein those approximate types can implicitly cast to the parameter types
@@ -342,7 +343,7 @@ UpNext
 2. BonesBinarySerializer (Reflection based and universal?) (want it to be like qud IScribed where you can add/remove fields, change inheritance and shit)
 3. An IApp that automatically rebuilds any program referencing BCL (not really necessary for vietnam war and not really necessary for IApps since theyre all part of BCL now)
 4. Extract ObjectReader from caves of qud. I dont think we can reasonably extract "Invoke" and "Field".
-5. Foundry, Web Apps ASPNet
+5. Foundry, Web Apps ASPNet, Events, Emit, ASPNet, Foundry, and BS5 , expressionntrees, Ref
 6. Combine all my projects into a solution
 
 if (isByRef && !isOut)

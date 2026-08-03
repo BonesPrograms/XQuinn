@@ -4,6 +4,8 @@ using System.Text.RegularExpressions;
 using XQuinn.Reflection;
 using XQuinn.Parsing;
 using XQuinn.Parsing.AST;
+using XQuinn.NetConsole;
+using System.ComponentModel;
 
 namespace XQuinn.Runtime;
 /// <summary>
@@ -113,6 +115,30 @@ public class CallInterpreter
     //OtherMethod1 - void OtherMethod()
     //OtherMethod2 - void OtherMethod(string)
 
+
+    //NEW/HIDING:
+    //When hiding an inherited method with the New keyword, the original method will still be accessible - the names will be resolved similarly to overloads.
+    //The new method in the inheritor class will be counted first, and the base classes hidden method will be counted second. IE.
+    //
+    //class BaseClass
+    //{
+    //public void Num();
+    //}
+    //
+    //class Inheritor : BaseClass
+    //{
+    //new void Num()
+    //}
+    //
+    //
+    //Stored names and methods
+    //Num1 - Inheritor.Num()
+    //Num2 - BaseClass.Num()
+
+    //Overload name resolution can get pretty confusing to predict as you include more and more inheritance. If you're having trouble, make a MemberMap of your chosen type
+    //and use MapOverloads to see how it resolves the method keys.
+
+
     //This can obviously cause errors if you already had a method with the same name as an overload, but with a number at the end. I'm not going to worry about that myself yet, that is
     //your problem for now.
 
@@ -128,6 +154,10 @@ public class CallInterpreter
     // - removes an instance by key. Ex. -MyObject
     // $ loads an instance by key. Ex. $MyObject
 
+
+    //Base Privates:
+    //Currently you cannot access private members in base types, due to risk of naming conflicts. I could fix this using overload resolution for method and field names,
+    //but for now its just not a thing.
 
     //KNOWN BUGS
 
@@ -468,7 +498,9 @@ public class CallInterpreter
         object? obj;
         if (param is Field f)
             obj = GetFieldParameter(f, paramType);
-        else if (param is not Method)
+        else if (param is Method m)
+            obj = InvokeMethodParameter(m, paramType);
+        else
         {
             obj = ParseParameter(param.String, paramType);
             if (obj == null)
@@ -478,8 +510,6 @@ public class CallInterpreter
                     throw new ArgumentException($"Expected method syntax for type {paramType}, but received {param.String}");
             }       //so if its not throwing format exception, it means it is a class or custom struct parameter (it leaves early and avoids throwing), and it requires method syntax, however it should've already jumped to the Method label early, this means it was parsed incorrectly as a Parameter, and will throw to let you know you messed up
         }
-        else
-            obj = InvokeMethodParameter(param, paramType);
         return obj;
 
     }
@@ -487,17 +517,17 @@ public class CallInterpreter
     object? GetFieldParameter(Field f, Type paramType)
     {
         Type t = FindType(f._type);
-        // FieldInfo field;
-        // if(t==LoadedType)
-        // {
-        //     field = t.GetField() //if t == loadedtype, we should use the fucking map, lol
-        // }
-        var map = MapType(t, MemberGroup.Field, out _);
-        FieldInfo field = FindField(map, f);
-        if (field.FieldType != paramType)
-            throw new ArgumentException($"Field {field.DeclaringType}{f.String} is type {field.FieldType}, but the parameter type required for method {LoadedMethod!.Name} is {paramType}");
+        FieldInfo field;
+        if (t == LoadedType)
+            field = FindField(Map!, f);
+        else
+            field = t.GetField(f.String, BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.FlattenHierarchy | BindingFlags.Static | BindingFlags.IgnoreCase) ?? throw new ArgumentException($"No field found in type {t} named {f.String}");
+        //var map = MapType(t, MemberGroup.Field, out _);
+        //FieldInfo field = FindField(map, f);
+      //  if (!Convertible(field.FieldType, paramType))
+        //    throw new ArgumentException($"Field {field.DeclaringType}{f.String} is type {field.FieldType}, but the parameter type required for method {LoadedMethod!.Name} is {paramType}");
         object? obj;
-        if (field.DeclaringType == LoadedType && Instance != null)
+        if (t == LoadedType && Instance != null)
             obj = field.GetValue(Instance);
         else
             obj = field.GetValue(null);
@@ -506,20 +536,37 @@ public class CallInterpreter
 
     //An isolated invocation of a method, however unlike StaticInvoke, this one actually changes its available methods depending on whether or not your parameters
     //are actually instance methods in the currently loaded instance.
-    object? InvokeMethodParameter(Parameter param, Type paramType)
+    object? InvokeMethodParameter(Method method, Type paramType)
     {
-        Method method = (Method)param;
         Type t = FindType(method._type!);
-        var tmap = MapType(t, MemberGroup.Method, out Dictionary<string, MethodInfo>? overloads);
-        var realmethod = FindMethod(overloads, tmap, method, method.String, method.DeclaringType!);
-        if (realmethod.ReturnType != paramType)
-            throw new ArgumentException($"Method {method.DeclaringType}.{method.String} has a return type of {realmethod.ReturnType}, but the parameter type required for method {LoadedMethod!.Name} is {paramType}");
-        ParameterInfo[] methodparams = realmethod.GetParameters();
+        MethodInfo call;
+        if (t != LoadedType)
+        {
+            MemberMap tmap = MapType(t, MemberGroup.Method, out Dictionary<string, MethodInfo>? overloads);
+            call = FindMethod(overloads, tmap, method, method.String, method.DeclaringType!);
+        }
+        else
+            call = FindMethod(_overloads, Map!, method, method.String, LoadedType.Name) ?? throw new ArgumentException($"No method named {method.String} found in {t}"); ;
+    //    if (!Convertible(call.ReturnType, paramType))
+       //     throw new ArgumentException($"Method {method.DeclaringType}.{method.String} has a return type of {call.ReturnType}, but the parameter type required for method {LoadedMethod!.Name} is {paramType}");
+        ParameterInfo[] methodparams = call.GetParameters();
         object?[]? subparams = GetParams(methodparams, method);
         object? instance = t == LoadedType ? Instance : null;
-        return realmethod.Invoke(instance, subparams);
+        return call.Invoke(instance, subparams);
         //if you are getting a type that you know will be in a metadata map, it doesnt need to have case //but if the map is null, then you need full casing  //namespace is ALWAYS required
     }
+
+    //this causes truncation, so for now it isnt a thing...
+    // static bool Convertible(Type t, Type target)
+    // {
+    //     TypeConverter converter = TypeDescriptor.GetConverter(t);
+    //     return converter.CanConvertTo(target);
+    // }
+    ///so this is why the "efficiency" getmethod thing doesnt work
+    /// if you have two overloads named Integer()
+    /// you will send Integer(), it will throw ambiguous match, then it will sort the overloads by count
+    /// //however your string is still Integer() so itll never find it, and if you dont throw an ambiguous match, then it wont do the count
+    /// so yeah no thing
 
 
     //there  is a suble bug here with parameterless methods
@@ -678,15 +725,18 @@ public class CallInterpreter
         overloads = null;
         bool instanced = type == LoadedType && Instance != null;
         MemberMap tmap = MemberMap.New(type, false, !instanced, false, group, SupportedMember);
-        try
+        if (group.HasFlag(MemberGroup.Method))
         {
-            overloads = tmap.MapOverloads(out List<MemberInfo>? methods, StringComparer.OrdinalIgnoreCase);
-            if (methods != null)
-                tmap[MemberGroup.Method] = methods;
-        }
-        catch (InvalidOperationException)
-        {
-            // throw new InvalidOperationException($"No methods were loaded from the type {type.Name}. They may have been removed if they do not meet the criteria, such as trying to load instance methods without loading an instance, or trying to use a method with in out ref or delegate parameters.");
+            try
+            {
+                overloads = tmap.MapOverloads(out List<MemberInfo>? methods, StringComparer.OrdinalIgnoreCase);
+                if (methods != null)
+                    tmap[MemberGroup.Method] = methods;
+            }
+            catch (InvalidOperationException)
+            {
+                throw new InvalidOperationException($"No methods were loaded from the type {type.Name}. They may have been removed if they do not meet the criteria, such as trying to load instance methods without loading an instance, or trying to use a method with in out ref or delegate parameters.");
+            }
         }
         return tmap;
 

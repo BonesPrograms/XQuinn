@@ -31,7 +31,7 @@ internal interface IApp
     static TypeBook GetApps()
     {
         var types = typeof(IApp).Module.GetTypes().Where(x => x != typeof(IApp) && x.IsAssignableTo(typeof(IApp)));
-        return TypeBook.New(types, false, Filter);
+        return TypeBook.New(types, Filter);
 
     }
 

@@ -266,7 +266,7 @@ public sealed class InvocationLexer
             ReadingChar = true;
         else if (Value == StringDeclr)
             ReadingString = true;
-        else if (IsDigit(Value))
+        else if (Value == '-' || IsDigit(Value))
             ReadingDigit = true;
         else if (ValidIdentifierFirstChar(Value))
             ReadingArbitrary = true; //enums, bools, identifiers and true arbitrary values are *initially* read as arbitraries. 

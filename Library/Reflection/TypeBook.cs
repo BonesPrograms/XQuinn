@@ -43,18 +43,19 @@ public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
     public Type this[string key]
     {
         get => _book[key];
-      //  set => _book[key] = value;
+        //  set => _book[key] = value;
     }
     System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => _book.GetEnumerator();
     public IEnumerator<KeyValuePair<string, Type>> GetEnumerator() => _book.GetEnumerator();
     public bool TryGetValue(string key, out Type? value) => _book.TryGetValue(key, out value);
-   // public bool TryAdd(string key, Type value) => _book.TryAdd(key, value);
+    // public bool TryAdd(string key, Type value) => _book.TryAdd(key, value);
     public bool ContainsKey(string key) => _book.ContainsKey(key);
 
     //ToString here is for custom filtering, ie. maybe one of your shortnames are already taken, you can have your filter pre-check if one of your types are already cached
     //and then return a different name, you can also return null and it will *skip* adding that type to the typebook. Using a ToString will also completely override
     //the default procedure for choosing keys.
-    public static TypeBook New(IEnumerable<Type> types, bool fullname, Func<Type, string?>? toString = null, StringComparer? comp = null)
+
+    public static TypeBook New(IEnumerable<Type> types, Func<Type, string?> toString, StringComparer? comp = null)
     {
         comp ??= System.StringComparer.OrdinalIgnoreCase;
         ConcurrentDictionary<string, Type> book = new(comp);
@@ -62,29 +63,55 @@ public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
         {
             if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute)))
             {
-                if (!type.IsPublic && !type.IsNested)
-                {
-                    if (type.Name.Contains("__"))
-                        continue;
-                }
+                if (IsFileType(type))
+                    continue;
+                string? txt = toString(type);
+                if (txt == null)
+                    continue;
+                if (book.TryGetValue(txt, out var val))
+                    throw new DuplicateTypeNameException(val, type, txt);
+                book.TryAdd(txt, type);
+            }
+        }
+        return new(book);
+    }
+
+    static bool IsFileType(Type t)
+    {
+        if (!t.IsPublic && !t.IsNested)
+            return t.Name.StartsWith('<') && t.Name.Contains("__");
+        return false;
+    }
+
+//         if (type == null) throw new ArgumentNullException(nameof(type));
+
+//         // Look for the [CompilerFeatureRequired] attribute assigned by the compiler
+//         var attribute = type.GetCustomAttributes(typeof(CompilerFeatureRequiredAttribute), inherit: false)
+//                             .FirstOrDefault() as CompilerFeatureRequiredAttribute;
+
+//         // Check if the required feature matches "FileLocalTypes"
+//         return attribute != null && attribute.FeatureName == "FileLocalTypes";
+//     }
+// }
+    public static TypeBook New(IEnumerable<Type> types, bool fullname, StringComparer? comp = null)
+    {
+        comp ??= System.StringComparer.OrdinalIgnoreCase;
+        ConcurrentDictionary<string, Type> book = new(comp);
+        foreach (var type in types)
+        {
+            if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute)))
+            {
+                if (IsFileType(type))
+                    continue;
                 string? txt = null;
-                if (toString != null)
+                if (fullname)
                 {
-                    txt = toString(type);
-                    if (txt == null)
-                        continue;
+                    if (type.FullName == null)
+                        throw new InvalidOperationException($"Fullname for type {type.Name} does not exist.");
+                    txt = type.FullName;
                 }
                 else
-                {
-                    if (fullname)
-                    {
-                        if (type.FullName == null)
-                            throw new InvalidOperationException($"Fullname for type {type.Name} does not exist.");
-                        txt = type.FullName;
-                    }
-                    else
-                        txt = type.Name;
-                }
+                    txt = type.Name;
                 if (book.TryGetValue(txt, out var val))
                     throw new DuplicateTypeNameException(val, type, txt);
                 book.TryAdd(txt, type);

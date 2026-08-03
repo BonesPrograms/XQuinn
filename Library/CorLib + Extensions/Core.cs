@@ -59,14 +59,14 @@ public static class Core
     //     return t.IsPublic && !t.IsNested;
     // }
 
-    public static void InitializeXQuinn(bool fullname = false, Func<Type, string?>? toString = null)
+    public static void InitializeXQuinn( Func<Type, string?>? toString = null)
     {
-        TypeBook book = CacheXQuinn(fullname, toString);
+        TypeBook book = CacheXQuinn(toString);
         RuntimeCommand.Register(book.Types, typeof(Core).Module.Assembly.GetName().FullName);
     }
-    public static TypeBook CacheXQuinn(bool fullname = false, Func<Type, string?>? toString = null)
+    public static TypeBook CacheXQuinn( Func<Type, string?>? toString = null)
     {
-        TypeBook book = TypeBook.New(typeof(Core).Module.GetTypes(), fullname, toString);
+        TypeBook book = TypeBook.New(typeof(Core).Module.GetTypes(),toString);
         TypeCache.CacheType(book);
         return book;
     }
