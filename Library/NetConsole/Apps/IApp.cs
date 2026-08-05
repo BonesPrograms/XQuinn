@@ -1,18 +1,22 @@
-using System.Collections.Immutable;
+
 using System.Reflection;
 using XQuinn.IO;
 using System.Diagnostics;
 using XQuinn.Extensions;
 using XQuinn.Reflection;
 using System.Collections.Concurrent;
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.IO;
 
-
-namespace XQuinn.NetConsole.Apps;
-
+#if NET6_0_OR_GREATER
+namespace XQuinn.NetConsole.Apps
+{
 /// <summary>
 /// This interface represents a type that serves as a complete and self-contained application for use in Console.
 /// </summary>
-internal interface IApp
+internal abstract class IApp
 {
     internal static readonly TypeBook Apps = GetApps();
     internal static bool IApps(string[] args)
@@ -76,22 +80,22 @@ internal interface IApp
     // return assemblies.SelectMany(x => x.GetTypes()).Where(x => x.IsAssignableFrom(typeof(IApp))).ToImmutableDictionary(k => k.Name, v => v);
     //only BCL has IApps first of all, plus if BCL isnt executing, then its probably not a program that needs IApps since they only work in console
 
-    public static abstract void Run(); //Every IApp has a static Run() method, similar to a Main() method, a Run() takes no parameters and should require 0 prior setup.
+    public abstract void Run(); //Every IApp has a static Run() method, similar to a Main() method, a Run() takes no parameters and should require 0 prior setup.
 
 
 }                                       //IApps are ready to go and Run ecapsulates the entirety of their program's lifecycle
 
 
 
-file class ResourcesReplacer : IApp
+class ResourcesReplacer : IApp
 {
     static readonly string GameResourcesFolder = Path.Combine(VietnamWarSource.Path, "Vietnam War_Data");
     static readonly string BackupResourcesFolder = Path.Combine(VietnamWarModLab.Path, @"ResourcesGetter\BackupResources");
     static readonly string ModResourcesFolder = Path.Combine(VietnamWarModLab.Path, @"ResourcesGetter\ModResources");
-    static readonly Dictionary<string, string> ModResources = Directory.GetFiles(ModResourcesFolder).Select(file => (Name: Path.GetFileName(file), Path: file)).ToDictionary();
+    static readonly Dictionary<string, string> ModResources = Directory.GetFiles(ModResourcesFolder).Select(file => (Name: Path.GetFileName(file), Path: file)).ToDictionary(key => key.Name, value => value.Path);
     static readonly Dictionary<string, string> GameResources = GetResources(GameResourcesFolder);
-    static readonly string[] Options = ["BACKUP", "RESTORE FROM BACKUP", "INSTALL"];
-    public static void Run()
+    static readonly string[] Options = { "BACKUP", "RESTORE FROM BACKUP", "INSTALL" };
+    public override void Run()
     {
         string? option = ConsoleTools.Choices(Options, "This program is for backing up Vietnam War assets and installing mod assets in their place.");
         if (option == null)
@@ -150,7 +154,7 @@ file class ResourcesReplacer : IApp
     }
     static Dictionary<string, string> GetResources(string path)
     {
-        string[] names = [.. ModResources.Keys];
+        string[] names = ModResources.Keys.ToArray();
         Dictionary<string, string> resources = new(names.Length);
         foreach (var file in Directory.EnumerateFiles(path, "*.assets", SearchOption.TopDirectoryOnly))
         {
@@ -164,20 +168,20 @@ file class ResourcesReplacer : IApp
     }
 }
 
-file class PluginMaker : IApp
+class PluginMaker : IApp
 {
     static readonly string[] Insertions =
-    [
+    {
       $"    <Reference Include=\"{InteropAssembly}\"/>",
       $"    <Reference Include=\"{Il2cppmscorlib}\"/>",
       $"    <Reference Include=\"{CoreModule}\"/>",
-    ];
+    };
     static readonly string ModsRoot = VietnamWarModLab.Path;
     const string CoreModule = @"../interop\UnityEngine.CoreModule.dll";
     const string Il2cppmscorlib = @"../interop\Il2Cppmscorlib.dll";
     const string InteropAssembly = @"../interop\Assembly-CSharp.dll";
 
-    public static void Run()
+    public override void Run()
     {
         Console.WriteLine("Enter the name of your plugin!");
 
@@ -220,7 +224,7 @@ file class PluginMaker : IApp
 
     static List<string> GetAndModifyText(string csproj, string name)
     {
-        List<string> text = [.. File.ReadAllLines(csproj)];
+        List<string> text = File.ReadAllLines(csproj).ToList();
         int spot = text.IndexOf("  </ItemGroup>");
         foreach (var insert in Insertions)
             text.Insert(spot, insert);
@@ -281,14 +285,14 @@ file class PluginMaker : IApp
 }
 
 
-file class InteropDLLGetter : IApp //The idea with this is that if i get a new pc, i dont need to update all my project references
+class InteropDLLGetter : IApp //The idea with this is that if i get a new pc, i dont need to update all my project references
 {
 
     static readonly string Source = Path.Combine(VietnamWarSource.Path, @"BepInEx\interop");
     static readonly string CopyTo = Path.Combine(VietnamWarModLab.Path, "interop");
-    static readonly string[] Assemblies = ["UnityEngine.CoreModule.dll", "Il2Cppmscorlib.dll", "Assembly-CSharp.dll"];
+    static readonly string[] Assemblies = {"UnityEngine.CoreModule.dll", "Il2Cppmscorlib.dll", "Assembly-CSharp.dll"};
 
-    public static void Run()
+    public override  void Run()
     {
         foreach (var assembly in Assemblies)
         {
@@ -296,4 +300,5 @@ file class InteropDLLGetter : IApp //The idea with this is that if i get a new p
             File.Copy(Path.Combine(Source, assembly), Path.Combine(CopyTo, assembly), true);
         }
     }
-}
+}}
+#endif

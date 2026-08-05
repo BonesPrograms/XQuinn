@@ -1,6 +1,11 @@
 ﻿using Microsoft.Win32;
-
-namespace XQuinn.IO;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+#if NET6_0_OR_GREATER
+namespace XQuinn.IO
+{
 
 
 /// <summary>
@@ -20,7 +25,8 @@ public static class SteamGameFinder //beleive there is a better way to do this i
     /// </summary>
     public static string? Find(string exeName, EnumerationOptions? options = null)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(exeName, nameof(exeName));
+        if(string.IsNullOrWhiteSpace(exeName))
+        throw new ArgumentException("exeName cannot be whitespace or null.");
         return Directory.EnumerateFiles(SteamCommonPath, $"{exeName}*.exe", options ?? DefaultOption).FirstOrDefault();
     }
     public static string FindOrThrow(string exeName, EnumerationOptions? options = null) => Find(exeName, options) ?? throw new FileNotFoundException(null, $"{exeName}.exe");
@@ -72,3 +78,5 @@ internal static class CodeLabFinder
     public static readonly string Path = Directory.EnumerateDirectories(KnownFolders.Desktop, "C#Lab", SearchOption.TopDirectoryOnly).FirstOrDefault() 
     ?? throw new DirectoryNotFoundException("C#Lab not found on Desktop!");
 }
+}
+#endif

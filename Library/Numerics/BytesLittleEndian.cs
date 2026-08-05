@@ -1,6 +1,8 @@
 //using static System.BitConverter;
+#if NET6_0_OR_GREATER
 using static System.Buffers.Binary.BinaryPrimitives; //binaryprimitives is preferred to bitconverter cause it is more efficient and little endians for me
 using System.Numerics;
+using System;
 using static XQuinn.Numerics.BytesLittleEndian;
 
 namespace XQuinn.Numerics;
@@ -8,9 +10,10 @@ namespace XQuinn.Numerics;
 public static class BytesLittleEndian
 {
 
+    //Not available in net6, not supported.
 
-    public static byte[] AsBytes(UInt128 uint128) => uint128.AsBytesInternal();
-    public static byte[] AsBytes(Int128 sint128) => sint128.AsBytesInternal();
+   // public static byte[] AsBytes(UInt128 uint128) => uint128.AsBytesInternal();
+    //public static byte[] AsBytes(Int128 sint128) => sint128.AsBytesInternal();
     public static byte[] AsBytes(nuint uint32or64) => uint32or64.AsBytesInternal();
     public static byte[] AsBytes(nint sint32or64) => sint32or64.AsBytesInternal();
     public static byte[] AsBytes(ulong uint64) => uint64.AsBytesInternal();
@@ -24,9 +27,9 @@ public static class BytesLittleEndian
     public static byte[] AsBytes(short sint16) => sint16.AsBytesInternal();
     public static byte[] AsBytes(char utf16) => utf16.AsBytesInternal();
 
-    static byte[] AsBytesInternal<T>(this T num) where T : INumber<T>
+    static byte[] AsBytesInternal<T>(this T num)
     {
-        byte[] bytes = [];
+        byte[] bytes = Array.Empty<byte>();
 
         switch (num)
         {
@@ -74,14 +77,14 @@ public static class BytesLittleEndian
                 bytes = new byte[sizeof(double)]; // 8 bytes
                 WriteDoubleLittleEndian(bytes, float64);
                 break;
-            case Int128 sint128:
-                bytes = new byte[x128bit]; //absolutely massive
-                WriteInt128LittleEndian(bytes, sint128);
-                break;
-            case UInt128 uint128:
-                bytes = new byte[x128bit];
-                WriteUInt128LittleEndian(bytes, uint128);
-                break;
+            // case Int128 sint128:
+            //     bytes = new byte[x128bit]; //absolutely massive
+            //     WriteInt128LittleEndian(bytes, sint128);
+            //     break;
+            // case UInt128 uint128:
+            //     bytes = new byte[x128bit];
+            //     WriteUInt128LittleEndian(bytes, uint128);
+            //     break;
             case nint sint32or64:
                 if (IntPtr.Size == x32bit)
                 {
@@ -145,3 +148,5 @@ public static class BytesLittleEndian
     public const byte x256bit = 0x32;
 }
 
+
+#endif

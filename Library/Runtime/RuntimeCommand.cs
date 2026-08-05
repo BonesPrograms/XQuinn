@@ -5,7 +5,6 @@ using System.Linq;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using HarmonyLib;
-using System.Collections.Immutable;
 using System.Collections.ObjectModel;
 using System.Reflection;
 using XQuinn.Extensions;
@@ -13,7 +12,8 @@ using XQuinn.Parsing.AST;
 
 
 
-namespace XQuinn.Runtime;
+namespace XQuinn.Runtime
+{
 
 //PRO DEBUGGIGN TIPS:
 
@@ -78,7 +78,7 @@ public sealed class RuntimeCommand : Attribute
 
     static RuntimeCommand()
     {
-        Registry = _registry.AsReadOnly();
+        Registry = new ReadOnlyDictionary<string,MethodInfo>(_registry);
     }
 
     /// <summary>
@@ -97,8 +97,7 @@ public sealed class RuntimeCommand : Attribute
         {
             if (cmd.IsGenericMethodDefinition)
             {
-                Type[] generics = Interpreter.GetGenerics(method) ?? throw new ArgumentException($"Command {method.String} is generic definition, but no generic parameters were provided.");
-                cmd = cmd.MakeGenericMethod(generics);
+                cmd = Interpreter.ASTToGeneric(cmd.MakeGenericMethod,method);
             }
             object?[]? parameters = null;
             if (num != -1)
@@ -176,3 +175,4 @@ public sealed class RuntimeCommand : Attribute
     // }    
 }
 
+}

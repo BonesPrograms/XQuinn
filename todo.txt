@@ -118,9 +118,11 @@ public class Calculator
 
 
 
-CASTING OPERATORS (for overloads):
+CASTING OPERATORS (for overloads) / IMPLICIT OVERLOAD RESOLUTION::
 casting operators would allow me to more safely parse method overloads. Also id need like an abstraction layer of the parameter values, like id need to pre parse them and get their approximate types and find the first method that explicitly or implicitly accepts those types for params, instead of my current system that gets the required paramtypes first and then parses the value to that type.
  P much id reverse it and also split it up into two steps, first i parse the values, then i try to match their approx types to an overload
+ also i had an idea for implicit overload resolution using "approximate types" from ur param input but currently i have no good way of knowing if one data type implicitly converts to the other in case of an int and a byte overload. but then id 
+ also need casting syntaxs what if u havge one method that takes byte other takes int, it would improperly go for byte if u insert number 1 but actually wanted it to use the int overload
 
 
 
@@ -275,7 +277,7 @@ Indexers?
 
 No assignment syntax and you cannot use the instance index values as params. Theyre for loading only 
 No ass syntax and instance list is for loading only
-quick invoke for statics (call interp)
+quick invoke for statics  (no for base types too for instances) (call interp)
 _. syntax for any loaded method, not just instance methods
 i could use events to track things happening like commands, new loaded types to callinterp, etc
 a program that automatically rebuilds all projs referencing xquinn, then publishes them to git. similar one that saves them all to my cloud in a zip

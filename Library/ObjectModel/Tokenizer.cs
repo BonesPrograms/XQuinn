@@ -1,7 +1,9 @@
 using System.Reflection;
 using System.Collections;
+using System;
 
-namespace XQuinn.ObjectModel.Tokenizer;
+namespace XQuinn.ObjectModel.Tokenizer
+{
 
 public abstract class BaseObject
 {
@@ -87,4 +89,5 @@ public enum Token  //tokens are used to figure out what means we will use to rea
     Enum,
     Delegate,
     Boolean //booltostring is converted to its lower variant
+}
 }

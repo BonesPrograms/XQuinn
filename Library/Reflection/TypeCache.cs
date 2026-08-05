@@ -1,9 +1,13 @@
 using System.Collections.Concurrent;
+using System.Collections.ObjectModel;
 using System.Reflection;
+using System;
+using System.Collections.Generic;
 using HarmonyLib;
 
 
-namespace XQuinn.Reflection;
+namespace XQuinn.Reflection
+{
 
 public class DuplicateTypeNameException : Exception
 {
@@ -56,12 +60,13 @@ public static class TypeCache
         ["double"] = typeof(double),
         ["decimal"] = typeof(decimal),
         ["nint"] = typeof(nint),
-        ["nuint"] = typeof(nuint)
+        ["nuint"] = typeof(nuint),
+        ["math"] = typeof(Math)
     };
 
     static TypeCache()
     {
-        Cache = _registry.AsReadOnly();
+        Cache = new ReadOnlyDictionary<string,Type>(_registry);
     }
 
     public static bool Contains(string name) => _registry.ContainsKey(name);
@@ -167,4 +172,5 @@ public static class TypeCache
     /// <param name="types"></param>
     /// <param name="fullname"></param>
 
+}
 }

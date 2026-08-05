@@ -1,10 +1,15 @@
+using System;
 using System.Reflection;
 using XQuinn.Reflection;
 using XQuinn.Extensions;
-using System.Collections.Immutable;
 using static XQuinn.Reflection.MemberGroup;
 using System.Collections.Concurrent;
-namespace XQuinn.Reflection;
+using System.Linq;
+using System.Collections.Generic;
+namespace XQuinn.Reflection
+{
+    
+
 
 
 
@@ -13,7 +18,7 @@ namespace XQuinn.Reflection;
 public sealed class MemberMap : IEnumerable<MemberInfo>
 {
     public readonly bool StaticOnly;
-    public readonly Type Type;
+    public readonly System.Type Type;
     public readonly Dictionary<MemberGroup, List<MemberInfo>> Map;
     public int Count => Map.Count;
     public ICollection<MemberGroup> Groups => Map.Keys;
@@ -38,7 +43,7 @@ public sealed class MemberMap : IEnumerable<MemberInfo>
         flag |= declaredOnly ? BindingFlags.DeclaredOnly : BindingFlags.FlattenHierarchy;
         if (!staticOnly)
             flag |= BindingFlags.Instance;
-        Dictionary<MemberGroup, List<MemberInfo>> members = [];
+        Dictionary<MemberGroup, List<MemberInfo>> members = new();
         AddMembers(type, flag, member, members, filter);
         if (traverseBaseForPrivate)
             BaseTypeTraversal(type, staticOnly, member, members, filter);
@@ -91,7 +96,7 @@ public sealed class MemberMap : IEnumerable<MemberInfo>
 
     public MemberMap Copy(Func<MemberInfo, bool>? filter = null)
     {
-        Dictionary<MemberGroup, List<MemberInfo>> dic = [];
+        Dictionary<MemberGroup, List<MemberInfo>> dic = new();
         foreach (var pair in Map)
         {
             List<MemberInfo>? transfer = null;
@@ -142,11 +147,11 @@ public sealed class MemberMap : IEnumerable<MemberInfo>
         {
             if (name.EqualsCaseless(method.Name))
             {
-                count++;
+                count++;    
                 if (count > 1)
                 {
                     overloads ??= new(comp);
-                    AddOverload(count, ref first, name, comp, method, overloads);
+                    AddOverload(count, ref first, name, method, overloads);   
                 }
                 else if (count == 1)
                     first = (MethodInfo?)method;
@@ -155,7 +160,7 @@ public sealed class MemberMap : IEnumerable<MemberInfo>
     }
 
 
-    static void AddOverload(int count, ref MethodInfo? first, string name, StringComparer comp, MemberInfo method, Dictionary<string, MethodInfo> overloads)
+    static void AddOverload(int count, ref MethodInfo? first, string name, MemberInfo method, Dictionary<string, MethodInfo> overloads)
     {
         if (first != null)
         {
@@ -178,7 +183,7 @@ public sealed class MemberMap : IEnumerable<MemberInfo>
             filteredMembers = EnumeratePrivateMembers(typeof(T), filteredMembers);
         }
         if (filteredMembers.Any())
-            return [.. filteredMembers];
+            return filteredMembers.ToList();
         return null;
     }
 
@@ -189,7 +194,7 @@ public sealed class MemberMap : IEnumerable<MemberInfo>
             AccessModifiers modifiers;
             if (t == typeof(FieldInfo))
                 modifiers = new((FieldInfo)member);
-            else
+            else //will only be something that inherits from methodbase (priv is only true for fields and methodbases)
                 modifiers = new((MethodBase)member);
             if (modifiers.IsPrivate)
                 yield return member;
@@ -384,4 +389,5 @@ public sealed class MemberMap : IEnumerable<MemberInfo>
     //     // }
     // }
 
+}
 }

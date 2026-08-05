@@ -1,7 +1,10 @@
 using System.Text.RegularExpressions;
 using System.Text;
+using System.Collections.Generic;
+using System.Linq;
 
-namespace XQuinn.Parsing.AST;
+namespace XQuinn.Parsing.AST
+{
 //"abstract syntax tree"
 
 //This is tightly coupled to CallInterpreter. It can be used elsewhere (I use it in RuntimeCommands) but actually turning parameters to objects or generic parameters to type arrays
@@ -42,6 +45,11 @@ public class Field : Parameter
 {
     public string DeclaringType => _type.String;
     public TypeString _type;
+
+    public Field(string name, TypeString type) :base(name)
+    {
+        _type = type;
+    }
     public Field(string name, Method? paramOf, TypeString type) : base(name,paramOf)
     {
         _type = type;
@@ -71,7 +79,7 @@ public abstract class GenericParameter : Parameter
         {
             string[] args = matches.Groups[1].Value.Split(',');
             _generics = args.Select(x => new TypeString(x, null)).ToList().AsReadOnly();
-            String = String[..String.IndexOf('<')];
+            String = String.Remove(String.IndexOf('<'));
         }
 
     }
@@ -94,7 +102,7 @@ public class Method : GenericParameter
     public string? DeclaringType => _type?.String;
     public readonly TypeString? _type;
     public readonly IReadOnlyList<Parameter> Params;
-    List<Parameter> _params = [];
+    List<Parameter> _params = new();
     public Method(string name, Method? NestedIn, TypeString typeName) : this(name, NestedIn)
     {
         _type = typeName;
@@ -130,4 +138,5 @@ public class Method : GenericParameter
         return sb.ToString();
 
     }
+}
 }

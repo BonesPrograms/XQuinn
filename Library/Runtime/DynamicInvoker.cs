@@ -1,3 +1,4 @@
+#if NET6_0_OR_GREATER
 using System.Reflection;
 using XQuinn.Reflection;
 using XQuinn.Extensions;
@@ -6,9 +7,12 @@ using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
 using XQuinn.Parsing;
 using System.Runtime.Loader;
+using System;
+using System.IO;
 
 
-namespace XQuinn.Runtime;
+namespace XQuinn.Runtime
+{
 
 
 /// <summary>
@@ -18,6 +22,7 @@ namespace XQuinn.Runtime;
 /// <summary>
 /// Only supports single-file assemblies. Loads an assembly into the runtime and dynamically reloads it if it detects any updates to the file.
 /// </summary>
+/// 
 public class DynamicInvoker : IDisposable
 {
 
@@ -74,7 +79,7 @@ public class DynamicInvoker : IDisposable
             throw new NotSupportedException("Only single file assemblies are supported.");
         Interpreter.Book = TypeBook.New(LoadedAssembly.ManifestModule.GetTypes(), FullName);
         if (DefaultLoadedTypeName != null)
-            Interpreter.LoadTypeDirect(DefaultLoadedTypeName);
+            Interpreter.LoadTypeClearInstance(DefaultLoadedTypeName);
         LastWrite = File.GetLastWriteTime(DLLPath);
     }
 
@@ -129,7 +134,7 @@ public class DynamicInvoker : IDisposable
     }
 
 }
-
+}
 //Usage warnings:
 //If you are invoking one of your reflected methods via dynamic invoker, your reflected methods should avoid the following behaviors:
 
@@ -147,3 +152,4 @@ public class DynamicInvoker : IDisposable
 
 //Final Warning: If you create multiple instances of DynamicInvoker that point to the same assembly, you will bloat your memory like crazy
 //You should only have one dynamic invoker per assembly loaded
+#endif

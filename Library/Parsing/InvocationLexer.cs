@@ -1,8 +1,10 @@
 using System.Text;
 using XQuinn.Parsing.AST;
 using System.Reflection;
+using System;
 
-namespace XQuinn.Parsing;
+namespace XQuinn.Parsing
+{
 
 
 public class LexicalException : Exception
@@ -118,7 +120,8 @@ public sealed class InvocationLexer
     //That being said,if you do not jump to append before the parameter read is finished, you will cause things like strings to fail to parse, since they can contain terminators.
     public Method ParameterTemplate(string invocation)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(invocation, nameof(invocation));
+        if(string.IsNullOrWhiteSpace(invocation))
+        throw new ArgumentException("Invocation cannot be null or whitespace.");
         int i = 0;
         Clear(); //this is specifically to support trycatch, though otherwise not necessary because it always clears at the end to avoid holding onto stale data
         while (i < invocation.Length)
@@ -222,7 +225,7 @@ public sealed class InvocationLexer
 
     bool ReadChar(ref int i, string invocation)
     {
-        const string error = $"Characer declarations must be enclosed with character declaration communicators (apostrophes).";
+        const string error = "Characer declarations must be enclosed with character declaration communicators (apostrophes).";
         if (!FinishedReadChar)
         {
             char? next = null;
@@ -524,7 +527,7 @@ public sealed class InvocationLexer
         // if (IsCommunicator(Value)) //unfortunately, if you mess up your identifier and insert a ( ) or , prematurely, i can know at compile time if that termination was intentional or a mistake
         //     throw new LexicalException("Detected communicator in identifier, this is illegal.", invocation, sb); //but i can know for the other communicators
 
-        if (Illegal(value))
+        if (Value != '<' && Value != '>' && Value != ',' &&  Illegal(value))
         {
             const string error = "Detected illegal character in identifier.";
             if (i == null)
@@ -580,4 +583,4 @@ public sealed class InvocationLexer
 
 
 
-
+}

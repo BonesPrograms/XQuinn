@@ -1,6 +1,9 @@
 using System.Runtime.InteropServices;
+using System.Collections.Generic;
+using System;
 
-namespace XQuinn.IO;
+namespace XQuinn.IO
+{
 
 //Source: https://www.tutorialspoint.com/article/how-to-get-a-path-to-the-desktop-for-current-user-in-chash
 public enum KnownFolder
@@ -37,4 +40,5 @@ public static class KnownFolders
     private static extern string SHGetKnownFolderPath(
         [MarshalAs(UnmanagedType.LPStruct)] Guid rfid, uint dwFlags,
         nint hToken = 0);
+}
 }

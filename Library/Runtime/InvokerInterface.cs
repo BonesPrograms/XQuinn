@@ -1,5 +1,8 @@
 using XQuinn.Runtime;
-namespace XQuinn.Runtime;
+using System;
+#if NET6_0_OR_GREATER
+namespace XQuinn.Runtime
+{
 
 
 //or my purposes in vwar runtime commands will be invoked starting with a / so you know its not a callinterp. And i guess dynamicinvoked will start with something like !. 
@@ -41,7 +44,8 @@ public class InvokerInterface
     public virtual object? Interface(string interf)
     {
         // no throw?
-        ArgumentNullException.ThrowIfNullOrWhiteSpace(interf);
+        if(string.IsNullOrWhiteSpace(interf))
+        throw new ArgumentException("Interface cannot be null or whitespace.");
         if (interf[0] == '?')
         {
             if (Invoker == null)
@@ -74,3 +78,5 @@ public class InvokerInterface
 
 }
 
+}
+#endif

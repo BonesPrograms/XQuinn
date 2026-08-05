@@ -1,11 +1,14 @@
 using System.Reflection;
 using XQuinn.Reflection;
 using XQuinn.Extensions;
-using System.Collections.Immutable;
 using static XQuinn.Reflection.MemberGroup;
 using System.Collections.Concurrent;
 using Mono.Reflection;
-namespace XQuinn.Reflection;
+using System.Collections.ObjectModel;
+using System;
+using System.Collections.Generic;
+namespace XQuinn.Reflection
+{
 
 
 
@@ -26,7 +29,6 @@ public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
     public int Count => _book.Count;
     public ICollection<Type> Types => _book.Values;
     public ICollection<string> Names => _book.Keys;
-    public IEqualityComparer<string> StringComparer => _book.Comparer;
 
     /// <summary>
     /// True = fullname, false == short name, null == assortment of both
@@ -37,7 +39,7 @@ public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
     TypeBook(ConcurrentDictionary<string, Type> book)
     {
         _book = book;
-        Book = book.AsReadOnly();
+        Book = new ReadOnlyDictionary<string,Type>(_book);
     }
 
     public Type this[string key]
@@ -79,7 +81,7 @@ public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
     static bool IsFileType(Type t)
     {
         if (!t.IsPublic && !t.IsNested)
-            return t.Name.StartsWith('<') && t.Name.Contains("__");
+            return t.Name.StartsWith("<") && t.Name.Contains("__");
         return false;
     }
 
@@ -121,4 +123,5 @@ public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
     }
 
 
+}
 }

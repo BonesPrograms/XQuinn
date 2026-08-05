@@ -1,15 +1,20 @@
 ﻿
 using XQuinn.IO;
 using System.Xml.Linq;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+#if NET6_0_OR_GREATER
 
-
-namespace XQuinn.NetConsole.Apps;
+namespace XQuinn.NetConsole.Apps
+{
 
 
 internal class QudModUpdater : IApp
 {
 
-    public static void Run()
+    public override void Run()
     {
         string locallow = Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "Low";
         string copyTo = Path.Combine(locallow, @"Freehold Games\CavesOfQud\Mods");
@@ -30,20 +35,20 @@ internal class QudModUpdater : IApp
 //It will copy your manifest.json, preview.png, and workshop.json but will not create them.
 //Organization is lost, all CS and XML files are dumped into the mod root.
 //Only image files in the Textures folder have their directories recreated at copy destination.
-file class ModCopier
+class ModCopier
 {
     readonly string CopyRoot; //root for the overlying directory - mods will be copied to matching subdirectories in this directory
     string? CopyDest;
     string? ModPath; //mod directory
     const string Image = ".png";
     static readonly string[] CodeExtensions =
-    [
+    {
       ".xml", ".cs", ".json"
-    ];
+    };
     static readonly string[] ExcludedFolders = //explicitly exclude code by placing it into a "DoNotShip" folder
-    [
+    {
       "DoNotShip", "obj", "bin", ".git", ".dotnet", ".vs", "Textures"
-    ];
+    };
     public ModCopier(string copyroot)
     {
         if (!Directory.Exists(copyroot))
@@ -110,7 +115,7 @@ file class ModCopier
     }
     (string, string) TextureCopyPath(string sourcePath)
     {
-        string subdir = sourcePath[sourcePath.IndexOf(@"Textures\")..];
+        string subdir = sourcePath.Substring(sourcePath.IndexOf(@"Textures\"));
         return (sourcePath, Path.Combine(CopyDest!, subdir));//as you can see it *expects* it to be an immediate subdirectory
     }
     (string, string) CodeCopyPath(string sourcePath)
@@ -136,7 +141,7 @@ file class ModCopier
 
 }
 
-file static class ModDirectories
+static class ModDirectories
 {
     readonly static string ModLab = Path.Combine(CodeLabFinder.Path, "QudModLab");
     readonly static string XmlPath = Path.Combine(ModLab, "mods.xml");
@@ -144,7 +149,7 @@ file static class ModDirectories
     public static List<string> GetModDirectories()
     {
         IEnumerable<string> subdirectories = Directory.EnumerateDirectories(ModLab);
-        string[] xmlValues = [.. XML.Descendants("mod").Select(x => x.Value)];
+        string[] xmlValues = XML.Descendants("mod").Select(x => x.Value).ToArray();
         List<string> dirs = new(xmlValues.Length);
         foreach (var dir in subdirectories)
         {
@@ -157,3 +162,5 @@ file static class ModDirectories
     }
 
 }
+}
+#endif

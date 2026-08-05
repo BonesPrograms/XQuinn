@@ -5,8 +5,10 @@ using XQuinn.Parsing;
 using XQuinn.Parsing.AST;
 using XQuinn.Reflection;
 using XQuinn.Runtime;
+using System;
 
-namespace XQuinn.CorLib.ConsoleTests;
+namespace XQuinn.CorLib.ConsoleTests
+{
 
 
 //Should this be an interface instead?
@@ -106,7 +108,11 @@ internal class RuntimeInvokerTest : ConsoleTest
 {
     protected override void Test(string obj)
     {
+        #if NET6_0_OR_GREATER
         new InvokerInterface().Interface(obj);
+        #else
+        throw new NotSupportedException("NET6+ only.");
+        #endif
     }
 
 }
@@ -126,4 +132,5 @@ internal class CallInterpTest : ConsoleTest
         Console.WriteLine($"Loaded type: {interp.LoadedType}");
         Console.WriteLine($"Loaded method {interp.LoadedMethod}");
     }
+}
 }

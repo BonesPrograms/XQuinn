@@ -1,11 +1,16 @@
+#if NET6_0_OR_GREATER
 using System.Reflection.Emit;
 using System.Reflection;
 using System.Buffers.Binary;
 using static XQuinn.Numerics.BytesLittleEndian;
-using System.Collections.Immutable;
 using XQuinn.IO;
+using System.Collections.ObjectModel;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
-namespace XQuinn.Reflection.IL;
+namespace XQuinn.Reflection.IL
+{
 
 //Todo: Reading delegates, reading delegate bodies?
 
@@ -55,9 +60,9 @@ public sealed class ILReader
         return new(method)
         {
             _il = il,
-            _msil = il.AsReadOnly(),
-            _locals = body.LocalVariables.AsReadOnly(),
-            _params = method.GetParameters().AsReadOnly(),
+            _msil = Array.AsReadOnly(il),
+            _locals = new ReadOnlyCollection<LocalVariableInfo>(body.LocalVariables),
+            _params = Array.AsReadOnly(method.GetParameters()),
             GenericMethodArgs = method.GetGenericArguments(),
             GenericTypeArgs = method.DeclaringType?.GetGenericArguments()
         };
@@ -106,7 +111,7 @@ public sealed class ILReader
     public List<ByteCode> GetIL()
     {
         int i = 0;
-        List<ByteCode> codes = [];
+        List<ByteCode> codes = new();
         while (i < _il.Length)
             BytesToIL(codes, ref i);
         return codes;
@@ -122,7 +127,8 @@ public sealed class ILReader
         codes.Add(instruction); //for some reason it is off by 1, you want to shift the offset back by 1 or every label will be off by 1 individually and cumulatively so all labels will be off
         i += size;
         instruction.LastInstruction = LastInstruction;
-        LastInstruction?.NextInstruction = instruction;
+        if (LastInstruction != null)
+            LastInstruction.NextInstruction = instruction;
         LastInstruction = instruction;
     }
 
@@ -241,3 +247,5 @@ public sealed class ILReader
     };
 #pragma warning restore CS8509
 }
+}
+#endif

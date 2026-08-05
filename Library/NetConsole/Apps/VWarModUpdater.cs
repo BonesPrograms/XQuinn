@@ -1,19 +1,23 @@
 
-using System.Collections.Immutable;
 using System.Text;
 using System.Xml.Serialization;
 using XQuinn.IO;
+using System;
+using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
+using System.Linq;
 
 using System.ComponentModel;
-
-namespace XQuinn.NetConsole.Apps;
+#if NET6_0_OR_GREATER
+namespace XQuinn.NetConsole.Apps
+{
 
 
 internal class VWarModUpdater : IApp
 {
 
-    public static void Run()
+    public override  void Run()
     {
         Dictionary<string, string> roots = ProjectFinder.GetProjectRoots();
         List<Mod> mods = ModFetcher.FetchMods(roots);
@@ -38,14 +42,14 @@ public class BuildFailedException : Exception
     }
 }
 
-file static class DLLUpdater
+static class DLLUpdater
 {
 
 
     static readonly string TransferDirectory = Path.Combine(VietnamWarSource.Path, @"BepInEx\plugins");
     public static void UpdatePlugins(Dictionary<string, string> roots, HashSet<Mod> needsUpdate)
     {
-        string[] names = [.. roots.Keys];
+        string[] names = roots.Keys.ToArray();
         foreach (var mod in needsUpdate)
         {
             if (names.Contains(mod.Name))
@@ -100,7 +104,7 @@ file static class DLLUpdater
 
 }
 
-file class Mod
+class Mod
 {
     public List<CSFile> Files;
     public string Name;
@@ -114,7 +118,7 @@ file class Mod
 }
 
 [XmlRoot("CSFile")]
-file class CSFile
+class CSFile
 {
     [XmlElement]
     public DateTime LastWrite = default!;
@@ -139,16 +143,16 @@ file class CSFile
     static string MakeName(string path)
     {
         string[] split = path.Split('\\');
-        string name = split[^1];
-        return name[..^".cs".Length];
+        string name = split[split.Length-1];
+        return name.Substring(0, name.Length - ".cs".Length);
     }
 }
 
-file static class ModFetcher
+static class ModFetcher
 {
     public static List<Mod> FetchMods(Dictionary<string, string> roots)
     {
-        List<Mod> mods = [];
+        List<Mod> mods = new();
         foreach (var proj in roots)
         {
             IEnumerable<string> filePaths = Directory.EnumerateFiles(proj.Value, "*.cs", SearchOption.AllDirectories).Where(path => !path.Contains(@"\obj\"));
@@ -160,7 +164,7 @@ file static class ModFetcher
 
     static List<CSFile> GetCSFiles(IEnumerable<string> filePaths)
     {
-        List<CSFile> modFiles = [];
+        List<CSFile> modFiles = new();
         foreach (var path in filePaths)
         {
             FileInfo info = new(path);
@@ -171,11 +175,11 @@ file static class ModFetcher
     }
 }
 
-file class ModSerializer
+class ModSerializer
 {
     static readonly string SaveLocation = Path.Combine(VietnamWarModLab.Path, @"UpdatePlugins2\ModData\VietnamWar");
     static readonly string[] SaveFolders = Directory.GetDirectories(SaveLocation);
-    readonly HashSet<Mod> NeedUpdate = [];
+    readonly HashSet<Mod> NeedUpdate = new();
     static readonly XmlSerializer Serializer = new(typeof(CSFile));
 
     //runs the serializer/deserializer, dumps mods that need to be updated
@@ -235,7 +239,7 @@ file class ModSerializer
     //if they dont exist, it creates them
     Dictionary<string, string> GetSavedData(Mod mod, string saveFolder, out List<string> newFiles)
     {
-        Dictionary<string, string> saveFiles = GetNamesWithPaths([.. Directory.GetFiles(saveFolder)]);// key is Name, Value is path
+        Dictionary<string, string> saveFiles = GetNamesWithPaths(Directory.GetFiles(saveFolder));// key is Name, Value is path
         CheckForDeletion(saveFiles, mod);
         newFiles = AddNewFiles(saveFiles, mod.Files, saveFolder);
         return saveFiles;
@@ -244,8 +248,8 @@ file class ModSerializer
     //detects if there is not a sibling xml data file for a cs file in a project, creates it
     static List<string> AddNewFiles(Dictionary<string, string> saveFiles, List<CSFile> csFiles, string path)
     {
-        List<string> newfiles = [];
-        HashSet<string> names = [.. saveFiles.Keys];
+        List<string> newfiles = new();
+        HashSet<string> names = new(saveFiles.Keys);
         foreach (var file in csFiles)
         {
             if (!names.Contains(file.Name))
@@ -282,7 +286,7 @@ file class ModSerializer
     //gets the full list of xml data files in the save folder
     static Dictionary<string, string> GetNamesWithPaths(IEnumerable<string> files)
     {
-        Dictionary<string, string> namesAndPaths = [];
+        Dictionary<string, string> namesAndPaths = new();
         foreach (var file in files)
         {
             string[] path = file.Split('\\');
@@ -324,7 +328,7 @@ file class ModSerializer
 }
 
 
-file static class ProjectFinder //this requires folder names, assembly names, and csproj names to be the same!
+static class ProjectFinder //this requires folder names, assembly names, and csproj names to be the same!
 {
     static readonly string Root = VietnamWarModLab.Path;
     static readonly string[] _projectFiles = Directory.GetFiles(Root, "*.csproj", SearchOption.AllDirectories);
@@ -339,7 +343,7 @@ file static class ProjectFinder //this requires folder names, assembly names, an
     }
     public static Dictionary<string, string> GetProjectRoots()
     {
-        Dictionary<string, string> projAndFolders = [];
+        Dictionary<string, string> projAndFolders = new();
         foreach (var proj in _projectFiles)
         {
             IEnumerable<string> projFileText = File.ReadLines(proj); //this is better to readalltext because its a stream, you can also use StreamReader for super large files
@@ -355,8 +359,8 @@ file static class ProjectFinder //this requires folder names, assembly names, an
     }
 
 }
-
-
+}
+#endif
 
 
 // bool DLLDelegate(string dll)
@@ -377,7 +381,7 @@ file static class ProjectFinder //this requires folder names, assembly names, an
 
 // Dictionary<string, string> GetProjectDLLs()
 // {
-//     Dictionary<string, string> projDLLs = [];
+//     Dictionary<string, string> projDLLs = new();
 //     foreach (var proj in _projectRoots)
 //     {
 //         string folder = proj.Value;

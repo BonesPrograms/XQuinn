@@ -1,14 +1,19 @@
+#if NET6_0_OR_GREATER
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Text;
-using System.Collections.Immutable;
 using System.Numerics;
 using XQuinn.Extensions;
 using System.ComponentModel;
 using XQuinn.Reflection;
 using XQuinn.Numerics;
+using System.Collections.ObjectModel;
+using System.Collections.Generic;
+using System.Linq;
+using System;
 
-namespace XQuinn.Reflection.IL;
+namespace XQuinn.Reflection.IL
+{
 
 public static class OpCodeMap
 {
@@ -16,11 +21,16 @@ public static class OpCodeMap
     /// <summary>
     /// A dictionary of opcodes that can be indexed by their short value (OpCode.Value).
     /// </summary>
-    public static readonly ImmutableDictionary<short, OpCode> OpCodes =
-    typeof(OpCodes).GetFields(BindingFlags.Static | BindingFlags.Public)
-    .Where(x => x.FieldType == typeof(OpCode))
-    .Select(x => (OpCode)x.GetValue(null)!)
-    .ToImmutableDictionary(k => k.Value, v => v);
+    public static readonly IReadOnlyDictionary<short, OpCode> OpCodes = Map();
+
+    static IReadOnlyDictionary<short, OpCode> Map()
+    {
+        Dictionary<short,OpCode> dic = typeof(OpCodes).GetFields(BindingFlags.Static | BindingFlags.Public)
+        .Where(x => x.FieldType == typeof(OpCode))
+        .Select(x => (OpCode)x.GetValue(null)!).ToDictionary(x => x.Value, v => v);
+        return new ReadOnlyDictionary<short, OpCode>(dic);
+    }
+
 }
 /// <summary>
 /// Readable IL instruction.
@@ -86,8 +96,8 @@ public sealed class ByteCode : MetadataReader
                 byte[]? bytes = TokenToBytes(token);
                 if (bytes != null)
                 {
-                    code._bytes = [.. bytes];
-                    code._bytesreadonly = code._bytes.AsReadOnly();
+                    code._bytes = bytes.ToArray();
+                    code._bytesreadonly = Array.AsReadOnly(code._bytes);
                 }
             }
         }
@@ -143,12 +153,12 @@ public sealed class ByteCode : MetadataReader
         if (Operand is LocalVariableInfo lvar)
         {
             Type type = lvar.LocalType;
-            sb.Append($"{CheckTypeGenerics(type)} ({lvar.LocalIndex})");
+            sb.Append($"{GenericTypeToString(type)} ({lvar.LocalIndex})");
         }
         else if (Operand is ParameterInfo info)
         {
             Type type = info.ParameterType;
-            sb.Append(CheckTypeGenerics(type) + $" {info.Name}");
+            sb.Append(GenericTypeToString(type) + $" {info.Name}");
         }
         else if (OpCode.OperandType == OperandType.InlineBrTarget || OpCode.OperandType == OperandType.ShortInlineBrTarget)
         {
@@ -165,3 +175,5 @@ public sealed class ByteCode : MetadataReader
             sb.Append(base.ToStringBuilder());
     }
 }
+}
+#endif

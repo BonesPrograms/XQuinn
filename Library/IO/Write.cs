@@ -1,12 +1,18 @@
-namespace XQuinn.IO;
+using System;
+using System.IO;
+
+namespace XQuinn.IO
+{
 
 public static  class Write// : IDisposable
 {
     public static void SafetyCheck(string path)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(path);
+        if(string.IsNullOrWhiteSpace(path))
+        throw new ArgumentException("Pah cannot be null or whitespace.");
         string? dir = Path.GetDirectoryName(path);
-        ArgumentNullException.ThrowIfNull(dir);
+        if(string.IsNullOrWhiteSpace(dir))
+        throw new ArgumentException("Unable to get directory name.");
         if (!Directory.Exists(dir))
             Directory.CreateDirectory(dir);
         if (!File.Exists(path))
@@ -94,4 +100,5 @@ public static  class Write// : IDisposable
     // }
 
 
+}
 }

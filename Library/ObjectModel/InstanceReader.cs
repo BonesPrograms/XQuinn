@@ -6,9 +6,11 @@ using System.Reflection;
 using XQuinn.IO;
 using XQuinn.Reflection;
 using XQuinn.ObjectModel.Tokenizer;
+using System.IO;
 
 
-namespace XQuinn.ObjectModel;
+namespace XQuinn.ObjectModel
+{
 
 
 
@@ -163,12 +165,12 @@ public class InstanceReader : MetadataReader, IDisposable
     protected void ReadObjectBasic(BaseObject info, FieldInfo? field, Type? sourceType, bool isInCollection)
     {
         StringBuilder text = new(); //sourceType and field will be null if in collection
-        text.Append($"Reading {(isInCollection ? "ELEMENT" : $"FIELD \"{field!.Name}\"")} from {(isInCollection ? "collection" : $"type {CheckTypeGenerics(sourceType)}")}:\n");
-        text.Append($"Type: {(isInCollection ? info.IsNull ? "null value in keyValuePair, cannot get type info" : CheckTypeGenerics(info.Instance!.GetType()) : CheckTypeGenerics(field!.FieldType))}\n");
+        text.Append($"Reading {(isInCollection ? "ELEMENT" : $"FIELD \"{field!.Name}\"")} from {(isInCollection ? "collection" : $"type {GenericTypeToString(sourceType)}")}:\n");
+        text.Append($"Type: {(isInCollection ? info.IsNull ? "null value in keyValuePair, cannot get type info" : GenericTypeToString(info.Instance!.GetType()) : GenericTypeToString(field!.FieldType))}\n");
         text.Append(DisplayValue(info)); //I have prevented lists from sending null elements, and IDictionary from sending null keys, but keys with null values are permitted
         if (!isInCollection)                //so in those cases it is possible for us to be unable to retrieve the value's type
         {                                   //though you can just see the dictionary's generic arguments to get an idea of what type it would've been
-            text.Append($"Declared in: {CheckTypeGenerics(field!.DeclaringType)}\n");
+            text.Append($"Declared in: {GenericTypeToString(field!.DeclaringType)}\n");
             text.Append($"Attributes {field.Attributes}\n");
         }
         Write(text.ToString());
@@ -302,7 +304,7 @@ public class InstanceReader : MetadataReader, IDisposable
     static string ReferenceTypeValueDisplay(object? obj)
     {
 
-        return CheckTypeGenerics(obj?.GetType())?.ToString() ?? "null";
+        return GenericTypeToString(obj?.GetType())?.ToString() ?? "null";
 
     }
 
@@ -323,3 +325,4 @@ public class InstanceReader : MetadataReader, IDisposable
 }
 
 
+}

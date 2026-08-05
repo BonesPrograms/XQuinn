@@ -1,0 +1,11 @@
+c:\Users\user\Desktop\C#Lab\XQuinnLib\obj\Debug\netstandard2.0\XQuinn.csproj.AssemblyReference.cache
+c:\Users\user\Desktop\C#Lab\XQuinnLib\obj\Debug\netstandard2.0\XQuinn.GeneratedMSBuildEditorConfig.editorconfig
+c:\Users\user\Desktop\C#Lab\XQuinnLib\obj\Debug\netstandard2.0\XQuinn.AssemblyInfoInputs.cache
+c:\Users\user\Desktop\C#Lab\XQuinnLib\obj\Debug\netstandard2.0\XQuinn.AssemblyInfo.cs
+c:\Users\user\Desktop\C#Lab\XQuinnLib\obj\Debug\netstandard2.0\XQuinn.csproj.CoreCompileInputs.cache
+c:\Users\user\Desktop\C#Lab\XQuinnLib\obj\Debug\netstandard2.0\XQuinn.sourcelink.json
+c:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Debug\netstandard2.0\XQuinn.deps.json
+c:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Debug\netstandard2.0\XQuinn.dll
+c:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Debug\netstandard2.0\XQuinn.pdb
+c:\Users\user\Desktop\C#Lab\XQuinnLib\obj\Debug\netstandard2.0\XQuinn.dll
+c:\Users\user\Desktop\C#Lab\XQuinnLib\obj\Debug\netstandard2.0\XQuinn.pdb

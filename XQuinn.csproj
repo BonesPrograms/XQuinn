@@ -2,12 +2,27 @@
 
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>net10.0-windows</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <TargetFrameworks>net10.0-windows;net6.0-windows;netstandard2.0;net48</TargetFrameworks> 
+ <!--Qud support requires netstandard2.0, bep6 requires net6. net48 is for testing the netstandard2.0 version.-->
+ <!--<ImplicitUsings>enable</ImplicitUsings>-->
+
+    <AppendRuntimeIdentifierToOutputPath>true</AppendRuntimeIdentifierToOutputPath>
+    <PlatformTarget>x64</PlatformTarget>
+    <SelfContained>false</SelfContained>
+    <Prefer32Bit>false</Prefer32Bit>
     <Nullable>enable</Nullable>
+
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   <!--  <TreatWarningsAsErrors>true</TreatWarningsAsErrors>-->
   </PropertyGroup>
+
+  <PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows' Or '$(TargetFramework)' == 'net6.0-windows'">
+      <RuntimeIdentifier>win-x64</RuntimeIdentifier> <!--needs to be here, or projects will automatically be self contained. pre net8.0, this directive automatically self contains, and it will have a "global" effect on all the other versions if its in the main property group instead of isolated, resulting in all assemblies being self contained-->
+  </PropertyGroup>
+
+<PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'net48'">
+  <LangVersion>9.0</LangVersion>
+</PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Lib.Harmony" Version="2.4.2" />

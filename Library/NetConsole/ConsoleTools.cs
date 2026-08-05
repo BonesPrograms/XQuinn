@@ -1,5 +1,8 @@
-namespace XQuinn.NetConsole;
+using System;
+using System.Collections.Generic;
 
+namespace XQuinn.NetConsole
+{
 public static class ConsoleTools
 {
 
@@ -80,4 +83,5 @@ public static class ConsoleTools
     static bool Check(bool forwardLoop, int i, int count) => forwardLoop ? i < count : i >= 0;
     static void Increment(bool forwardLoop, ref int i) { i = forwardLoop ? i + 1 : i - 1; }
 
+}
 }
