@@ -74,131 +74,50 @@ namespace XQuinn.Reflection
     /// viewing the type directly in code, it lacks deeper metadata information).
     /// </summary>
 
-    public sealed class ReflectionReader : MetadataReader
+    public sealed class MemberReader : MetadataReader
     {
         public MemberInfo Info => (MemberInfo)Object!;
         public Module Module => Info.Module;
         public Guid ModuleID => Module.ModuleVersionId; //not very wise to index only by metadata token, search for ModuleID/Module + MetadataToken or use the == overloads
         public int MetadataToken => Info.MetadataToken; //only types have guids, other members dont
         public string Name => Info.Name; //may change this to be info.tostring() for type objects (so you can see the namespace), not sure how that will effect methodinfo objects tho
-        public readonly MemberGroup? Group; //if is a Type, wont be a Member
+        public MemberGroup? Group => _group; //if is a Type, wont be a Member
+        MemberGroup? _group;
         /// <summary>
         /// 32bit byte sequence of the MetadataToken.
         /// </summary>
 #if NET6_0_OR_GREATER
-        public readonly IReadOnlyList<byte> TokenAsBytes;
+        public IReadOnlyList<byte> TokenAsBytes => _tokenAsBytes;
+
+        IReadOnlyList<byte> _tokenAsBytes = null!;
 #endif
         public readonly Type? Declared;
         public readonly Type? Base;
-        public ReflectionReader(MemberInfo info) : base(info)
+        MemberReader(MemberInfo info) : base(info)
         {
-#if NET6_0_OR_GREATER
-            TokenAsBytes = new ReadOnlyCollection<byte>(Numerics.BytesLittleEndian.AsBytes(info.MetadataToken));
-#endif
             Declared = info.DeclaringType;
             if (info is Type type && type.BaseType != typeof(object))
                 Base = type.BaseType;
-            Group = MemberGroups.GetGroup(info);
         }
 
-
-
-        /// these methods are helpers for navigating a MetadataMap -
-        /// members are returned following their type so if you want to get a class's data you can use IsOrIsDeclaredIn
-        public bool EqualsOrIsDeclaredIn(Type type)
+        public static MemberReader New(MemberInfo info)
         {
-            return this == type || DeclaredIn(type);
-        }
-
-        // public bool EqualsOrIsDeclaredIn(ReflectionData data)
-        // {
-        //     return this == data || DeclaredIn(data);
-        // }
-        // public bool DeclaredIn(ReflectionData data)
-        // {
-        //     return data.Declared != null && DeclaredIn(data.Declared);
-        // }
-        public bool DeclaredIn(Type type)
-        {
-            return Declared == type; //cannot use hassamemetadatadefinitionas in netstandard.20
-        }
-
-        public bool Is<T>() where T : MemberInfo => Info is T;
-
-        /// <summary>
-        /// Pattern matches the memberinfo object and returns the object, or returns null/throws if the match fails.
-        /// </summary>
-        /// <typeparam name="T"></typeparam>
-        /// <returns></returns>
-        public T? As<T>() where T : MemberInfo => Info as T;
-
-        public T AsOrThrow<T>() where T : MemberInfo
-        {
-            T? obj = Info as T;
-            return obj ?? throw new ArgumentException($"Info is not {typeof(T).Name}");
+            return new(info)
+            {
+#if NET6_0_OR_GREATER
+                _tokenAsBytes = Array.AsReadOnly(Numerics.BytesLittleEndian.AsBytes(info.MetadataToken)),
+#endif
+                _group = MemberGroups.GetGroup(info)
+            };
         }
 
         /// <summary>
-        /// Pattern matches the memberinfo object and returns false if the match fails.
+        /// Quick method for getting a reflectionreader string.
         /// </summary>
-        /// <typeparam name="T"></typeparam>
+        /// <param name="x"></param>
         /// <returns></returns>
-        public bool As<T>(out T? obj) where T : MemberInfo
-        {
-            obj = As<T>();
-            return obj != null;
-        }
+        public static string String(MemberInfo x) => New(x).ToString();
 
-        /// <summary>
-        /// This allows you to index Metadata keys in dictionaries without having a reference to the specific instance in the dictionary. As long as they represent the same
-        /// MemberInfo object, they will be considered the same.
-        /// </summary>
-        /// <returns></returns>
-        public override int GetHashCode()
-        {
-            return Info.GetHashCode();
-        }
-
-
-        //The Equals override for the Metadata class compares the MemberInfo object that it wraps. It compares them by metadata definition rather
-        //than object reference. Additionally, the Metadata class can be compared to a MemberInfo object, and will be evaluated in the same manner.
-
-        ///Metadata == memberinfo // vice versa
-
-        public static bool operator !=(MemberInfo? info, ReflectionReader? data) => !(info == data);
-
-        public static bool operator ==(MemberInfo? info, ReflectionReader? data) => data == info;
-
-        public static bool operator !=(ReflectionReader? data, MemberInfo? info) => !(data == info);
-
-        public static bool operator ==(ReflectionReader? data, MemberInfo? info)
-        {
-            return data?.Equals(info) ?? info == null;
-        }
-
-        //Metadata == Metadta
-        public static bool operator !=(ReflectionReader? data1, ReflectionReader? data2) => !(data1 == data2);
-
-        public static bool operator ==(ReflectionReader? data1, ReflectionReader? data2)
-        {
-            return data1?.Equals(data2) ?? data2 is null;
-        }
-
-        public override bool Equals(object? obj)
-        {
-            if (obj is MemberInfo info)
-                return info == Info;// info.HasSameMetadataDefinitionAs(Info);
-            else if (obj is ReflectionReader data)
-                return data.Info == Info;// data.Info.HasSameMetadataDefinitionAs(Info);
-            return false;
-        }
-        //i may add access modifiers - it would be easy, just put my access modifiers right before we call base.tostring()
-        //may also want to add other clarifiers like if they are abstract, sealed, virtual, new, etc
-        ///will require lots of separate methods and casting, cannot do this like i did MemberToString
-        /// other stuff like checking if a metadata is static or instance, such as if a class or property or field is static
-        /// maybe the word "method" before methods, "constructor" before constructors
-        /// maybe also get generic constraits too, like where T : Memberinfo
-        /// 
         protected override StringBuilder ToStringBuilder()
         {
             StringBuilder sb = new();
@@ -210,17 +129,15 @@ namespace XQuinn.Reflection
                 sb.Append(GenericTypeToString(Base));
             }
             sb.Append($" Token:: {MetadataToken}");
-            #if NET6_0_OR_GREATER
+#if NET6_0_OR_GREATER
             sb.Append(" AsBytes:: ");
             foreach (var bits in TokenAsBytes)
             {
                 sb.Append($"{bits} ");
             }
-            #endif
+#endif
             return sb;
         }
-
-
 
         StringBuilder? MetadataTypeToString() => Info switch
         {

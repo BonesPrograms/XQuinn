@@ -10,6 +10,7 @@ using HarmonyLib;
 using XQuinn.IO;
 using System.Text;
 using System;
+using System.Runtime.Versioning;
 
 namespace _xquinn_cor
 {
@@ -20,40 +21,24 @@ namespace _xquinn_cor
         static void Main(string[] args)
         {
 #if NET6_0_OR_GREATER
-        if (XQuinn.NetConsole.Apps.IApp.IApps(args))
-            return;
+            if (XQuinn.NetConsole.Apps.IApp.IApps(args))
+                return;
 #endif
             Core.InitializeXQuinn(Core.DefaultToString); // wonder if xq.x.fullname would screw up the lexer.. >:)
-           // ConsoleTest.Test<CallInterpTest>();
-
+            ConsoleTest.Test<CallInterpTest>();
         }
 
     }
 
-    class Class
-    {
-        public static void Method(in int num, out int othernum, ref int refnum)
-        {
-            othernum = 6;
-            refnum = 7;
-        }
-
-        static Class()
-        {
-
-        }
-    }
 
 
-    // namespace Lexing.Gapers
-    // {
-
+    // //char(lex.get(lex.oth('x', lex.get('y'))), lex.get(lex.get(lex.get(lex.oth('x',lex.get('y')))))
     //     public class Lex
     //     {
 
     //         static int Num = 1;
 
-    //         public static void Char(char i,char d)
+    //         public static void Char(char i, char d)
     //         {
     //             Console.WriteLine(i);
     //         }
@@ -71,5 +56,5 @@ namespace _xquinn_cor
 
     //         static char sex(char i, char x) => 'd';
     //     }
-    // }
+
 }

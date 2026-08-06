@@ -1,62 +1,6 @@
 {
   "version": 4,
   "targets": {
-    "net48": {
-      "Lib.Harmony/2.4.2": {
-        "type": "package",
-        "compile": {
-          "lib/net48/0Harmony.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/net48/0Harmony.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "Mono.Reflection/2.0.0": {
-        "type": "package",
-        "compile": {
-          "lib/net40/Mono.Reflection.dll": {
-            "related": ".pdb"
-          }
-        },
-        "runtime": {
-          "lib/net40/Mono.Reflection.dll": {
-            "related": ".pdb"
-          }
-        }
-      }
-    },
-    "net48/win-x64": {
-      "Lib.Harmony/2.4.2": {
-        "type": "package",
-        "compile": {
-          "lib/net48/0Harmony.dll": {
-            "related": ".pdb;.xml"
-          }
-        },
-        "runtime": {
-          "lib/net48/0Harmony.dll": {
-            "related": ".pdb;.xml"
-          }
-        }
-      },
-      "Mono.Reflection/2.0.0": {
-        "type": "package",
-        "compile": {
-          "lib/net40/Mono.Reflection.dll": {
-            "related": ".pdb"
-          }
-        },
-        "runtime": {
-          "lib/net40/Mono.Reflection.dll": {
-            "related": ".pdb"
-          }
-        }
-      }
-    },
     "netstandard2.0": {
       "Lib.Harmony/2.4.2": {
         "type": "package",
@@ -697,10 +641,6 @@
       "Lib.Harmony >= 2.4.2",
       "Mono.Reflection >= 2.0.0"
     ],
-    "net48": [
-      "Lib.Harmony >= 2.4.2",
-      "Mono.Reflection >= 2.0.0"
-    ],
     "net6.0-windows": [
       "Lib.Harmony >= 2.4.2",
       "Mono.Reflection >= 2.0.0"
@@ -735,7 +675,6 @@
       ],
       "originalTargetFrameworks": [
         "net10.0-windows",
-        "net48",
         "net6.0-windows",
         "netstandard2.0"
       ],
@@ -747,11 +686,6 @@
         "net10.0-windows": {
           "framework": "net10.0-windows7.0",
           "targetAlias": "net10.0-windows",
-          "projectReferences": {}
-        },
-        "net48": {
-          "framework": "net48",
-          "targetAlias": "net48",
           "projectReferences": {}
         },
         "net6.0-windows": {
@@ -1082,21 +1016,6 @@
           "System.Xml.XPath": "(,4.3.32767]",
           "System.Xml.XPath.XDocument": "(,5.0.32767]"
         }
-      },
-      "net48": {
-        "framework": "net48",
-        "targetAlias": "net48",
-        "dependencies": {
-          "Lib.Harmony": {
-            "target": "Package",
-            "version": "[2.4.2, )"
-          },
-          "Mono.Reflection": {
-            "target": "Package",
-            "version": "[2.0.0, )"
-          }
-        },
-        "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300\\RuntimeIdentifierGraph.json"
       },
       "net6.0-windows": {
         "framework": "net6.0-windows7.0",

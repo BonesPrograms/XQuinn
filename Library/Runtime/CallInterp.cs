@@ -141,6 +141,10 @@ namespace XQuinn.Runtime
         //Num1 - Inheritor.Num()
         //Num2 - BaseClass.Num()
 
+        //This does not apply to new fields. The "newest" field (ie. the one declared in the loaded type, or most recently declared relative to the types position in inheritance hierarchy)
+        //Will be selected. I will not be adding a field overload system, and this is considered a bug - in the future, callinterp will only use the "newest" method and will not add
+        //hidden methods as overloads.
+
         //Overload name resolution can get pretty confusing to predict as you include more and more inheritance or hiding. If you're having trouble, make a MemberMap of your chosen type
         //and use MapOverloads to see how it resolves the method keys.s
 
@@ -337,7 +341,6 @@ namespace XQuinn.Runtime
 
         void LoadTypePreserveInstance(Type t)
         {
-
             _loadedtype = t;
             ChangeTMap();
         }
@@ -631,10 +634,15 @@ namespace XQuinn.Runtime
 #else
             if (type.IsEnum)
             {
-                MethodInfo method = typeof(Enum).GetMethods().First(x => x.Name == "TryParse" && x.GetParameters().Length == 2);
-                method = method.MakeGenericMethod(type);
                 object? parsed = null;
-                method.Invoke(null, new object?[] { strng, parsed });
+                try
+                {
+                    parsed = Enum.Parse(type, strng, true);
+                }
+                catch (ArgumentException)
+                {
+
+                }
                 if (parsed != null)
                     return parsed;
             }
@@ -681,7 +689,14 @@ namespace XQuinn.Runtime
                 return float64;
             if ((type == typeof(decimal)) && decimal.TryParse(strng, out decimal dec))
                 return dec;
+#if NET6_0_OR_GREATER
             throw new FormatException($"Tried to parse {strng} to {type}, but value could not parse to {type}.");
+#else
+            if (type == typeof(nint) || type == typeof(uint)) //i never use nint or uint so i havent fixed this yet but i will later maybe lol
+                throw new NotSupportedException("Parsing nint and uint not yet supported for pre-net6.");
+            else
+                throw new FormatException($"Tried to parse {strng} to {type}, but value could not parse to {type}.");
+#endif
         }
 
         static FieldInfo FindField(MemberMap tmap, string field, string fielddeclr)

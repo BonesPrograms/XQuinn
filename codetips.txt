@@ -17,3 +17,5 @@ because it was a reference type. It was not assigning and I didnt understand why
 
 
 optimal struct max size is 16 bytes
+
+

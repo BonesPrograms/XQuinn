@@ -1,11 +1,11 @@
-﻿
-using XQuinn.IO;
+﻿#if NET6_0_OR_GREATER
+using XQuinn.IO.Finders;
 using System.Xml.Linq;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-#if NET6_0_OR_GREATER
+
 
 namespace XQuinn.NetConsole.Apps
 {

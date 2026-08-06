@@ -1,0 +1,36 @@
+Ctrl Shift P and Developer: Reload Window to reload framework after changing target framework (first framework in the framework string is the main target)
+
+Ctrl + , and search analyze to change full project analysis or open file analysis
+
+Okay kinda confusing Ill just show you and explain the bug
+
+#if NET6_0_OR_GREATER
+            if (type.IsEnum && Enum.TryParse(type, strng, out object? enumeration))
+                return enumeration;
+#else
+            if (type.IsEnum)
+            {
+                object? parsed = null;
+                try
+                {
+                    parsed = Enum.Parse(type, strng, true);
+                }
+                catch (ArgumentException)
+                {
+
+                }
+                if (parsed != null)
+                    return parsed;
+            }
+#endif
+
+
+    <TargetFrameworks>net48;net10.0-windows;net6.0-windows;netstandard2.0</TargetFrameworks>
+
+    Normally, the IDE does code analysis based on the leading target framework
+    So if you are on NET10, it will code analyze the #if NET6_OR_GREATER section, and not the else section
+    However, else statemnts are buggy if you have multiple frameworks
+    Even though net48 is my leading target framework, the else statement is not code analyzing
+    You need to get rid of multiframeworks and only use one framework
+        <!--<TargetFramework>net48</TargetFramework>-->
+        specifically for net48 and only have that load if you want the else statement to code analyze

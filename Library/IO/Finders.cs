@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 #if NET6_0_OR_GREATER
-namespace XQuinn.IO
+namespace XQuinn.IO.Finders
 {
 
 

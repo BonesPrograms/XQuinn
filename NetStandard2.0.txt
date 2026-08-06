@@ -1,11 +1,10 @@
-LIST Of Types you cannot use in a netstandard2.0 runtime:
+LIST Of Types that will not compile in a netstandard2.0/ne48 build:
 
-DynamicInvoker
-ILReader and ByteCode (entire XQuinn.Reflection.IL namespace)
-IApp or any IApp Inheritor (extremely private anyways)
+Entire XQuinn.IO.Finders namespace (uses EnumerationOptions)
+Entire XQuinn.Reflection.IL namespace (relies heavily on BytesLittleEndian)
+Entire XQuinn.NetConsole.Apps namespace (relies heavily on Finders, Super private anyways, not for outsiders to use ever.)
 BytesLittleEndian (relies on binaryprimitives, i dont feel like making a byeteconverter edition)
+DynamicInvoker (relies on assemblyloadcontext from net6)
 InvokerInterface(relies on dynamic invoker)
 
-You also cannot use the "ChangedTypeNames" hash set in XQuinn.CorLib.Core, relies on net6 api
-
-This types will not compile, some nam
+You also cannot use the "ChangedTypeNames" hash set in XQuinn.CorLib.Core, relies on net6 api (readonly hash sets)

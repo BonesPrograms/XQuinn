@@ -25,6 +25,7 @@ namespace XQuinn.Reflection.IL
 /// </summary>
 public sealed class ILReader
 {
+    
     public IReadOnlyList<byte> MSIL => _msil;
     public IReadOnlyList<LocalVariableInfo> Locals => _locals;
     public IReadOnlyList<ParameterInfo> Params => _params;
@@ -34,6 +35,7 @@ public sealed class ILReader
     byte[] _il = null!;
     readonly Module Module;
     readonly MethodInfo Method;
+    
     /// <summary>
     /// Some opcodes are 2 bytes long, they will always start with a "prefix" byte.
     /// </summary>

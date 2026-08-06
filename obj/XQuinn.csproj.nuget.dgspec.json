@@ -24,7 +24,6 @@
         ],
         "originalTargetFrameworks": [
           "net10.0-windows",
-          "net48",
           "net6.0-windows",
           "netstandard2.0"
         ],
@@ -36,11 +35,6 @@
           "net10.0-windows": {
             "framework": "net10.0-windows7.0",
             "targetAlias": "net10.0-windows",
-            "projectReferences": {}
-          },
-          "net48": {
-            "framework": "net48",
-            "targetAlias": "net48",
             "projectReferences": {}
           },
           "net6.0-windows": {
@@ -371,21 +365,6 @@
             "System.Xml.XPath": "(,4.3.32767]",
             "System.Xml.XPath.XDocument": "(,5.0.32767]"
           }
-        },
-        "net48": {
-          "framework": "net48",
-          "targetAlias": "net48",
-          "dependencies": {
-            "Lib.Harmony": {
-              "target": "Package",
-              "version": "[2.4.2, )"
-            },
-            "Mono.Reflection": {
-              "target": "Package",
-              "version": "[2.0.0, )"
-            }
-          },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\10.0.300\\RuntimeIdentifierGraph.json"
         },
         "net6.0-windows": {
           "framework": "net6.0-windows7.0",

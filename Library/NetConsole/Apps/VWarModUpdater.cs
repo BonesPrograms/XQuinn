@@ -1,7 +1,7 @@
-
+#if NET6_0_OR_GREATER
 using System.Text;
 using System.Xml.Serialization;
-using XQuinn.IO;
+using XQuinn.IO.Finders;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -9,7 +9,7 @@ using System.IO;
 using System.Linq;
 
 using System.ComponentModel;
-#if NET6_0_OR_GREATER
+
 namespace XQuinn.NetConsole.Apps
 {
 

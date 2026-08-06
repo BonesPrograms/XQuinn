@@ -1,0 +1,27 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+                {
+            "name": "Launch net48 win-x64",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "Build net48 win-x64",
+            "program": "${workspaceFolder}/bin/Debug/net48/win-x64/XQuinn.exe",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "stopAtEntry": false
+        },
+        {
+            "name": "Launch net10.0-windows win-x64",
+            "type": "coreclr",
+            "request": "launch",
+            "preLaunchTask": "Build net10.0-windows win-x64",
+            "program": "${workspaceFolder}/bin/Debug/net10.0-windows/win-x64/XQuinn.dll",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal", //use externalteriminal for externalwindow or remove this for debugger (dont like the debugger doesnt accept arrow inputs)
+            "stopAtEntry": false
+
+            
+        }
+    ]
+}

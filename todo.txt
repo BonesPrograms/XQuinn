@@ -275,6 +275,11 @@ exposed fieldinfo?
 this param support?
 Indexers?
 
+runtimecommand - i want a method for it to actually get, construct (if generic) and return the method, so that an external wrapper can inspect the method for other attributes (ex. adminonly). it also actually builds the object array and outs that as well - maybe, bit iffy if you wnt to prevent methods as parameters, id need to expose a way for you to inspect the lexed method AST object so you could forloop its parameters list and see if any are methods before actually making the array, idk, getting more and more confusing, 
+strict public api mixing with a pseudo private api not working, what if u want to inspect the actual method instead of just its AST object for example
+
+how does ilreader work with patched methods?
+
 No assignment syntax and you cannot use the instance index values as params. Theyre for loading only 
 No ass syntax and instance list is for loading only
 quick invoke for statics  (no for base types too for instances) (call interp)
@@ -347,6 +352,7 @@ UpNext
 4. Extract ObjectReader from caves of qud. I dont think we can reasonably extract "Invoke" and "Field".
 5. Foundry, Web Apps ASPNet, Events, Emit, ASPNet, Foundry, and BS5 , expressionntrees, Ref
 6. Combine all my projects into a solution
+7. MetadataUpdater(new hot reloader)
 
 if (isByRef && !isOut)
                 Console.WriteLine($"{param.Name} is 'ref'");

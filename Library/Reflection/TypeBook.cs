@@ -81,7 +81,7 @@ public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
     static bool IsFileType(Type t)
     {
         if (!t.IsPublic && !t.IsNested)
-            return t.Name.StartsWith("<") && t.Name.Contains("__");
+            return t.Name.StartsWith("<"); //&& t.Name.Contains("__"); //type names cant start with < so i think this is fine and dandy
         return false;
     }
 

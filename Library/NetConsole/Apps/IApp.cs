@@ -1,6 +1,6 @@
-
+#if NET6_0_OR_GREATER
 using System.Reflection;
-using XQuinn.IO;
+using XQuinn.IO.Finders;
 using System.Diagnostics;
 using XQuinn.Extensions;
 using XQuinn.Reflection;
@@ -10,7 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 
-#if NET6_0_OR_GREATER
+
 namespace XQuinn.NetConsole.Apps
 {
 /// <summary>
@@ -81,7 +81,7 @@ internal abstract class IApp
     //only BCL has IApps first of all, plus if BCL isnt executing, then its probably not a program that needs IApps since they only work in console
 
     public abstract void Run(); //Every IApp has a static Run() method, similar to a Main() method, a Run() takes no parameters and should require 0 prior setup.
-
+                                //these used to be static but we downgraded the system to support c9
 
 }                                       //IApps are ready to go and Run ecapsulates the entirety of their program's lifecycle
 

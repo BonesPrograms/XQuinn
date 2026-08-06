@@ -1,0 +1,37 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Build net48 win-x64",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "${workspaceFolder}/XQuinn.csproj",
+                "--framework",
+                "net48",
+                "--runtime",
+                "win-x64",
+                "--configuration",
+                "Debug",
+                "-p:PlatformTarget=x64"
+            ],
+            "problemMatcher": "$msCompile"
+        },
+        {
+            "label": "Build net10.0-windows win-x64",
+            "type": "process",
+            "command": "dotnet",
+            "args": [
+                "build",
+                "${workspaceFolder}/XQuinn.csproj",
+                "--framework",
+                "net10.0-windows",
+                "--runtime",
+                "win-x64"
+            ],
+            "problemMatcher": "$msCompile",
+            "group": "build"
+        }
+    ]
+}
