@@ -10,11 +10,16 @@ Covariant return types:
 If a virtual method in a base type returns the base type as it's return value, an inheritor can override that method to return it's own type instead. If you click tab
 the IDE won't do that automatically, it is manual. Also, if you're calling the base method as part of the override, you need to cast the return value to the inheritor type.
 
+MAJOR NOTE: Covariant return types do not work on Net Standard 2.0 (This may not be true I heard it from AI, verify later)
+
 
 Ref:
 I made the mistake of passing a null local variable to a method and then assigning to it within that method, expecting it to assign the value to the variable in the original method
 because it was a reference type. It was not assigning and I didnt understand why. The solution was passing the variable as ref.
 
+
+Most collections can be casted into their ReadOnly format. For public API methods that take collections and do not mutate them, ReadOnly or IEnumerable is preferred
+for the parameter type
 
 optimal struct max size is 16 bytes
 

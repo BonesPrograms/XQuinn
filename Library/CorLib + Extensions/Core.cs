@@ -24,24 +24,24 @@ namespace XQuinn.CorLib
         // public static readonly ImmutableArray<string> BadNames = ["Object", "Method", "Element", "Field", "Parameter", "TypeString", "Token", "Core"];
 
 #if NET6_0_OR_GREATER
-    public static IReadOnlySet<string>? ChangedTypeNames => _namesreadonly;
-    static IReadOnlySet<string>? _namesreadonly;
-    
-    static HashSet<string>? _changedNames;
+        public static IReadOnlySet<string>? ChangedTypeNames => _namesreadonly;
+        static IReadOnlySet<string>? _namesreadonly;
 
-    public static void PrintChangedTypeNames(string path)
-    {
-        if (_namesreadonly != null)
+        static HashSet<string>? _changedNames;
+
+        public static void PrintChangedTypeNames(string path)
         {
-            Write.SafetyCheck(path);
-            using StreamWriter writer = new(path);
-
-            foreach (string name in _namesreadonly)
+            if (_namesreadonly != null)
             {
-                writer.WriteLine(name);
+                Write.SafetyCheck(path);
+                using StreamWriter writer = new(path);
+
+                foreach (string name in _namesreadonly)
+                {
+                    writer.WriteLine(name);
+                }
             }
         }
-    }
 #endif
         public static string? DefaultToString(Type t)
         {
@@ -49,23 +49,23 @@ namespace XQuinn.CorLib
                 return "AST.Field";
             else if (t == typeof(ObjectModel.Tokenizer.Field))
                 return "Tokenizer.Field";//internal shortname assembly conflict
+            else if (t == typeof(Core))
+                return null;
             else if (TypeCache.TryGetType(t.Name, out Type? cached))
             {
                 if (cached == t)
                     return null;
                 else
                 {
-                    string name = $"xq_{t.Name}";
 #if NET6_0_OR_GREATER
-                _changedNames ??= new();
-                _namesreadonly ??= new Net6ReadOnlySet<string>(_changedNames);
-
-                _changedNames.Add(name);
+                    _changedNames ??= new(StringComparer.OrdinalIgnoreCase);
+                    _namesreadonly ??= new Net6ReadOnlySet<string>(_changedNames);
+                    _changedNames.Add(t.Name);
 #endif
-                    return name;
+                    return $"xq_{t.Name}";
                 }
             }
-            if (t.IsPublic && !t.IsNested)
+            if (t.IsPublic) //nested is automatically excluded here 
             {
                 if (t.IsGenericTypeDefinition)
                 {
@@ -91,8 +91,8 @@ namespace XQuinn.CorLib
         }
         public static TypeBook CacheXQuinn(Func<Type, string?> toString)
         {
-            TypeBook book = TypeBook.New(typeof(Core).Module.GetTypes().AsEnumerable(), toString);
-            TypeCache.CacheType(book);
+            TypeBook book = TypeBook.New(typeof(Core).Module.GetTypes(), toString, StringComparer.OrdinalIgnoreCase);
+            TypeCache.CacheTypes(book);
             return book;
         }
 

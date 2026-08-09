@@ -76,13 +76,11 @@ namespace XQuinn.Reflection
 
     public sealed class MemberReader : MetadataReader
     {
+
+        public static bool ShowToken = false;
+
+        public static bool ShowTokenBytes = false;
         public MemberInfo Info => (MemberInfo)Object!;
-        public Module Module => Info.Module;
-        public Guid ModuleID => Module.ModuleVersionId; //not very wise to index only by metadata token, search for ModuleID/Module + MetadataToken or use the == overloads
-        public int MetadataToken => Info.MetadataToken; //only types have guids, other members dont
-        public string Name => Info.Name; //may change this to be info.tostring() for type objects (so you can see the namespace), not sure how that will effect methodinfo objects tho
-        public MemberGroup? Group => _group; //if is a Type, wont be a Member
-        MemberGroup? _group;
         /// <summary>
         /// 32bit byte sequence of the MetadataToken.
         /// </summary>
@@ -107,7 +105,6 @@ namespace XQuinn.Reflection
 #if NET6_0_OR_GREATER
                 _tokenAsBytes = Array.AsReadOnly(Numerics.BytesLittleEndian.AsBytes(info.MetadataToken)),
 #endif
-                _group = MemberGroups.GetGroup(info)
             };
         }
 
@@ -128,14 +125,18 @@ namespace XQuinn.Reflection
                 sb.Append(" : ");
                 sb.Append(GenericTypeToString(Base));
             }
-            sb.Append($" Token:: {MetadataToken}");
-#if NET6_0_OR_GREATER
-            sb.Append(" AsBytes:: ");
-            foreach (var bits in TokenAsBytes)
+            if (ShowToken)
             {
-                sb.Append($"{bits} ");
-            }
+                sb.Append($" Token:: {Info.MetadataToken}");
+#if NET6_0_OR_GREATER
+                sb.Append(" AsBytes:: ");
+                if (ShowTokenBytes)
+                    foreach (var bits in TokenAsBytes)
+                    {
+                        sb.Append($"{bits} ");
+                    }
 #endif
+            }
             return sb;
         }
 

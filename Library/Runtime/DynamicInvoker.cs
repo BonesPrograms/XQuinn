@@ -77,7 +77,7 @@ public class DynamicInvoker : IDisposable
         Module[] modules = LoadedAssembly!.GetModules();
         if (modules.Length > 1)
             throw new NotSupportedException("Only single file assemblies are supported.");
-        Interpreter.Book = TypeBook.New(LoadedAssembly.ManifestModule.GetTypes(), FullName);
+        Interpreter.LocalCache = TypeBook.New(LoadedAssembly.ManifestModule.GetTypes(), FullName, StringComparer.OrdinalIgnoreCase).Book;
         if (DefaultLoadedTypeName != null)
             Interpreter.LoadTypeClearInstance(DefaultLoadedTypeName);
         LastWrite = File.GetLastWriteTime(DLLPath);

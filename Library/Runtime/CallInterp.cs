@@ -11,6 +11,7 @@ using System.Linq;
 using System.Collections.ObjectModel;
 using System;
 using System.Collections.Generic;
+using _xquinn_cor;
 
 namespace XQuinn.Runtime
 {
@@ -31,15 +32,15 @@ namespace XQuinn.Runtime
     /// Runtime debugging tool that can load the methods and fields of static types and instances by string input, allowing one to invoke methods directly in objects at runtime. Comes
     /// with a suite of other debug capabilities like storing and reloading instances.
     /// </summary>
-    public class CallInterpreter
+    public sealed class CallInterpreter
     {
 
 
 
         //Loading Communicators: Begin your string with these characters to load
         // * Load an instance from a Static Field or Method (you do not need to load a type first to load an instance from a static field or method)
-        // _ Load an instance from an Instance field or Method
-        // ! Load a type (statics only)
+        // # Load an instance from an Instance field or Method
+        // @ Load a type (statics only)
 
         //Method Invocation Communicators:
         // ( Parameters Begin
@@ -49,7 +50,6 @@ namespace XQuinn.Runtime
         // " String Declaration (opening and closing)
         // ' Char Declaration (opening and closing) digits and letters technically don't need char declaration enclosures, but i recommend to use them habitually
         // \ Escape Sequence (for strings, chars dont need escapes in this interpreter)
-        // _ Instance Access (preceding a Member Access Communicator)
 
         //What is Loading?
         //Loading stores a type's fields and methods within the Call Interpreter. Once a type is loaded, you can invoke it's methods by name.
@@ -58,13 +58,13 @@ namespace XQuinn.Runtime
         //Loading Use:
 
         //Load Type (static):
-        //!TypeName
+        //@TypeName
 
         //Load instance via static: begin string with an * asterisk
         //*TypeName.Field | load an static field as the current instance
         //*TypeName.Method() | return an instance from a static method
 
-        //Load instance via instance: After loading an instance via a static field or method, you can load from it's instance fields and methods. Begin string with an _ underscore.
+        //Load instance via instance: After loading an instance via a static field or method, you can load from it's instance fields and methods using 'this'
         //#this.Field | load an instance field as the current instance.
         //#this.Method() | return an instance from an instance method
 
@@ -83,95 +83,93 @@ namespace XQuinn.Runtime
         //Example of returning a user-defined struct or class as a parameter with static calls:
         //ReadObject(GameHelpers.GetObject()) for a method or ReadObject(GameCore.Player) for a field 
         //Instance example:
-        //ReadObject(_.GetInfo()) for a methoid and ReadObject(_.Player) for a field
+        //ReadObject(this.GetInfo()) for a methoid and ReadObject(this.Player) for a field
 
         //WHITESPACE:
         //Whitespace functions just like C#. It is usually skipped but once you begin a declaration we stop skipping it and if we read whitespace in the middle of a declaration,
         //the lexer will throw an exception.
 
-        //UNSUPPORTED METHODS:
-        //In, out and ref parameters are not supported. Methods with delegate type parameters are not supported.
-
-
-        //UNSUPPORTED TYPES:
-        //Nested generic parameters are not yet supported. IE. a method like MakeList<List<string>>() will not parse
+        //UNSUPPORTED:
+        //In, out and ref parameters are not supported. Delegate type parameters are not supported.
+        //Nested generic parameters are not yet supported. IE. a method like MakeList<List<string>>() will not lex
         //Ive never used dynamic types, and thus have never tested CallInterpreter with it. I may try to see how that works later.
         //This system relies on TypeCache, your types will not be found if they are not registered with the cache. If you don't want to register with the cache, you can
-        //create your own TypeBook for the Interpreter to retrieve types from. By default, typebooks are not case sensitive. Call Interpreter itself is not case sensitive.
-        //Whether or not full type names with namespaces are required can be decided by you when making an instance of a TypeBook.
+        //create your own Dictionary <string,Type> and assign it to "Book".
+        //Call Interpreter is not case sensitive. You may experience some inconsistency if your dictionary is case sensitive.
 
         //Primitive types, string and object are already supported and cached by the TypeCache.
 
         //OVERLOADS:
-        //Overload names are stored with their name and number count. The counter reads from top to bottom, ie. the overload that is declared closest to the top
-        //of your actual type file will get the number 1, and so on. For example, it will look like this
+        //Overload names are stored with their name and number count, except for the first overload. The counter reads from top to bottom, ie. the overload that is declared closest to the top
+        //of your actual type file will be the first overload and have no number. For example, assume we are getting public declared and inherited methods from class InheritorType:
         //
-        //  class Type
+        // class TopType
         //  {
-        //      void Method();
-        //      void Method(int);
-        //      void OtherMethod();
-        //      void OtherMethod(string);
+        //     public void Method(char);
+        //  }
+        //  class BaseType : TopType
+        // {
+        //     public void Method(string);
+        //     public void Method(long);
+        //     public void OtherMethod(int);
+        // }
+        //  class InheritorType : BaseType
+        //  {
+        //      public void Method();
+        //      public void Method(int);
+        //      public void OtherMethod();
+        //      public void OtherMethod(string);
         //  }
 
-        //Stored names and methods:
+        //If you have multiple overloads across an inheritance hierarchy, the first multiple overloads will be selected from the type you are getting methods from, in our case, InheritorType
+        //This continues up the chain, so types further up in the inheritance hierarchy
+        // will have their overloads indexed further away from the 0 index, compared to overloads from types lower in the inheritance hierarchy,
+        //which will be closer to the zero index.
 
-        //Method1 - void Method()
-        //Method2 - void Method(int)
-        //OtherMethod1 - void OtherMethod()
-        //OtherMethod2 - void OtherMethod(string)
+        //Stored names and methods example:
 
+        //Method - void Method()
+        //Method1 - void Method(int)
+        //Method2 - void Method(string)
+        //Method3 - void Method(long)
+        //Method4 - void Method(char)
+        //OtherMethod - void OtherMethod()
+        //OtherMethod1 - void OtherMethod(string)
+        //OtherMethod2 - void OtherMethod(int)
 
         //NEW/HIDING:
-        //When hiding an inherited method with the New keyword, the original method will still be accessible - the names will be resolved similarly to overloads.
-        //The new method in the inheritor class will be counted first, and the base classes hidden method will be counted second. IE.
-        //
-        //class BaseClass
-        //{
-        //public void Num();
-        //}
-        //
-        //class Inheritor : BaseClass
-        //{
-        //new void Num()
-        //}
-        //
-        //
-        //Stored names and methods
-        //Num1 - Inheritor.Num()
-        //Num2 - BaseClass.Num()
+        //If you are trying to access an inherited member that has been hidden with 'new', you can explicitly access hidden members using casting syntax
 
-        //This does not apply to new fields. The "newest" field (ie. the one declared in the loaded type, or most recently declared relative to the types position in inheritance hierarchy)
-        //Will be selected. I will not be adding a field overload system, and this is considered a bug - in the future, callinterp will only use the "newest" method and will not add
-        //hidden methods as overloads.
 
-        //Overload name resolution can get pretty confusing to predict as you include more and more inheritance or hiding. If you're having trouble, make a MemberMap of your chosen type
-        //and use MapOverloads to see how it resolves the method keys.s
 
-        //I should note: Methods are sorted by static and instance before being sorted by overloads, so if you have a mix of static and instance overloads, the instance methods won't be part of the overload
-        //count if you are loading static only, so it may be harder to decipher count just by reading your file top to bottom.
+        //CASTING SYNTAX FOR INSTANCES:
+        //When you have an instance loaded, you can explicitly access base members of that instance by leading with the base type's name, similar to static syntax.
+        //This works for both parameters, and loading syntax.
+        //For loading, you would lead with the basetype's name, instead of loading by this
+        //ex. #BaseType.Field
+        //For parameters, instead of accessing by this, you would access it by type name, again, similar to static syntax
+        //ex. BaseType.Method()
+
+        //This feature also works for accessing base members that have been hidden by the 'new' keyword.
+        //It can also be used to access the "base" version of an override.
+        //This also works the other way around, so when you cast to a base type, you can explicitly access members of the instance's actual type by leading with the instance's type name.
+
+        //You can also optionally use the 'base' keyword, this will get the currently loaded type's basetype. ex.
+        // base.Method()
+        //Note that this is the *loaded* type, not the type of the instance.
+        // Using casting with the ^ character, you can change loadedtype to be different from the instance's actual type.
+        //IE. ^BaseTypeName
+        //This reloads the immediately available fields and methods and changes the loadedtype, but maintains the instance.
+
+        //Polymorphism remains the same as it normally does. If you cast an instance to a base type and attempt to invoke an overriden method, it will automatically invoke
+        //the instance's override, even if it is getting the method from the base type.
 
         //INSTANCE INDEX:
         //You can store the currently loaded instance in a caseless string key dictionary for reloading later on. Begin your string with these Communicators:
         // + adds the loaded instance by key. Example: +MyObject
         // - removes an instance by key. Ex. -MyObject
         // $ loads an instance by key. Ex. $MyObject
-
-        //BASE PRIVATE MEMBERS: ACCESS WITH EXPLICIT SYNTAX
-        //When you have an instance loaded, you can explicitly access private base members of that instance by leading with the base type's name, similar to static syntax.
-        //This works for both parameters, and loading syntax.
-        //For loading, you would lead with the basetype's name, 
-        //ex. #BaseType.Field
-        //For parameters, instead of accessing by this, you would access it by type name, again, similar to static syntax
-        //ex. BaseType.Method()
-
-        //But wait, I want to *invoke* base private methods as the loaded method!
-        //To do that, you can use the casting feature.
-        // ^TypeName to cast the current instance to a differnt type.
-
-
-
-        //Overloads in base types are resolved the same way.
+        //Keys MUST only consist of alphanumeric characters and/or underscores. The first character of a key CANNOT be a digit.
 
         //KNOWN BUGS
 
@@ -180,43 +178,50 @@ namespace XQuinn.Runtime
 
 
         /// <summary>
-        /// Optional, this is a map of all the types in your module for caching. Primarily for use with
-        /// dynamicinvoker so you dont need to cache in the global typecache and potentially
-        /// cause memleaks and keyname conflicts when reloading and re-caching
+        /// Optional, primarily for use with dynamicinvoker so you do not need to use the typecache.
         /// </summary>
-        public TypeBook? Book;
+        public IReadOnlyDictionary<string, Type>? LocalCache;
 
-        /// <summary>
-        /// Turns strings into ASTs.
-        /// </summary>
+        ///This is not an actual read only wrapper, it is only a cast so that it can support being passed an IReadOnlyDictionary.
+
         public readonly InvocationLexer Lexer = new();
-        /// <summary>
-        /// A dictionary of all overload methods found in the current loaded type or instance.
-        /// </summary>
-        public IReadOnlyDictionary<string, MethodInfo>? Overloads => _overloadsreadonly;
-        IReadOnlyDictionary<string, MethodInfo>? _overloadsreadonly;
-        Dictionary<string, MethodInfo>? _overloads;
+        
+
 
         /// <summary>
         /// A dictionary of all stored instances.
         /// </summary>
-        public IReadOnlyDictionary<string, object>? InstanceIndex => _instanceindexreadonly;
-        IReadOnlyDictionary<string, object>? _instanceindexreadonly;
-        Dictionary<string, object>? _instanceIndex;
+        public readonly IReadOnlyDictionary<string, object> InstanceIndex;
+        Dictionary<string, object> _instanceIndex = new(StringComparer.OrdinalIgnoreCase);
         /// <summary>
         /// The currently loaded instance from which you can invoke instance and static methods.
         /// </summary>
         ///
         public object? Instance => _instance;
         object? _instance;
-        Type? InstanceType;
+        Type? _instanceType;
 
         /// <summary>
-        /// The currently loaded type from which you can invoke static methods.
+        /// The currently loaded type from which you can invoke methods.
         /// </summary>
-        public Type? LoadedType => _loadedtype;
-        Type? _loadedtype;
-        MemberMap? Map;
+        public Type? LoadedType => _loadedType;
+        Type? _loadedType;
+        Dictionary<string, MethodInfo> _methods = new(StringComparer.OrdinalIgnoreCase);
+        readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
+
+        /// <summary>
+        /// A dictionary of all overload methods found in the current loaded type, incase you are having trouble figuring out an overload's changed name. You can also use
+        /// the MapOverloads method to see how it is resolved.
+        /// </summary>
+        public readonly IReadOnlyDictionary<string, MethodInfo> Overloads;
+        Dictionary<string, MethodInfo> _overloads = new(StringComparer.OrdinalIgnoreCase);
+
+        // class MemberDictionary
+        // {
+        //     public readonly Type MembersOf;
+
+        //     public readonly Dictionary<string,MethodInfo> Methods = new(StringComparer.OrdinalIgnoreCase);
+        // }
 
         /// <summary>
         /// This represents the most recently invoked and currently loaded method.
@@ -225,35 +230,30 @@ namespace XQuinn.Runtime
 
         MethodInfo? _loadedMethod;
 
-        ParameterInfo[]? LoadedParameters;
-
-        //for staging- load a type before calling
+        ParameterInfo[]? _loadedParams;
 
         static readonly HashSet<string> AmbiguousMatches = new(StringComparer.OrdinalIgnoreCase);
-
-        HashSet<string>? LoadedAmbiguousMatches;
 
         public const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
         // HashSet<string>? LoadedTypeAmbiguousMatches = new(StringComparer.OrdinalIgnoreCase);
-        public CallInterpreter(TypeBook? book = null)
+        public CallInterpreter(IReadOnlyDictionary<string, Type>? book = null)
         {
-            Book = book;
+            LocalCache = book;
+            Overloads = new ReadOnlyDictionary<string, MethodInfo>(_overloads);
+            InstanceIndex = new ReadOnlyDictionary<string, object>(_instanceIndex);
         }
-
         public void Clear()
         {
-            //sszLexer.Clear();
-            _instanceindexreadonly = null;
-            _instanceIndex = null;
-            _overloadsreadonly = null;
-            _overloads = null;
-            Book = null;
+            _instanceIndex.Clear();
+            _overloads.Clear();
+            _methods.Clear();
+            _fields.Clear();
+            LocalCache = null;
             _instance = null;
-            _loadedtype = null;
-            Map = null;
+            _loadedType = null;
             _loadedMethod = null;
-            LoadedParameters = null;
+            _loadedParams = null;
 
         }
 
@@ -269,17 +269,19 @@ namespace XQuinn.Runtime
 
         public object? Interface(string input, bool catchinvoke = false)
         {
-            if (string.IsNullOrWhiteSpace(input))
+            string? sub = input?.Substring(1);
+            if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(sub))
                 throw new ArgumentException("Input cannot be null or whitespace.");
             return input[0] switch
             {
-                '+' => AddInstance(input.Substring(1)),
-                '-' => RemoveInstance(input.Substring(1)),
-                '$' => GetInstance(input.Substring(1)),
-                '!' => LoadTypeClearInstance(input.Substring(1)),
-                '*' => StaticLoad(input.Substring(1)),
-                '#' => InstanceLoad(input.Substring(1)),
-                '^' => Cast(input.Substring(1)),
+                '+' => AddInstance(sub),
+                '-' => RemoveInstance(sub),
+                '$' => GetInstance(sub),
+                '^' => Cast(sub),
+                '@' => LoadTypeClearInstance(sub),
+                '*' => StaticLoad(sub),
+                '#' => InstanceLoad(sub),
+                '!' => StaticInvoke(sub),
                 _ => Invoke(input, catchinvoke)
             };
         }
@@ -287,19 +289,13 @@ namespace XQuinn.Runtime
         /// <summary>
         /// Convert a method AST object to actual parameters by matching it to a MethodInfo's parameter array.
         /// </summary>
-        public object?[]? GetParams(ParameterInfo[] methodparams, Method method)
+        public object?[] GetParsedParameters(ParameterInfo[] methodparams, Method method)
         {
-            object?[]? prms = null;
             if (method.Params.Count != methodparams.Length)
                 throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {methodparams.Length} method name {method.String}");
-            if (methodparams.Length > 0)
-            {
-                prms = new object[method.Params.Count];
-                for (int i = 0; i < methodparams.Length; i++)
-                {
-                    prms[i] = ParameterToObject(method.Params[i], methodparams[i].ParameterType);
-                }
-            }
+            object?[] prms = new object[method.Params.Count];
+            for (int i = 0; i < methodparams.Length; i++)
+                prms[i] = ParameterToObject(method.Params[i], methodparams[i].ParameterType);
             return prms;
         }
         /// <summary>
@@ -308,8 +304,6 @@ namespace XQuinn.Runtime
         public object? Invoke(string invocation)
         {
             object?[]? objs = LoadInvocation(invocation);
-            //    if (LoadedMethod == null) //method laodiong is handle in createparams
-            //       throw new InvalidOperationException("Loaded method is null.");
             return LoadedMethod!.Invoke(Instance, objs);
         }
 
@@ -320,9 +314,8 @@ namespace XQuinn.Runtime
         public void DirectLoadInstance(object obj)
         {
             _instance = obj;
-            _loadedtype = obj.GetType();
-            InstanceType = _loadedtype;
-            ChangeTMap();
+            LoadTypePreserveInstance(obj.GetType());
+            _instanceType = _loadedType;
         }
 
         /// <summary>
@@ -332,16 +325,16 @@ namespace XQuinn.Runtime
 
         public object? LoadTypeClearInstance(string typeName)
         {
-            Type t = FindType(new(typeName));
+            Type t = FindType(TypeString.New(typeName, null));
             LoadTypePreserveInstance(t);
             _instance = null;
-            InstanceType = null;
+            _instanceType = null;
             return null;
         }
 
         void LoadTypePreserveInstance(Type t)
         {
-            _loadedtype = t;
+            _loadedType = t;
             ChangeTMap();
         }
 
@@ -355,7 +348,7 @@ namespace XQuinn.Runtime
             if (!SupportedMember(method) || !method.IsStatic)
                 throw new NotSupportedException($"Method {method} has delegate, in/out/or ref params, or is nonstatic.");
             _loadedMethod = method;
-            LoadedParameters = method.GetParameters();
+            _loadedParams = method.GetParameters();
             //  LoadTypeDirect(method.DeclaringType!);
         }
         /// <summary>
@@ -380,10 +373,15 @@ namespace XQuinn.Runtime
             if (Instance == null)
                 throw new InvalidOperationException("Cannot load from instance, instance is null.");
             string? tname = ResolveMemberAccess(input, out string member, out bool field);
-            Type t = tname == null ? LoadedType! : FindType(new(tname)); ;
+            Type t = tname == null ? LoadedType! : FindType(TypeString.New(tname, null)); ;
             object? instance;
             if (t != LoadedType)
-                LoadTypePreserveInstance(t);
+            {
+                if (t.IsAssignableFrom(_instanceType))
+                    LoadTypePreserveInstance(t);
+                else
+                    throw new InvalidCastException($"{_instanceType} cannot cast to {t}.");
+            }
             if (!field)
             {
                 instance = Invoke(member);
@@ -400,11 +398,18 @@ namespace XQuinn.Runtime
         //Checks for method or field syntax. If it detects a method, it diverts to an isolated type load and method invocation.
         object? StaticLoad(string input)
         {
-            string tname = ResolveMemberAccess(input, out string member, out bool field) ?? throw new ArgumentException($"Cannot static load without a type name. Bad input: {input}");
-            Type type = FindType(new(tname, null));
+            object? instance = StaticInvoke(input) ?? throw new ArgumentException($"Failed to load new instance from {input}");
+            DirectLoadInstance(instance);
+            return Instance;
+        }
+        //Isolated lexing, loading and invocation for "quick invocation" without resetting loaded instance, method or type.
+        object? StaticInvoke(string input)
+        {
+            string tname = ResolveMemberAccess(input, out string member, out bool field) ?? throw new ArgumentException($"Cannot static invoke without a type name. Bad input: {input}");
+            Type type = FindType(TypeString.New(tname, null));
             object? instance;
             if (!field)
-                instance = StaticInvoke(member, type);
+                instance = StaticInvokeMethod(member, type);
             else
             {
                 try
@@ -416,18 +421,16 @@ namespace XQuinn.Runtime
                     throw new MissingFieldException($"Could not find field  \"{member}\" in {type.FullName}");
                 }
             }
-            if (instance == null)
-                throw new ArgumentException($"Failed to load new instance from {input}");
-            DirectLoadInstance(instance);
-            return Instance;
+            return instance;
         }
+
+
         //An isolated lexing, loading and invocation for static loading.
-        object? StaticInvoke(string input, Type type)
+        object? StaticInvokeMethod(string input, Type type)
         {
             Method main = Lexer.ParameterTemplate(input);
-            var map = MapType(type, MemberGroup.Method, out Dictionary<string, MethodInfo>? overloads);
-            var method = FindMethod(overloads, map, main, main.String, type.Name);
-            var param = GetParams(method.GetParameters(), main);
+            var method = MapAndFindMethod(type, main);
+            var param = GetParsedParameters(method.GetParameters(), main);
             return method.Invoke(null, param);
         }
 
@@ -435,34 +438,21 @@ namespace XQuinn.Runtime
         {
             if (LoadedType == null)
                 throw new InvalidOperationException("Must load a type before attempting to invoke.");
-            if (LoadedAmbiguousMatches?.Contains(mthd.String) ?? false)
-                throw new AmbiguousMatchException($"Method named {mthd.String} in type {LoadedType} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
-            MethodInfo method = FindMethod(_overloads, Map!, mthd, mthd.String, LoadedType!.FullName!);
+            //   if (_localAmbiguousMatches.Contains(mthd.String))
+            //   throw new AmbiguousMatchException($"Method named {mthd.String} in type {LoadedType} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
+            MethodInfo method = FindMethod(LoadedType, _overloads, _methods, mthd);
             _loadedMethod = method;
-            LoadedParameters = method.GetParameters();
+            _loadedParams = method.GetParameters();
         }
 
 
 
         void ChangeTMap()
         {
-            LoadedParameters = null;
+            _loadedParams = null;
             _loadedMethod = null;
-            Map = MapType(LoadedType!, MemberGroup.Method | MemberGroup.Field, out Dictionary<string, MethodInfo>? overloads);
-            if (_overloads != null)
-                _overloadsreadonly = new ReadOnlyDictionary<string, MethodInfo>(_overloads);
-            else
-                _overloadsreadonly = null;
-            _overloads = overloads;
-            if (overloads != null)
-            {
-                LoadedAmbiguousMatches?.Clear();
-                LoadedAmbiguousMatches ??= new(StringComparer.OrdinalIgnoreCase);
-                foreach (var method in overloads.Values)
-                    LoadedAmbiguousMatches.Add(method.Name);
-            }
-            else
-                LoadedAmbiguousMatches = null;
+            MapMethods(_loadedType!, ref _overloads!, ref _methods!, true);
+            MapFields();
         }
 
         //Begins the cycle - lexes the invocation, loads the method, and then sends data off for parsing.
@@ -471,9 +461,7 @@ namespace XQuinn.Runtime
             Method main = Lexer.ParameterTemplate(invocation); //at this point we cannot know if the generic arguments are the same yet, but incase youre reloading the same method with diff generic parameters, we always reload if we detect generic vs generic
             if (LoadedMethod == null || !LoadedMethod.Name.EqualsCaseless(main.String) || LoadedMethod.IsGenericMethod)// && main.IsGeneric)
                 LoadMethod(main);
-            //   if (LoadedParameters == null) //already handles whether or not your method loads in LoadMethod
-            //     throw new InvalidOperationException("Must load a method before creating parameters.");
-            return GetParams(LoadedParameters!, main);
+            return GetParsedParameters(_loadedParams!, main);
         }
 
         //If the method input name is equal to the loaded method name, this implies it is a generic method, since we do not allow overloads
@@ -494,8 +482,8 @@ namespace XQuinn.Runtime
             {
                 obj = ParseParameter(param.String, paramType);
                 if (obj == null)
-                {       //This should never return null except for Nullable<T> and String, it will always throw a Format exception otherwise because the only other things it parses are primitives
-                    bool validNullableInput = param.String == "null" && (paramType.IsClass || paramType.IsGenericType && paramType.GetGenericTypeDefinition() == typeof(Nullable<>));
+                {       //This should never return null except for Nullable<T> and and classes, it will always throw a Format exception otherwise because the only other things it parses are primitives
+                    bool validNullableInput = paramType.IsClass || (paramType.IsGenericType && paramType.GetGenericTypeDefinition() == typeof(Nullable<>));
                     if (!validNullableInput)
                         throw new ArgumentException($"Expected method syntax for type {paramType}, but received {param.String}");
                 }       //so if its not throwing format exception, it means it is a class or custom struct parameter (it leaves early and avoids throwing), and it requires method syntax, however it should've already jumped to the Method label early, this means it was parsed incorrectly as a Parameter, and will throw to let you know you messed up
@@ -506,26 +494,16 @@ namespace XQuinn.Runtime
 
         object? GetFieldParameter(Type t, string fname, string fdeclr)
         {
-
             FieldInfo field;
             if (t == LoadedType)
-                field = FindField(Map!, fname, fdeclr);
+                field = FindField(fname, fdeclr);
             else
             {
                 field = t.GetField(fname, Flag) ?? throw new MissingFieldException($"No field found in type {t} named {fname}");
                 if (!SupportedMember(field))
                     throw new NotSupportedException($"Delegates are unsupported. Bad object: {field.DeclaringType}.{field.Name}");
             }
-            //var map = MapType(t, MemberGroup.Field, out _);
-            //FieldInfo field = FindField(map, f);
-            //  if (!Convertible(field.FieldType, paramType))
-            //    throw new ArgumentException($"Field {field.DeclaringType}{f.String} is type {field.FieldType}, but the parameter type required for method {LoadedMethod!.Name} is {paramType}");
-            object? obj;
-            if (t.IsAssignableFrom(LoadedType) && Instance != null)
-                obj = field.GetValue(Instance);
-            else
-                obj = field.GetValue(null);
-            return obj;
+            return t.IsAssignableFrom(_instanceType) ? field.GetValue(Instance) : field.GetValue(null);
         }
 
         //An isolated invocation of a method, however unlike StaticInvoke, this one actually changes its available methods depending on whether or not your parameters
@@ -555,16 +533,23 @@ namespace XQuinn.Runtime
             }
             if (call == null) //this will throw if it cannot resolve the method
             {
-                MemberMap tmap = MapType(t, MemberGroup.Method, out Dictionary<string, MethodInfo>? overloads);
-                call = FindMethod(overloads, tmap, method, method.String, method.DeclaringType!);
+                call = MapAndFindMethod(t, method);
             }
             //    if (!Convertible(call.ReturnType, paramType))
             //     throw new ArgumentException($"Method {method.DeclaringType}.{method.String} has a return type of {call.ReturnType}, but the parameter type required for method {LoadedMethod!.Name} is {paramType}");
             ParameterInfo[] methodparams = call.GetParameters();
-            object?[]? subparams = GetParams(methodparams, method);
-            object? instance = t.IsAssignableFrom(LoadedType) && Instance != null ? Instance : null;
+            object?[]? subparams = GetParsedParameters(methodparams, method);
+            object? instance = t.IsAssignableFrom(_instanceType) ? Instance : null;
             return call.Invoke(instance, subparams);
             //if you are getting a type that you know will be in a metadata map, it doesnt need to have case //but if the map is null, then you need full casing  //namespace is ALWAYS required
+        }
+
+        MethodInfo MapAndFindMethod(Type t, Method method)
+        {
+            Dictionary<string, MethodInfo>? overloads = null;
+            Dictionary<string, MethodInfo>? methods = null;
+            this.MapMethods(t, ref overloads, ref methods);
+            return FindMethod(t, overloads!, methods!, method);
         }
 
         //this causes truncation, so for now it isnt a thing...
@@ -591,28 +576,29 @@ namespace XQuinn.Runtime
         //Compared parameter types to string inputs, returning null for classes and user defined structs and otherwise matching primitives and strings. Can be overloaded
         //to allow you to return special inputs, for example you could have type GameObject and string "player" combination return a static field for the player in a game.
         //So far this is about the only overloadable thing.
-        protected virtual object? ParseParameter(string strng, Type type) //need half and int128 support
+        object? ParseParameter(string strng, Type type) //need half and int128 support
         {
 
             //   if (strng.IsWhiteSpace()) //Should give more specific exceptions incase you are using an object parameter (it will ask for method syntax instead of sayingg it cant parse)
             //    goto Throw;
-            Type mainType = InstanceType ?? LoadedType!;
+            //  Type mainType = InstanceType ?? LoadedType!;
             if (strng == "this")
             {
                 if (Instance == null)
                     throw new InvalidOperationException("Cannot pass this as parameter, instance is null.");
-                if (type.IsAssignableFrom(mainType))
-                    return Instance;
-                else
-                    throw new FormatException($"{InstanceType} does not cast to {type}");
+                if (!type.IsAssignableFrom(_instanceType))
+                    throw new InvalidCastException($"Current instance is a {_instanceType} and does not cast to parameter type {type}");
+                return Instance;
+                // if (type.IsAssignableFrom(mainType))
+                //     return Instance;
+                // else
+                //     throw new FormatException($"{InstanceType} does not cast to {type}");
             }
             if (InstanceIndex?.TryGetValue(strng, out object? instance) ?? false)
             {
-                Type indexedtype = instance.GetType();
-                if (indexedtype.IsAssignableFrom(mainType))
-                    return instance;
-                else
-                    throw new FormatException($"{indexedtype} does not cast to {type}");
+                if (!type.IsAssignableFrom(instance.GetType()))
+                    throw new InvalidCastException($"Instance index object with key {strng} is a {instance.GetType()} and does not cast to parameter type {type}");
+                return instance;
             }
             if (type.IsClass && (strng == "null" || type != typeof(string)))
                 return null;
@@ -699,106 +685,126 @@ namespace XQuinn.Runtime
 #endif
         }
 
-        static FieldInfo FindField(MemberMap tmap, string field, string fielddeclr)
+        FieldInfo FindField(string fieldName, string fieldDeclaringType)
         {
-            tmap.TryGetValue(MemberGroup.Field, out List<MemberInfo>? fields);
-            if (fields == null)
-                throw new InvalidOperationException($"No field were loaded from {fielddeclr}.");
-            FieldInfo realfield = fields.FirstOrDefault(x => x.Name.EqualsCaseless(field)) as FieldInfo ?? throw new MissingFieldException($"No field found named {field} in {fielddeclr}. Delegate type fields are not supported and would have been removed.");
-            return realfield;
+            _fields.TryGetValue(fieldName, out FieldInfo? field);
+            if (field == null)
+                throw new MissingFieldException($"No field found named {fieldName} in {fieldDeclaringType}. Delegate type fields are not supported and would have been removed.");
+            return field;
         }
 
         //there is a another suble "parameterless" related bug, harmless, this one with generic parameters
         //if your method is nongeneric, you can input 10,000 generic params, it will parse them, but totally ignore them and invoke your method just fine
 
         //Finds a method by name in a membermap or overload dictionary, and converts it to a generic method if the AST method object itself has generic parameters.
-        MethodInfo FindMethod(Dictionary<string, MethodInfo>? overloads, MemberMap tmap, Method method, string name, string tname)
+        MethodInfo FindMethod(Type t, Dictionary<string, MethodInfo> overloads, Dictionary<string, MethodInfo> methods, Method method)
         {
-            tmap.TryGetValue(MemberGroup.Method, out List<MemberInfo>? methods);
-            if (methods == null)
-                throw new InvalidOperationException($"No method were loaded from {tname}. They were removed due to invalid parameter types.");
-            MethodInfo? realmethod = null;
-            overloads?.TryGetValue(method.String, out realmethod);
-            realmethod ??= methods.FirstOrDefault(x => x.Name.EqualsCaseless(name)) as MethodInfo ?? throw new MissingMethodException($"No method named {name} found in {tname}, or the method was removed from the typemap due to having invalid parameters (delegate in out or ref)");
+            methods.TryGetValue(method.String, out MethodInfo? realmethod);
+            if (realmethod == null)
+                overloads.TryGetValue(method.String, out realmethod);
+            if (realmethod == null)
+                throw new MissingMethodException($"No method named {method.String} found in {t.ToString()}'s method or overload dictionary.");
             if (realmethod.IsGenericMethodDefinition)
-                realmethod = ASTToGeneric(realmethod.MakeGenericMethod, method);
+                realmethod = method.ConstructGeneric(realmethod, FindType);
 
             return realmethod;
         }
 
-        /// <summary>
-        /// Convert a generic definition to a constructed generic with a GenericParameter AST object.
-        /// </summary>
-        /// <typeparam name="M"></typeparam>
-        /// <typeparam name="P"></typeparam>
-        /// <param name="genericConstructor"></param>
-        /// <param name="genericAST"></param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentException"></exception>
-        public M ASTToGeneric<M, P>(Func<Type[], M> genericConstructor, P genericAST) where M : MemberInfo where P : GenericParameter
+        Type FindType(TypeString strng)
         {
-            Type[] generics = GetGenerics(genericAST) ?? throw new ArgumentException($"{genericAST.GetType().Name} {genericAST.String} is generic definition, but no generic parameters were provided.");
-            return genericConstructor.Invoke(generics);
+            Type t = FindType(strng.String);
+            if (t.IsGenericTypeDefinition)
+                t = strng.ConstructGeneric(t, FindType);
+            return t;
+
         }
 
-
-
-        ///Gets generic string arguments from a Method AST object.
-        public Type[]? GetGenerics(GenericParameter p) => p.Generics?.Select(FindType).ToArray();
-
         //Finds types in a book or the main cache, converts them to generic based on the generic parameters of the TypeString AST object.
-        public virtual Type FindType(TypeString strng)
+        Type FindType(string strng)
         {
-            if (strng.String == "this")
+            if (strng == "this")
             {
                 if (Instance == null)
                     throw new InvalidOperationException("Cannot invoke from instance as parameter, instance is null.");
-                return LoadedType!;
+                return _instanceType!;
             }
-            Type t = TypeCache.GetTypeOrThrow(strng.String, Book);
-            if (t.IsGenericTypeDefinition)
-                t = ASTToGeneric(t.MakeGenericType, strng);
+            if (strng == "base")
+            {
+                if (Instance == null)
+                    throw new InvalidOperationException("Cannot invoke from instance as parameter, instance is null.");
+                return LoadedType!.BaseType ?? throw new ArgumentException("Base type is null.");
+            }
+            Type t = TypeCache.GetTypeOrThrow(strng, LocalCache);
             return t;
         }
 
-        //Gets a membermap (or returns the currently loaded one) that is sorted for supported methods, then sorts out any overloads.
-        MemberMap MapType(Type type, MemberGroup group, out Dictionary<string, MethodInfo>? overloads)
+        void MapMethods(Type type, ref Dictionary<string, MethodInfo>? overloads, ref Dictionary<string, MethodInfo>? methods, bool forceNew = false)
         {
-            if (type == LoadedType && Map?.Type == type)//Prevents recreating the same map, but needs to check instance vs static first
+            if (!forceNew && type == LoadedType)//Prevents recreating the same map, but needs to check instance vs static first
             {
-                if (Instance == null && Map.StaticOnly) //incase you load a type via statics then load an instance of that type
-                {
-                    overloads = _overloads;
-                    return Map;
-                }
-                else if (Instance != null && !Map.StaticOnly)
-                {
-                    overloads = _overloads;
-                    return Map;
-                }
+                methods = _methods;
+                overloads = _overloads;
+                return;
             }
-            overloads = null;
-            //   bool instanced = type.IsAssignableFrom(LoadedType) && Instance != null; //this allows you to access private base members in an instance explicitly
-            MemberMap tmap = MemberMap.New(type, false, false, false, group, SupportedMember);
-            // // if (group.HasFlag(MemberGroup.Method))
-            //  {
-            try
-            {
-                overloads = tmap.MapOverloads(out List<MemberInfo>? methods, StringComparer.OrdinalIgnoreCase);
-                if (methods != null)
-                {
-                    tmap[MemberGroup.Method] = methods;
-                }
-            }
-            catch (InvalidOperationException)
-            {
-                // throw new InvalidOperationException($"No methods were loaded from the type {type.Name}. They may have been removed if they do not meet the criteria, such as trying to load instance methods without loading an instance, or trying to use a method with in out ref or delegate parameters.");
-            }
-            //  }
-            return tmap;
+            methods ??= new(StringComparer.OrdinalIgnoreCase);
+            overloads ??= new(StringComparer.OrdinalIgnoreCase);
+            overloads.Clear();
+            methods.Clear();
+            MapMethods(type, ref methods, ref overloads);
 
         }
 
+        void MapFields()
+        {
+            _fields.Clear();
+            FieldInfo[] fieldsarray = _loadedType!.GetFields(Flag).Where(SupportedMember).ToArray();
+            AddBackwards(_fields, fieldsarray);
+        }
+
+
+        public static void MapMethods(Type t, ref Dictionary<string, MethodInfo> methods, ref Dictionary<string, MethodInfo> overloads)
+        {
+            MethodInfo[] methodsarray = t.GetMethods(Flag).Where(SupportedMember).ToArray();
+            string[] names = methodsarray.Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            foreach (var name in names)
+            {
+                int count = 0;
+                CompareNames(ref count, methodsarray, name, overloads);
+            }
+            AddBackwards(methods, methodsarray);
+        }
+
+        static void AddBackwards<T>(Dictionary<string, T> dic, T[] memberArray) where T : MemberInfo
+        {
+            for (int i = memberArray.Length - 1; i >= 0; i--)
+            {
+                T member = memberArray[i];
+                dic[member.Name] = member;
+                //this is a 'new' resolution thing
+            }
+        }
+        //If you hide an inherited member with 'new', GetField/GetMethod will automatically get the newest member, but GetFields/GetMethods will also return hidden members as well
+        //However, the newest member is closest to the 0 index in the info array relative to the older members
+        //so functionally the 'older'members are overriden by doing a backwards for loop
+        //you can explicitly access those members using casting syntax
+
+        //There is a small issue with "new" resolution - new members are still currently added to the overload dictionary. Currently dont know how I will fix that yet, since it is hard
+        //to differentiate overloads and new methods across inheritance hierarchies.
+
+        //AddBackwards also helps cover our overload resolution - the first-declared overload
+        static void CompareNames(ref int count, MethodInfo[] methods, string name, Dictionary<string, MethodInfo> overloads)
+        {
+            foreach (var method in methods)
+            {
+                if (name.EqualsCaseless(method.Name))
+                {
+                    count++;
+                    if (count > 1)
+                        overloads[$"{name}{count - 1}"] = method;
+
+                }
+            }
+        }
 
         /// <summary>
         /// Checks if a method is supported by Call Interpreter.
@@ -824,12 +830,10 @@ namespace XQuinn.Runtime
         {
             if (Instance == null)
                 throw new InvalidOperationException("Cannot cast, instance is null.");
-            TypeString typeString = new(input);
+            TypeString typeString = TypeString.New(input, null);
             Type t = FindType(typeString);
-            if (t.IsGenericTypeDefinition)
-                t = ASTToGeneric(t.MakeGenericType, typeString);
-            if (!t.IsAssignableFrom(InstanceType))
-                throw new InvalidCastException($"{InstanceType} cannot cast to {t}.");
+            if (!t.IsAssignableFrom(_instanceType))
+                throw new InvalidCastException($"{_instanceType} cannot cast to {t}.");
             LoadTypePreserveInstance(t);
             return null;
         }
@@ -847,27 +851,26 @@ namespace XQuinn.Runtime
         {
             if (Instance == null)
                 throw new InvalidOperationException("No instance is loaded.");
-            _instanceIndex ??= new(StringComparer.OrdinalIgnoreCase);
-            _instanceindexreadonly ??= new ReadOnlyDictionary<string, object>(_instanceIndex);
+            if (key == "this" || key == "null" || key == "base")
+                throw new ArgumentException($"Key is illegal. Bad Key {key}.");
+            if (InvocationLexer.IsDigit(key[0]))
+                throw new ArgumentException($"Keys cannot begin with a digit. Bad Key: {key}");
+            for (int i = 0; i < key.Length; i++)
+                if (InvocationLexer.Illegal(key[i]))
+                    throw new ArgumentException($"Keys can only consist of alphanumeric and underscore characters. Bad Key: {key}");
             if (_instanceIndex.TryGetValue(key, out object? val))
             {
-                if (!ReferenceEquals(val, Instance))
+                if (!Instance.Equals(val))
                     throw new ArgumentException("Duplicate keyname detected.");
             }
-            _instanceIndex[key] = Instance;
+            else
+                _instanceIndex[key] = Instance;
             return null;
         }
 
         object? RemoveInstance(string key)
         {
-            if (_instanceIndex == null)
-                throw new InvalidOperationException("No instances are currently stored.");
             _instanceIndex.Remove(key);
-            if (_instanceIndex.Count == 0)
-            {
-                _instanceindexreadonly = null;
-                _instanceIndex = null;
-            }
             return null;
 
         }
@@ -883,17 +886,41 @@ namespace XQuinn.Runtime
         }
 
 
-        public static string? ResolveMemberAccess(string input, out string member, out bool field) //returns typename, outputs the accessed member
+        string? ResolveMemberAccess(string input, out string member, out bool field) //returns typename, outputs the accessed member
         {
             int? lastAccessorIndex = null;
             int paramStart = input.IndexOf('(');
             field = paramStart == -1;
+            //   bool readAccessor = false;
+            // bool readingGeneric = false;
             for (int i = 0; i < input.Length; i++) //this resolves typenames vs member names, lexer does something similar but not exactly the same - this one is pretty much universal
-            {                                           //works with anything like field or method() (no type name) or namespace.typename.method(22, "hello", othertype.method()) 
-                if (input[i] == '.')                       //methods are broken off from the typename with all their parameters included
-                    lastAccessorIndex = i;
-                else if (i == paramStart)
+            {
+                // Lexer.ValidIdentifier(input[i],input,i);
+                if (i != paramStart)
+                {
+                    // if (readAccessor)
+                    // {
+                    //     Lexer.ValidIdentifierFirstCharOrThrow(input[i], input, i);
+                    //     readAccessor = false;
+                    // }               //works with anything like field or method() (no type name) or namespace.typename.method(22, "hello", othertype.method()) 
+                    if (input[i] == '.')
+                    {                      //methods are broken off from the typename with all their parameters included
+                        lastAccessorIndex = i;
+                        //    readAccessor = true;
+                    }
+                }
+                else
                     break;
+                //     }
+                //     else if (input[i] == '<')
+                //         readingGeneric = true;
+                //     else if (input[i] == '>')
+                //         readingGeneric = false;
+                //     if (readAccessor == false && readingGeneric == false)
+                //         Lexer.ValidIdentifier(input[i], input, i);
+                // }
+                // else
+                // break;
 
             }
             if (lastAccessorIndex != null)

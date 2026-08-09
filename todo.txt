@@ -160,6 +160,10 @@ methods actually can have a whitespace trail between the name and the ( but ima 
 
 
 Important
+//-24 ChangedNames Autoappender (would detect if any of my type names are changed in the cache, and when i insert that typename into the invokerinterface, it autoappends)
+//It occurs to me now this wouldnt work for like, params. ex. Method(sometype.Method(), sometype.OtherMethod()) I would have to provide an override for TypeString for that
+//and it would not work like I thought it would initially, lol.
+//-23 InstanceReader: ICollection and IEnumerable support for nonlists and nondictionaries
 -22 Default value support (CallInterp)
 //How this params work in ILReader, and the -1 thing, and assloadcontext, and enum power of 2
 //-21 Local calls: See above
@@ -280,6 +284,8 @@ strict public api mixing with a pseudo private api not working, what if u want t
 
 how does ilreader work with patched methods?
 
+//-23 Idea of storing my Vwar Interop assembly list in XML so i dont need to recompile to add new interops
+-22. NestedGenerics can work for GenericParameters if I do my <> regex similar to how I do string regex... I think? Might be better to add "CustomReadGeneric" to Lexer
 No assignment syntax and you cannot use the instance index values as params. Theyre for loading only 
 No ass syntax and instance list is for loading only
 quick invoke for statics  (no for base types too for instances) (call interp)
@@ -353,6 +359,7 @@ UpNext
 5. Foundry, Web Apps ASPNet, Events, Emit, ASPNet, Foundry, and BS5 , expressionntrees, Ref
 6. Combine all my projects into a solution
 7. MetadataUpdater(new hot reloader)
+8. Expression Trees
 
 if (isByRef && !isOut)
                 Console.WriteLine($"{param.Name} is 'ref'");

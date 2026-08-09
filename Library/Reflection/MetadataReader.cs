@@ -85,7 +85,7 @@ namespace XQuinn.Reflection
             return sb;
         }
 
-        public static StringBuilder MethodToString(MethodInfo mthd, bool names = false)
+        public static StringBuilder MethodToString(MethodInfo mthd, bool parameterNames = false)
         {
             StringBuilder sb = new();
             sb.Append(mthd.IsStatic ? "static " : "instance ");
@@ -97,7 +97,7 @@ namespace XQuinn.Reflection
             sb.Append(mthd.Name);
 
             AddGenericArguments(sb, mthd.GetGenericArguments());
-            sb.Append(ParamsToString(mthd.GetParameters(), names));
+            sb.Append(ParamsToString(mthd.GetParameters(), parameterNames));
 
             return sb;
         }

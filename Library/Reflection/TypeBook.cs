@@ -45,7 +45,7 @@ public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
     public Type this[string key]
     {
         get => _book[key];
-        //  set => _book[key] = value;
+      //  set => _book[key] = value;
     }
     System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => _book.GetEnumerator();
     public IEnumerator<KeyValuePair<string, Type>> GetEnumerator() => _book.GetEnumerator();
@@ -59,7 +59,6 @@ public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
 
     public static TypeBook New(IEnumerable<Type> types, Func<Type, string?> toString, StringComparer? comp = null)
     {
-        comp ??= System.StringComparer.OrdinalIgnoreCase;
         ConcurrentDictionary<string, Type> book = new(comp);
         foreach (var type in types)
         {
@@ -71,7 +70,7 @@ public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
                 if (txt == null)
                     continue;
                 if (book.TryGetValue(txt, out var val))
-                    throw new DuplicateTypeNameException(val, type, txt);
+                    throw new DuplicateKeyException(val, type, txt);
                 book.TryAdd(txt, type);
             }
         }
@@ -97,7 +96,6 @@ public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
 // }
     public static TypeBook New(IEnumerable<Type> types, bool fullname, StringComparer? comp = null)
     {
-        comp ??= System.StringComparer.OrdinalIgnoreCase;
         ConcurrentDictionary<string, Type> book = new(comp);
         foreach (var type in types)
         {
@@ -115,7 +113,7 @@ public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
                 else
                     txt = type.Name;
                 if (book.TryGetValue(txt, out var val))
-                    throw new DuplicateTypeNameException(val, type, txt);
+                    throw new DuplicateKeyException(val, type, txt);
                 book.TryAdd(txt, type);
             }
         }

@@ -91,19 +91,19 @@ public sealed class RuntimeCommand : Attribute
             name = invoc.Remove(num);
         else
             name = invoc;
-        Method method = new(name); //automatically slices off any generic parameters
+        Method method = Method.New(name,null,null); //automatically slices off any generic parameters
         if (_registry.TryGetValue(method.String, out MethodInfo? cmd))
         {
             if (cmd.IsGenericMethodDefinition)
             {
-                cmd = Interpreter.ASTToGeneric(cmd.MakeGenericMethod,method);
+                cmd = method.ConstructGeneric(cmd);
             }
             object?[]? parameters = null;
             if (num != -1)
             {
                 Interpreter.LoadMethodDirect(cmd);
                 Method call = Interpreter.Lexer.ParameterTemplate(invoc);
-                parameters = Interpreter.GetParams(cmd.GetParameters(), call);
+                parameters = Interpreter.GetParsedParameters(cmd.GetParameters(), call);
                 Interpreter.Clear();
             }
             cmd.Invoke(null, parameters);

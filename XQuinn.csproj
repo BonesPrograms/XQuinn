@@ -9,29 +9,28 @@
     <AppendRuntimeIdentifierToOutputPath>true</AppendRuntimeIdentifierToOutputPath>
     <SelfContained>false</SelfContained>
     <Prefer32Bit>false</Prefer32Bit>
-    <LangVersion>9.0</LangVersion> <!--For caves of qud support exclusively-->
+    <LangVersion>9.0</LangVersion> <!--For caves of qud support exclusively.-->
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> 
+      <NoWarn>$(NoWarn);1591</NoWarn>--> 
   <!--  <TreatWarningsAsErrors>true</TreatWarningsAsErrors>-->
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
     <PlatformTarget>x64</PlatformTarget>
     <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+     <!-- <LangVersion>11.0</LangVersion> -->
+  </PropertyGroup>
+
+  <PropertyGroup Condition="$(LangVersion) == '11.0' Or $(LangVersion) == 'latest'"> <!--There are some lang features I miss from C# 11, such as static abstract interface methods, but right now we dont really use this constant-->
+    <DefineConstants>$(DefineConstants);CSHARP_11_OR_GREATER</DefineConstants> <!--As you can see there is no setting to compile Net6+ into C# 11 as of right now-->
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PlatformTarget>AnyCPU</PlatformTarget>
+    <!--  <LangVersion>9.0</LangVersion>-->
   </PropertyGroup>
-
-  <!--<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0-windows' Or '$(TargetFramework)' == 'net6.0-windows'">
-      <RuntimeIdentifier>win-x64</RuntimeIdentifier>
-  </PropertyGroup>-->
-
-<!--<PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0' Or '$(TargetFramework)' == 'net48'">
-  <LangVersion>9.0</LangVersion>
-</PropertyGroup>-->
-
 
 
   <ItemGroup>
