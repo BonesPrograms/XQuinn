@@ -185,7 +185,7 @@ namespace XQuinn.Runtime
         ///This is not an actual read only wrapper, it is only a cast so that it can support being passed an IReadOnlyDictionary.
 
         public readonly InvocationLexer Lexer = new();
-        
+
 
 
         /// <summary>
@@ -275,7 +275,7 @@ namespace XQuinn.Runtime
             return input[0] switch
             {
                 '+' => AddInstance(sub),
-                '-' => RemoveInstance(sub),
+                '-' => _instanceIndex.Remove(sub),
                 '$' => GetInstance(sub),
                 '^' => Cast(sub),
                 '@' => LoadTypeClearInstance(sub),
@@ -383,9 +383,7 @@ namespace XQuinn.Runtime
                     throw new InvalidCastException($"{_instanceType} cannot cast to {t}.");
             }
             if (!field)
-            {
                 instance = Invoke(member);
-            }
             else
                 instance = GetFieldParameter(t, member, tname ?? LoadedType!.FullName!);
             if (instance == null)
@@ -426,6 +424,7 @@ namespace XQuinn.Runtime
 
 
         //An isolated lexing, loading and invocation for static loading.
+        //though if loadedtype == type, it will retrieve the locally stored methods for efficiency
         object? StaticInvokeMethod(string input, Type type)
         {
             Method main = Lexer.ParameterTemplate(input);
@@ -868,12 +867,6 @@ namespace XQuinn.Runtime
             return null;
         }
 
-        object? RemoveInstance(string key)
-        {
-            _instanceIndex.Remove(key);
-            return null;
-
-        }
 
         object GetInstance(string key)
         {
@@ -886,42 +879,17 @@ namespace XQuinn.Runtime
         }
 
 
-        string? ResolveMemberAccess(string input, out string member, out bool field) //returns typename, outputs the accessed member
+        static string? ResolveMemberAccess(string input, out string member, out bool field) //returns typename, outputs the accessed member
         {
             int? lastAccessorIndex = null;
             int paramStart = input.IndexOf('(');
             field = paramStart == -1;
-            //   bool readAccessor = false;
-            // bool readingGeneric = false;
             for (int i = 0; i < input.Length; i++) //this resolves typenames vs member names, lexer does something similar but not exactly the same - this one is pretty much universal
-            {
-                // Lexer.ValidIdentifier(input[i],input,i);
-                if (i != paramStart)
-                {
-                    // if (readAccessor)
-                    // {
-                    //     Lexer.ValidIdentifierFirstCharOrThrow(input[i], input, i);
-                    //     readAccessor = false;
-                    // }               //works with anything like field or method() (no type name) or namespace.typename.method(22, "hello", othertype.method()) 
-                    if (input[i] == '.')
-                    {                      //methods are broken off from the typename with all their parameters included
-                        lastAccessorIndex = i;
-                        //    readAccessor = true;
-                    }
-                }
-                else
+            {                                        //works with anything like field or method() (no type name) or namespace.typename.method(22, "hello", othertype.method()) //methods are broken off from the typename with all their parameters included
+                if (i == paramStart)
                     break;
-                //     }
-                //     else if (input[i] == '<')
-                //         readingGeneric = true;
-                //     else if (input[i] == '>')
-                //         readingGeneric = false;
-                //     if (readAccessor == false && readingGeneric == false)
-                //         Lexer.ValidIdentifier(input[i], input, i);
-                // }
-                // else
-                // break;
-
+                if (input[i] == '.')
+                    lastAccessorIndex = i;
             }
             if (lastAccessorIndex != null)
             {
@@ -930,7 +898,7 @@ namespace XQuinn.Runtime
                 return typename;
             }
             member = input;
-            return null; //no type name, just a member
+            return null; //no type name, just a member, this technically isnt allowed but i let you get away with it for instance loading 
         }
 
     }
