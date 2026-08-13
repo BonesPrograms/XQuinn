@@ -64,32 +64,43 @@ namespace XQuinn.ObjectModel
             Writer = new(path);
 
         }
-
         public static InstanceReader New(string outputFilePath, bool makeFileIfNotFound, Type? loopLimit = null)
         {
             if (makeFileIfNotFound)
                 XQuinn.IO.Logger.SafetyCheck(outputFilePath);
             return new(outputFilePath, loopLimit);
         }
-        public void Read<T>(T component, int skip = 0) where T : notnull
+        public void Read(object instance, int skip = 0)
         {
             Skip(skip);
-            string msg = $"Beginning read of fields in {component.GetType()}";
+            Type instanceType = instance.GetType();
+            string msg = $"Beginning read of fields in {instanceType}";
+            if (LoopLimit == typeof(object))
+                LoopLimit = LoopLimiter(instanceType);
             Write(msg);
             Skip(2);
-            ReadClass(component);
-            Dispose();
+            ReadClass(LoopLimit, instance);
         }
 
         //For overriding in inheritors incase you want to give a specific type a custom read (for example, a qud gameobject, since a normal read would be uninformative)
-        protected virtual void ReadClass(object classObj, bool cameFromCollection = false, bool cameFromReferenceType = false)
+        protected virtual void ReadClass(Type? limit, object classObj, bool cameFromCollection = false, bool cameFromReferenceType = false)
         {
             // if (!ReadClassCustom(classObj, cameFromCollection, cameFromReferenceType))
             //        return;
             Type objectType = classObj.GetType();
             Write($"Beginning read for fields of type {objectType}.");
             Skip(1);
-            LoopInheritance(classObj, objectType, cameFromCollection, cameFromReferenceType);
+
+            LoopInheritance(limit ?? LoopLimiter(objectType), classObj, objectType, cameFromCollection, cameFromReferenceType);
+        }
+
+        static Type LoopLimiter(Type t)
+        {
+            if (t.IsEnum)
+                return typeof(Enum);
+            if (t.IsValueType)
+                return typeof(ValueType);
+            return typeof(object);
         }
 
         // /// <summary>
@@ -102,10 +113,10 @@ namespace XQuinn.ObjectModel
         //     return true;
         // }
 
-        protected void LoopInheritance(object classObj, Type sourceType, bool cameFromCollection, bool cameFromReferenceType)
+        protected void LoopInheritance(Type? loopLimit, object classObj, Type sourceType, bool cameFromCollection, bool cameFromReferenceType)
         {
             Type? varyingType = sourceType;
-            while (varyingType != LoopLimit)
+            while (varyingType != LoopLimit && varyingType != null && varyingType != typeof(object) && varyingType != typeof(ValueType))
             {
                 FieldInfo[] fields = varyingType!.GetFields(Flags);
                 List<FieldObject> sortedFields = SortFields(classObj, fields, sourceType);
@@ -155,7 +166,7 @@ namespace XQuinn.ObjectModel
                         else if (!cameFromCollection)
                         {
                             Write($"{(isInCollection ? "element" : $"\"{field!.Name}\"")} is a custom type, reading fields.");
-                            ReadClass(obj!, isInCollection, true);
+                            ReadClass(null, obj!, isInCollection, true);
                         }
                         else if (!isInCollection)
                             Write($"{$"\"{field!.Name}\""} is a custom type, but is a field for a custom type that is an element in a collection. Skipping for readability.");
@@ -245,13 +256,13 @@ namespace XQuinn.ObjectModel
         static List<ElementObject> SortElements(ICollection list) //on the off chance you have a List<object>
         {                                       //you cant control dictionary order and ObjectInfo doesn't support making a "KeyValue" class for a theoretical List<KeyValue> (i tried it, its a mess)
             List<ElementObject> elements = new();     //so we dont sort dictionaries by order
-            foreach(var element in list)
+            foreach (var element in list)
             {
-              //  if (element != null)
-              //  {
-                    ObjectToken token = TokenizedObject.GetToken(element);
-                    elements.Add(new ElementObject(token, element));
-              //  }
+                //  if (element != null)
+                //  {
+                ObjectToken token = TokenizedObject.GetToken(element);
+                elements.Add(new ElementObject(token, element));
+                //  }
             }
             return SortByToken(elements);
         }

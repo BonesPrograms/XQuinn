@@ -50,10 +50,13 @@ namespace XQuinn.Reflection.IL
             Module = method.Module;
         }
 
+        public static List<ByteCode> GetIL(MethodInfo method)
+        {
+            return New(method).GetIL();
+        }
         public static void PrintIL(MethodInfo method, string outputFilePath, bool makeFileIfNotFound)
         {
-            ILReader reader = New(method);
-            reader.PrintIL(outputFilePath, makeFileIfNotFound);
+            New(method).PrintIL(outputFilePath, makeFileIfNotFound);
         }
 
         public static ILReader New(MethodInfo method)
