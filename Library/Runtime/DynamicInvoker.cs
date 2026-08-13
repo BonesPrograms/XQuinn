@@ -79,7 +79,7 @@ public class DynamicInvoker : IDisposable
             throw new NotSupportedException("Only single file assemblies are supported.");
         Interpreter.LocalCache = TypeBook.New(LoadedAssembly.ManifestModule.GetTypes(), FullName, StringComparer.OrdinalIgnoreCase).Book;
         if (DefaultLoadedTypeName != null)
-            Interpreter.LoadTypeClearInstance(DefaultLoadedTypeName);
+            Interpreter.LoadTypeStatically(DefaultLoadedTypeName);
         LastWrite = File.GetLastWriteTime(DLLPath);
     }
 

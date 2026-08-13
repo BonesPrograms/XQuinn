@@ -108,8 +108,8 @@ namespace XQuinn.ObjectModel
             while (varyingType != LoopLimit)
             {
                 FieldInfo[] fields = varyingType!.GetFields(Flags);
-                List<Field> sortedFields = SortFields(classObj, fields, sourceType);
-                foreach (Field field in sortedFields)
+                List<FieldObject> sortedFields = SortFields(classObj, fields, sourceType);
+                foreach (FieldObject field in sortedFields)
                     ReadObject(field, field.FieldInfo, field.SourceType, cameFromCollection, cameFromReferenceType);
                 varyingType = varyingType.BaseType;
             }
@@ -119,36 +119,36 @@ namespace XQuinn.ObjectModel
         //cameFromCollection is a little ambiguous here : it does not mean this object is an element in a collection
         //that is what isInCollection means (because we are receiving an <Element> object rather than a <Field> object)
         //cameFromCollection means we are reading a field in a custom type that is an element in a collection
-        protected void ReadObject(BaseObject info, FieldInfo? field, Type? sourceType, bool cameFromCollection, bool cameFromReferenceType)
+        protected void ReadObject(TokenizedObject info, FieldInfo? field, Type? sourceType, bool cameFromCollection, bool cameFromReferenceType)
         {
             Skip(1);
             object? obj = info.Instance;
-            Token token = info.Token;
-            bool isInCollection = info is Element; //field and sourcetype will be null
+            ObjectToken token = info.Token;
+            bool isInCollection = info is ElementObject; //field and sourcetype will be null
             ReadObjectBasic(info, field, sourceType, isInCollection);
             switch (token)
             {
-                case Token.IDictionary:
+                case ObjectToken.IDictionary:
                     {
                         if (cameFromReferenceType)
-                            goto case Token.ClassOrStruct;
+                            goto case ObjectToken.ClassOrStruct;
                         if (!isInCollection && !cameFromCollection)
                             ReadIDictionary((IDictionary)obj!);
                         else
                             Write("Detected a collection as an element in a collection or a field for a custom type in a collection, skipping for readability.");
                     }
                     break;
-                case Token.IList:
+                case ObjectToken.IList:
                     {
                         if (cameFromReferenceType)
-                            goto case Token.ClassOrStruct;
+                            goto case ObjectToken.ClassOrStruct;
                         if (!isInCollection && !cameFromCollection)     //reading collections inside of collections is not easy to understand so it is not allowed
                             ReadIList((IList)obj!);
                         else
                             Write("Detected a collection as an element in a collection or a field for a custom type in a collection, skipping for readability.");
                     }
                     break;
-                case Token.ClassOrStruct:
+                case ObjectToken.ClassOrStruct:
                     {
                         if (cameFromReferenceType) //member access chains that are larger than one are really hard to keep track of in your brain when reading the log, so they are skipped
                             Write("Detected custom type as a field in a custom type. Skipping for readability."); //they also clog the console
@@ -167,7 +167,7 @@ namespace XQuinn.ObjectModel
 
         }
 
-        protected void ReadObjectBasic(BaseObject info, FieldInfo? field, Type? sourceType, bool isInCollection)
+        protected void ReadObjectBasic(TokenizedObject info, FieldInfo? field, Type? sourceType, bool isInCollection)
         {
             StringBuilder text = new(); //sourceType and field will be null if in collection
             text.Append($"Reading {(isInCollection ? "ELEMENT" : $"FIELD \"{field!.Name}\"")} from {(isInCollection ? "collection" : $"type {GenericTypeToString(sourceType)}")}:\n");
@@ -186,7 +186,7 @@ namespace XQuinn.ObjectModel
         {
             Skip(1);
             Write("READING ILIST OF COUNT " + list.Count.ToString());
-            List<Element> sortedElements = SortElements(list);
+            List<ElementObject> sortedElements = SortElements(list);
             foreach (var element in sortedElements)
             {
                 ReadObject(element, null, null, false, false);
@@ -201,14 +201,14 @@ namespace XQuinn.ObjectModel
             Skip(1);
             Write("READING IDICTIONARY OF COUNT " + dic.Count.ToString());
             IDictionaryEnumerator enumerator = dic.GetEnumerator();
-            Dictionary<Element, Element> elementDictionary = new();
+            Dictionary<ElementObject, ElementObject> elementDictionary = new();
             while (enumerator.MoveNext())
             {
                 if (enumerator.Key != null)
                 {
-                    Token keytoken = BaseObject.GetToken(enumerator.Key);
-                    Token valuetoken = BaseObject.GetToken(enumerator.Value);
-                    elementDictionary[new Element(keytoken, enumerator.Key)] = new Element(valuetoken, enumerator.Value);
+                    ObjectToken keytoken = TokenizedObject.GetToken(enumerator.Key);
+                    ObjectToken valuetoken = TokenizedObject.GetToken(enumerator.Value);
+                    elementDictionary[new ElementObject(keytoken, enumerator.Key)] = new ElementObject(valuetoken, enumerator.Value);
                 }
             }
             int count = 1;
@@ -229,35 +229,35 @@ namespace XQuinn.ObjectModel
         }
 
 
-        static List<Field> SortFields(object classObj, FieldInfo[] fields, Type sourceType)
+        static List<FieldObject> SortFields(object classObj, FieldInfo[] fields, Type sourceType)
         {
-            List<Field> fieldDetails = new(fields.Length);
+            List<FieldObject> fieldDetails = new(fields.Length);
             for (int i = 0; i < fields.Length; i++)
             {
                 FieldInfo field = fields[i];
                 object? fieldObj = field.GetValue(classObj);
-                Token token = BaseObject.GetToken(fieldObj);
-                fieldDetails.Add(new Field(token, field, fieldObj!, sourceType));
+                ObjectToken token = TokenizedObject.GetToken(fieldObj);
+                fieldDetails.Add(new FieldObject(token, field, fieldObj!, sourceType));
             }
             return SortByToken(fieldDetails);
         }
 
-        static List<Element> SortElements(IList list) //on the off chance you have a List<object>
+        static List<ElementObject> SortElements(IList list) //on the off chance you have a List<object>
         {                                       //you cant control dictionary order and ObjectInfo doesn't support making a "KeyValue" class for a theoretical List<KeyValue> (i tried it, its a mess)
-            List<Element> elements = new();     //so we dont sort dictionaries by order
+            List<ElementObject> elements = new();     //so we dont sort dictionaries by order
             for (int i = 0; i < list.Count; i++)
             {
                 object? element = list[i];
                 if (element != null)
                 {
-                    Token token = BaseObject.GetToken(element);
-                    elements.Add(new Element(token, element));
+                    ObjectToken token = TokenizedObject.GetToken(element);
+                    elements.Add(new ElementObject(token, element));
                 }
             }
             return SortByToken(elements);
         }
 
-        static List<O> SortByToken<O>(List<O> infoObjects) where O : BaseObject
+        static List<O> SortByToken<O>(List<O> infoObjects) where O : TokenizedObject
         {
             List<O> referenceTypes = new();
             List<O> simpleTypes = new();
@@ -279,7 +279,7 @@ namespace XQuinn.ObjectModel
         }
 
 
-        static string DisplayValue(BaseObject info)
+        static string DisplayValue(TokenizedObject info)
         {
             string msg = $"Value: {$"{info.Instance}" ?? "null"}\n";
             if (info.IsSimple && !info.IsNull)
@@ -298,11 +298,11 @@ namespace XQuinn.ObjectModel
         //     _=> $"{obj}" //custom type tostring overload is taken, though usually this value is meaningless
         // };
 
-        static string SimpleValueDisplay(object? obj, Token token) =>
+        static string SimpleValueDisplay(object? obj, ObjectToken token) =>
         token switch
         {
-            Token.Boolean => ShowBoolValue((bool)obj!),
-            Token.String or Token.Enum => $"\"{obj}\"", //gives strings an enums an orange stringy color
+            ObjectToken.Boolean => ShowBoolValue((bool)obj!),
+            ObjectToken.String or ObjectToken.Enum => $"\"{obj}\"", //gives strings an enums an orange stringy color
             _ => $"{obj}", //integers always look blue and custom structs have the option of string overloads
         };
 

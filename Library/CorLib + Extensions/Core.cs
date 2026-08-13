@@ -45,36 +45,31 @@ namespace XQuinn.CorLib
 #endif
         public static string? DefaultToString(Type t)
         {
-            if (t == typeof(Parsing.AST.Field))
-                return "AST.Field";
-            else if (t == typeof(ObjectModel.Tokenizer.Field))
-                return "Tokenizer.Field";//internal shortname assembly conflict
-            else if (t == typeof(Core))
-                return null;
-            else if (TypeCache.TryGetType(t.Name, out Type? cached))
+            if (TypeCache.TryGetType(t.Name, out Type? cached))
             {
                 if (cached == t)
                     return null;
                 else
                 {
+                    string snipped = SnipGenericShortName(t);
 #if NET6_0_OR_GREATER
                     _changedNames ??= new(StringComparer.OrdinalIgnoreCase);
                     _namesreadonly ??= new Net6ReadOnlySet<string>(_changedNames);
-                    _changedNames.Add(t.Name);
+                    _changedNames.Add(snipped);
 #endif
-                    return $"xq_{t.Name}";
+                    return $"xq_{snipped}";
                 }
             }
-            if (t.IsPublic) //nested is automatically excluded here 
+            return t.IsPublic ? SnipGenericShortName(t) : null;
+        }
+
+        public static string SnipGenericShortName(Type t)
+        {
+            if (t.IsGenericTypeDefinition)
             {
-                if (t.IsGenericTypeDefinition)
-                {
-                    return t.Name.Remove(t.Name.IndexOf('`'));
-                }
-                return t.Name;
+                return t.Name.Remove(t.Name.IndexOf('`'));
             }
-            else
-                return null;
+            return t.Name;
         }
 
         // public static bool DefaultWhere(Type t)
@@ -83,12 +78,6 @@ namespace XQuinn.CorLib
         //         return false;
         //     return t.IsPublic && !t.IsNested;
         // }
-
-        public static void InitializeXQuinn(Func<Type, string?> toString)
-        {
-            TypeBook book = CacheXQuinn(toString);
-            RuntimeCommand.Register(book.Types, typeof(Core).Module.Assembly.GetName().FullName);
-        }
         public static TypeBook CacheXQuinn(Func<Type, string?> toString)
         {
             TypeBook book = TypeBook.New(typeof(Core).Module.GetTypes(), toString, StringComparer.OrdinalIgnoreCase);

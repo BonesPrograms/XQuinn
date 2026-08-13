@@ -111,16 +111,16 @@ namespace XQuinn.NetConsole
         readonly InvocationLexer lex = new();
         protected override void Test(string obj)
         {
-            Method method = lex.ParameterTemplate(obj);
+            MethodString method = lex.ParameterTemplate(obj);
             Read(method);
         }
 
-        static void Read(Method method)
+        static void Read(MethodString method)
         {
             Console.WriteLine($"{method.ToString()} {method.GetType()}");
             foreach (var param in method.Params)
             {
-                if (param is Method mth)
+                if (param is MethodString mth)
                     Read(mth);
                 else
                     Console.WriteLine($"{param.ToString()} {param.GetType()}");

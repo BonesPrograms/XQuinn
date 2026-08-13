@@ -15,7 +15,7 @@ namespace XQuinn.Parsing.AST
     // FindType(), and I think it is just weird to encapsulate
     //FindType(TypeString) behind GenericParameter, it should be encapsulated as part of the TypeString class, but GenericParameter would need access to that method, its just a mess rn lol
     //Parameter doesnt support Generics so you cannot just move it all up to the top class
-    public class Parameter
+    public class ParameterString
     {
         public string String //For a standard parameter this would be a primitive value or string literal, for typestrings it is a typename, for methods it is the method name.
         {
@@ -23,24 +23,24 @@ namespace XQuinn.Parsing.AST
             protected set => _string = value;
 
         }
-        public Method? _paramOf
+        public MethodString? _paramOf
         {
             get => _paramOfInternal;
             protected set => _paramOfInternal = value;
         }
         string _string = null!;
-        Method? _paramOfInternal;
+        MethodString? _paramOfInternal;
         public string? ParamOf => _paramOf?.String;
 
-        protected Parameter()
+        protected ParameterString()
         {
 
         }
-        public Parameter(string name, Method? paramof) : this(name)
+        public ParameterString(string name, MethodString? paramof) : this(name)
         {
             _paramOf = paramof;
         }
-        public Parameter(string name)
+        public ParameterString(string name)
         {
             _string = name;
         }
@@ -49,30 +49,104 @@ namespace XQuinn.Parsing.AST
         {
             return String + $" Param Of: {ParamOf}";
         }
+
+        public object? ParseParameter(Type type) //need half and int128 support
+        {
+            string strng = String;
+            if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) //ValueType of Nullable<T>
+            {
+                if (strng == "null")
+                    return null;
+                Type? underlying = Nullable.GetUnderlyingType(type) ?? throw new ArgumentException($"Underlying type for Nullable<T> type {type} is null.");
+            }
+            if (type.IsClass && (strng == "null" || type != typeof(string)))
+                return null;
+            if (type.IsValueType && !type.IsPrimitive && !type.IsEnum)
+                return null; //user defined struct
+            if (type.IsEnum)
+            {
+                object? parsed = null;
+                try
+                {
+                    parsed = Enum.Parse(type, strng, true);
+                }
+                catch (ArgumentException)
+                {
+
+                }
+                if (parsed != null)
+                    return parsed;
+            }
+            if (type == typeof(string))//&& strng.Length >= 2 && strng[0] == StringDeclr && strng[^1] == StringDeclr)
+            {
+                const string regex = "^\"(.*?)\"$";// "\"([^\"]*)\""; //this new one supports fuckery like this "hello "world"" so itll pop out as hello "world" :)
+                var matches = Regex.Match(strng, regex);
+                if (matches.Success)
+                    return matches.Groups[1].Value;
+                else
+                    throw new FormatException($"Non-null string values must be surrounded with quotations, even empty strings. Bad input: {strng}");
+            }
+            if ((type == typeof(bool)) && bool.TryParse(strng, out bool boolean))
+                return boolean;
+            if ((type == typeof(char)) && char.TryParse(strng, out char utf16))
+                return utf16;
+            if ((type == typeof(byte)) && byte.TryParse(strng, out byte uint8))
+                return uint8;
+            if ((type == typeof(sbyte)) && sbyte.TryParse(strng, out sbyte sint8))
+                return sint8;
+            if ((type == typeof(short)) && short.TryParse(strng, out short sint16))
+                return sint16;
+            if ((type == typeof(ushort)) && ushort.TryParse(strng, out ushort uint16))
+                return uint16;
+            if ((type == typeof(int)) && int.TryParse(strng, out int sint32))
+                return sint32;
+            if ((type == typeof(uint)) && uint.TryParse(strng, out uint uint32))
+                return uint32;
+            if ((type == typeof(long)) && long.TryParse(strng, out long sint64))
+                return sint64;
+            if ((type == typeof(ulong)) && ulong.TryParse(strng, out ulong uint64))
+                return uint64;
+            if ((type == typeof(float)) && float.TryParse(strng, out float float32))
+                return float32;
+            if ((type == typeof(double)) && double.TryParse(strng, out double float64))
+                return float64;
+            if ((type == typeof(decimal)) && decimal.TryParse(strng, out decimal dec))
+                return dec;
+#if NET6_0_OR_GREATER
+            if (type == typeof(nint) && nint.TryParse(strng, out nint nativeint))
+                return nativeint;
+            if (type == typeof(nuint) && nuint.TryParse(strng, out nuint nativeuint))
+                return nativeuint;
+#else
+            if (type == typeof(nint) || type == typeof(uint)) //i never use nint or uint so i havent fixed this yet but i will later maybe lol
+                throw new NotSupportedException("Parsing nint and uint not yet supported for pre-net6.");
+#endif
+            throw new FormatException($"Tried to parse {strng} to {type}, but value could not parse to {type}.");
+        }
     }
 
-    public class Field : Parameter
+    public class FieldString : ParameterString
     {
         public string DeclaringType => _type.String;
         public TypeString _type;
 
-        public Field(string name, TypeString type) : base(name)
+        public FieldString(string name, TypeString type) : base(name)
         {
             _type = type;
         }
-        public Field(string name, Method? paramOf, TypeString type) : base(name, paramOf)
+        public FieldString(string name, MethodString? paramOf, TypeString type) : base(name, paramOf)
         {
             _type = type;
         }
 
     }
 
-    public abstract class GenericParameter : Parameter
+    public abstract class GenericString : ParameterString
     {
         public IReadOnlyList<TypeString>? Generics => _generics;
         IReadOnlyList<TypeString>? _generics;
 
-        public T ConstructGeneric<T>(T obj, Func<string, Type>? getTypeByString = null) where T : MemberInfo
+        public T ConstructGeneric<T>(T obj, Func<TypeString, Type>? getTypeByString = null) where T : MemberInfo
         {
             Type[] generics = GetGenerics(getTypeByString);
             if (obj is Type type)
@@ -84,7 +158,7 @@ namespace XQuinn.Parsing.AST
             }
             else if (obj is MethodInfo method)
             {
-                if (this is Method)
+                if (this is MethodString)
                     return (T)(object)method.MakeGenericMethod(generics);
                 else
                     throw new ArgumentException("Attempting to construct generic method from TypeString AST.");
@@ -94,25 +168,25 @@ namespace XQuinn.Parsing.AST
         }
 
         ///Gets generic string arguments from a Method AST object.
-        public Type[] GetGenerics(Func<string, Type>? func)
+        public Type[] GetGenerics(Func<TypeString, Type>? func)
         {
             if (_generics != null)
             {
                 Type[] arr = new Type[_generics.Count];
                 for (int i = 0; i < arr.Length; i++)
                     if (func != null)
-                        arr[i] = func.Invoke(_generics[i].String);
+                        arr[i] = func.Invoke(_generics[i]);
                     else
                         arr[i] = TypeCache.GetTypeOrThrow(_generics[i].String);
                 return arr;
             }
             throw new ArgumentException($"No generic parameters were provided to {GetType().Name} with name value {String} ");
         }
-        protected GenericParameter()
+        protected GenericString()
         {
 
         }
-        protected static T New<T>(string name, Method? paramOf) where T : GenericParameter
+        protected static T New<T>(string name, MethodString? paramOf) where T : GenericString
         {
             T genericParameter = (T)Activator.CreateInstance(typeof(T), true)!;
             genericParameter.String = name.Trim();
@@ -142,38 +216,38 @@ namespace XQuinn.Parsing.AST
 
         }
     }
-    public class TypeString : GenericParameter
+    public class TypeString : GenericString
     {
         TypeString()
         {
 
         }
 
-        public static TypeString New(string name, Method? paramOf)
+        public static TypeString New(string name, MethodString? paramOf)
         {
             return New<TypeString>(name, paramOf);
         }
 
     }
-    public class Method : GenericParameter
+    public class MethodString : GenericString
     {
-        Method()
+        MethodString()
         {
             Params = _params.AsReadOnly();
         }
         public string? DeclaringType => _type?.String;
         public TypeString? _type => _typeInternal;
         TypeString? _typeInternal;
-        public readonly IReadOnlyList<Parameter> Params;
-        List<Parameter> _params = new();
-        public static Method New(string name, Method? NestedIn, TypeString? typeName)
+        public readonly IReadOnlyList<ParameterString> Params;
+        List<ParameterString> _params = new();
+        public static MethodString New(string name, MethodString? NestedIn, TypeString? typeName)
         {
-            Method method = New<Method>(name, NestedIn);
+            MethodString method = New<MethodString>(name, NestedIn);
             method._typeInternal = typeName;
             return method;
         }
 
-        public void Add(Parameter param)
+        public void Add(ParameterString param)
         {
             _params.Add(param);
         }

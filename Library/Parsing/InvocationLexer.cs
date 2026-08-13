@@ -72,9 +72,9 @@ namespace XQuinn.Parsing
 
         readonly StringBuilder sb = new();
 
-        Method? Main;
+        MethodString? Main;
 
-        Method? CurrentMethod;
+        MethodString? CurrentMethod;
         char Value;
         bool Start = true;
 
@@ -123,7 +123,7 @@ namespace XQuinn.Parsing
         //1) you will append a communicator (SUPER ILLEGAL)
         //2) you will append an extra character to the parameter
         //That being said,if you do not jump to append before the parameter read is finished, you will cause things like strings to fail to parse, since they can contain terminators.
-        public Method ParameterTemplate(string invocation)
+        public MethodString ParameterTemplate(string invocation)
         {
             if (string.IsNullOrWhiteSpace(invocation))
                 throw new ArgumentException("Invocation cannot be null or whitespace.");
@@ -204,7 +204,7 @@ namespace XQuinn.Parsing
                 i++;
             }
             FatalLexicalError(invocation);
-            Method primary = Main!;
+            MethodString primary = Main!;
             Clear();
             return primary;
         }
@@ -362,7 +362,7 @@ namespace XQuinn.Parsing
         void ReadMain()
         {
             //reads everything prior to (
-            Method method = Method.New(sb.ToString(), null, null);
+            MethodString method = MethodString.New(sb.ToString(), null, null);
             sb.Length = 0;
             CurrentMethod = method;
             Main = method;
@@ -434,7 +434,7 @@ namespace XQuinn.Parsing
         {
             string typename = ResolveMemberAccess(out string fieldname);
             TypeString type = TypeString.New(typename, null);
-            Field field = new(fieldname, CurrentMethod, type);
+            FieldString field = new(fieldname, CurrentMethod, type);
             sb.Length = 0;
             CurrentMethod!.Add(field);
             ReadingIdentifier = false;
@@ -445,7 +445,7 @@ namespace XQuinn.Parsing
         {
             string typename = ResolveMemberAccess(out string methodname);
             TypeString type = TypeString.New(typename,null);
-            Method method = Method.New(methodname,CurrentMethod,type);
+            MethodString method = MethodString.New(methodname,CurrentMethod,type);
             sb.Length = 0;
             CurrentMethod!.Add(method);
             CurrentMethod = method;
@@ -457,7 +457,7 @@ namespace XQuinn.Parsing
         void ReadParam()
         {
             string prm = sb.ToString();
-            Parameter param = new(prm, CurrentMethod);
+            ParameterString param = new(prm, CurrentMethod);
             sb.Length = 0;
             CurrentMethod!.Add(param);
         }

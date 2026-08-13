@@ -5,79 +5,79 @@ using System;
 namespace XQuinn.ObjectModel.Tokenizer
 {
 
-public abstract class BaseObject
+public abstract class TokenizedObject
 {
-    public readonly Token Token;
+    public readonly ObjectToken Token;
 
     public readonly object? Instance;
 
-    public BaseObject(Token token, object? Object)
+    public TokenizedObject(ObjectToken token, object? Object)
     {
         this.Token = token;
         this.Instance = Object;
     }
 
-    public bool IsNull => Token == Token.Null;
+    public bool IsNull => Token == ObjectToken.Null;
 
-    public bool IsReferenceType => Token == Token.ClassOrStruct;
+    public bool IsReferenceType => Token == ObjectToken.ClassOrStruct;
 
-    public bool IsCollection => Token == Token.IList || Token == Token.IDictionary;
+    public bool IsCollection => Token == ObjectToken.IList || Token == ObjectToken.IDictionary;
 
     public bool IsSimple
     => Token switch
     {
-        Token.PrimitiveStruct or Token.String or Token.Enum or Token.Delegate or Token.Boolean => true,
+        ObjectToken.PrimitiveStruct or ObjectToken.String or ObjectToken.Enum or ObjectToken.Delegate or ObjectToken.Boolean => true,
         _ => false
     };
 
-    public static Token GetToken(object? obj)
+    public static ObjectToken GetToken(object? obj)
      =>
         obj switch
         {
-            null => Token.Null,
-            string => Token.String,
-            bool => Token.Boolean,
-            Enum => Token.Enum,
+            null => ObjectToken.Null,
+            string => ObjectToken.String,
+            bool => ObjectToken.Boolean,
+            Enum => ObjectToken.Enum,
             ValueType => EvaluateValueType(obj),
-            IDictionary => Token.IDictionary,
-            IList => Token.IList,
-            Delegate => Token.Delegate, //this may require extra work, dont know how to read the delegate value yet
-            _ => Token.ClassOrStruct
+            IDictionary => ObjectToken.IDictionary,
+            IList => ObjectToken.IList,
+            Delegate => ObjectToken.Delegate, //this may require extra work, dont know how to read the delegate value yet
+            _ => ObjectToken.ClassOrStruct
         };
-    static Token EvaluateValueType(object obj)
+    static ObjectToken EvaluateValueType(object obj)
     {
         Type type = obj.GetType();
         if (type.IsPrimitive)
-            return Token.PrimitiveStruct;
+            return ObjectToken.PrimitiveStruct;
         else
-            return Token.ClassOrStruct;
+            return ObjectToken.ClassOrStruct;
     }
 
 }
 
 
 
-public class Element : BaseObject
+public class ElementObject : TokenizedObject
 {
-    public Element(Token token, object? Object) : base(token, Object)
+    public ElementObject(ObjectToken token, object? Object) : base(token, Object)
     {
     }
 }
 
-public class Field : BaseObject
+public class FieldObject : TokenizedObject
 {
     public readonly FieldInfo FieldInfo;
 
     public readonly Type SourceType; //the type of the instance that the field's value "exists" in (debatable term if the field is private and was declared in a base class)
                                      //that being said SourceType obviously may be different from the field's actual declaring type 
-    public Field(Token token, FieldInfo field, object Object, Type sourceType) : base(token, Object)
+    public FieldObject(ObjectToken token, FieldInfo field, object Object, Type sourceType) : base(token, Object)
     {
         FieldInfo = field;
         SourceType = sourceType;
     }
 }
 
-public enum Token  //tokens are used to figure out what means we will use to read the value
+public enum ObjectToken  //tokens are used to figure out what means we will use to read the value
 {
     _invalid, //unused default value
     Null,

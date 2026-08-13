@@ -13,18 +13,19 @@ using System.Runtime.Versioning;
 using System.Linq;
 using System.Collections.Generic;
 
-namespace _xquinn_cor
+namespace _xquinn_prgrm
 {
 
 
-    static class xquinn_prgrm_Main
+    static class _xquinn_prgrm_Main
     {
         static void Main(string[] args)
         {
 #if NET6_0_OR_GREATER
     XQuinn.NetConsole.Apps.IApp.RunApp(args);
 #endif
-            Core.InitializeXQuinn(Core.DefaultToString); // wonder if xq.x.fullname would screw up the lexer.. >:)
+            TypeCache.CacheType("class", typeof(Class));
+            TypeCache.CacheType("base", typeof(Base));
             TestingType.Test<CallInterpreter>();
 
 
@@ -33,10 +34,28 @@ namespace _xquinn_cor
     }
 
 
+    abstract class Base
+    {
+        public virtual void Method()
+        {
+            Console.WriteLine("INVOKING BASE");
+        }
+    }
+
+
+    class Class : Base
+    {
+        int Field = 15;
+        public static Class @class = new();
+        public override void Method()
+        {
+            Console.WriteLine("INVOKING CLASS");
+        }
+    }
+
+
+
 }
-
-
-
 // //char(lex.get(lex.oth('x', lex.get('y'))), lex.get(lex.get(lex.get(lex.oth('x',lex.get('y')))))
 //     public class Lex
 //     {
