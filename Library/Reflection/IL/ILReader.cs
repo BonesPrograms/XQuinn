@@ -86,7 +86,7 @@ namespace XQuinn.Reflection.IL
         {
             List<ByteCode> codes = GetIL();
             if(makeFileIfNotFound)
-            Write.SafetyCheck(outputFilePath);
+            XQuinn.IO.Logger.SafetyCheck(outputFilePath);
             using StreamWriter writer = new(outputFilePath);
             writer.WriteLine($"method");
             writer.WriteLine("	" + MetadataReader.MethodToString(Method, true)); //,maybe should edit the stringbuilder to slip in parameter names

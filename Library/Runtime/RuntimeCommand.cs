@@ -20,9 +20,15 @@ namespace XQuinn.Runtime
     //1) Type must have the attribute [RuntimeInvoker] to find the method
     //2) Method must be supported:
 
-    //UNSUPPORTED: RuntimeCommands do not support methods declared in Generic type definitions. RuntimeCommands do not support instance methods.
-    //Commands declared under either of these two circumstances will *not* be added to the global cache, the failure will be silent
-    //short of you not being able to find their name in the command registry.
+    //UNSUPPORTED: RuntimeCommands do not support instance methods, or methods with in/out/ref parameters.
+    //Generic Type Definitions:
+    //If you have a generic method definition who shares the same type parameters as it's enclosing generic type definition, then it will fail to invoke.
+    //IE.
+    //Class<T>
+    //{
+    //Method<T>(); //will fail to invoke even if you provide generic arguments
+    //}
+
 
     //RuntimeCommands is backed by CallInterpreter and has all the same features, except it has been restricted to loading methods specifically from the RuntimeCommand cache, instance
     //loading and type loading is inaccessible.
@@ -45,7 +51,7 @@ namespace XQuinn.Runtime
     /// </summary>
 
     [AttributeUsage(AttributeTargets.Class, AllowMultiple = false)]
-    public sealed class RuntimeInvoker : Attribute
+    public sealed class HasRuntimeCommand : Attribute
     {
 
     }
@@ -94,6 +100,8 @@ namespace XQuinn.Runtime
             MethodString method = MethodString.New(name, null, null); //automatically slices off any generic parameters
             if (_registry.TryGetValue(method.String, out MethodInfo? cmd))
             {
+                if(!CallInterpreter.SupportedMember(cmd))
+                throw new ArgumentException($"RuntimeCommand {name} has an unsupported in out or ref parameter.");
                 if (cmd.IsGenericMethodDefinition)
                 {
                     cmd = method.ConstructGeneric(cmd);
@@ -123,13 +131,13 @@ namespace XQuinn.Runtime
         //   public static void Register(Module m) => Register(m.GetTypes(), m.Assembly.GetName().FullName);
         public static void Register(IEnumerable<Type> yourtypes, string assembly)
         {
-            IEnumerable<Type> types = yourtypes.Where(x => x.GetCustomAttribute<RuntimeInvoker>() != null);
+            IEnumerable<Type> types = yourtypes.Where(x => x.GetCustomAttribute<HasRuntimeCommand>() != null);
             Dictionary<string, MethodInfo> commands;
             try
             {
                 commands = types
-                .SelectMany(x => x.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly))
-                .Where(x => CallInterpreter.SupportedMember(x) && x.GetCustomAttribute<RuntimeCommand>() != null)
+                .SelectMany(x => x.GetMethods(BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.DeclaredOnly | BindingFlags.Instance)) //we get these just incase you accidentally forget to make it static so it doesn fail silently
+                .Where(x => x.GetCustomAttribute<RuntimeCommand>() != null)
                 .ToDictionary(k => k.GetCustomAttribute<RuntimeCommand>()!.Name, v => v, StringComparer.OrdinalIgnoreCase);
             }
             catch (ArgumentException ex)

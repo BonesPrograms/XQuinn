@@ -2,7 +2,6 @@
 using System.Reflection;
 using XQuinn.Runtime;
 using XQuinn.Reflection;
-using XQuinn.CorLib;
 using XQuinn;
 using XQuinn.NetConsole;
 using HarmonyLib;
@@ -12,6 +11,7 @@ using System;
 using System.Runtime.Versioning;
 using System.Linq;
 using System.Collections.Generic;
+using XQuinn.Extensions;
 
 namespace _xquinn_prgrm
 {
@@ -21,39 +21,31 @@ namespace _xquinn_prgrm
     {
         static void Main(string[] args)
         {
+
 #if NET6_0_OR_GREATER
-    XQuinn.NetConsole.Apps.IApp.RunApp(args);
+            XQuinn.NetConsole.Apps.IApp.RunApp(args);
 #endif
-            TypeCache.CacheType("class", typeof(Class));
-            TypeCache.CacheType("base", typeof(Base));
-            TestingType.Test<CallInterpreter>();
+            IEnumerable<Type> types = typeof(_xquinn_prgrm_Main).Module.GetTypes().Where(x => x.Namespace == "_xquinn_prgrm");
+            TypeBook book = TypeBook.New(types, x => x.SnipGenericShortName(), StringComparer.OrdinalIgnoreCase);
+            TypeCache.CacheTypes(book);
+            RuntimeCommand.Register(types, "XQuinn");
+            TestingType.Test<InvokerInterface>();
 
 
         }
 
     }
 
-
-    abstract class Base
+    [HasRuntimeCommand]
+    class Command
     {
-        public virtual void Method()
+        [RuntimeCommand("Method")]
+        static void Method<T>(out int i)
         {
-            Console.WriteLine("INVOKING BASE");
+            i = 15;
+            Console.WriteLine("Hi");
         }
     }
-
-
-    class Class : Base
-    {
-        int Field = 15;
-        public static Class @class = new();
-        public override void Method()
-        {
-            Console.WriteLine("INVOKING CLASS");
-        }
-    }
-
-
 
 }
 // //char(lex.get(lex.oth('x', lex.get('y'))), lex.get(lex.get(lex.get(lex.oth('x',lex.get('y')))))

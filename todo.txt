@@ -160,6 +160,7 @@ methods actually can have a whitespace trail between the name and the ( but ima 
 
 
 Important
+-25 If we update our generic regex, it will work for sub-parameters
 //-24 ChangedNames Autoappender (would detect if any of my type names are changed in the cache, and when i insert that typename into the invokerinterface, it autoappends)
 //It occurs to me now this wouldnt work for like, params. ex. Method(sometype.Method(), sometype.OtherMethod()) I would have to provide an override for TypeString for that
 //and it would not work like I thought it would initially, lol.

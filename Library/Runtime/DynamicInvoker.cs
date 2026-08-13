@@ -79,7 +79,7 @@ public class DynamicInvoker : IDisposable
             throw new NotSupportedException("Only single file assemblies are supported.");
         Interpreter.LocalCache = TypeBook.New(LoadedAssembly.ManifestModule.GetTypes(), FullName, StringComparer.OrdinalIgnoreCase).Book;
         if (DefaultLoadedTypeName != null)
-            Interpreter.LoadTypeStatically(DefaultLoadedTypeName);
+            Interpreter.LoadType(DefaultLoadedTypeName);
         LastWrite = File.GetLastWriteTime(DLLPath);
     }
 
@@ -116,7 +116,7 @@ public class DynamicInvoker : IDisposable
     {
         if (CheckForReload())
             Reload();
-        Interpreter.Interface(invocation, true);
+        Interpreter.Interface(invocation);
     }
 
     //This is the dynamic part

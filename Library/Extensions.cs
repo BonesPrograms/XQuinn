@@ -6,6 +6,18 @@ using System.Linq;
 namespace XQuinn.Extensions
 {
 
+    public static class TypeExtensions
+    {
+        public static string SnipGenericShortName(this Type t)
+        {
+            if (t.IsGenericTypeDefinition)
+            {
+                return t.Name.Remove(t.Name.IndexOf('`'));
+            }
+            return t.Name;
+        }
+    }
+
     public static class CollectionExtensions
     {
         public static void ForEach<T>(this IEnumerable<T> objs, Action<T> action)

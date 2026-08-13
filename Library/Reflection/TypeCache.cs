@@ -18,24 +18,10 @@ namespace XQuinn.Reflection
 
         }
     }
-    // [Flags]
-    // public enum TypeName
-    // {
-    //     _invalid = 0,
-    //     FullName = 8,
-    //     ShortName = 16,
-    //     Assorted = FullName | ShortName
-    // }
-
-    //It should be noted that the fullname for generics is funky and shortnames might be preferred in those cases, or manually made names that you insert yourself.
-    //Typenames cannot be removed once cached.
-
-    //It is recommended not to cache types from hot reloaded assemblies. Instead, make TypeBooks of those assemblies, then you can index those typebooks yourself or send
-    //them to this method and it will try to index them first. If you reload your assembly and your hot reloaded types are cached here, it will cause memory leaks.
     public static class TypeCache
     {
 
-        public static readonly IReadOnlyDictionary<string, Type> Cache;
+        public static readonly IReadOnlyDictionary<string, Type> GlobalCache;
         public static ICollection<string> Keys => _registry.Keys;
         public static ICollection<Type> Types => _registry.Values;
         public static IEnumerable<KeyValuePair<string, Type>> Enumerate()
@@ -66,7 +52,7 @@ namespace XQuinn.Reflection
 
         static TypeCache()
         {
-            Cache = new ReadOnlyDictionary<string, Type>(_registry);
+            GlobalCache = new ReadOnlyDictionary<string, Type>(_registry);
         }
 
         public static bool Contains(string name) => _registry.ContainsKey(name);
@@ -116,63 +102,6 @@ namespace XQuinn.Reflection
                 return Value == cachedtype ? true : throw new DuplicateKeyException(cachedtype!, Value, Key);
             return false;
         }
-
-
-        // /// <summary>
-        // /// Add types to the quick lookup cache. 
-        // /// </summary>
-        // /// <param name="types"></param>
-        // /// <param name="fullname"></param>
-        // public static void Register(Module m, bool fullname) => Register(m.GetTypes(), fullname);
-        // /// <summary>
-        // /// Add types to the quick lookup cache via assembly reference.
-        // /// </summary>
-        // /// <param name="types"></param>
-        // /// <param name="fullname"></param>
-        // public static bool TryRegister(Assembly a, bool fullname)
-        // {
-        //     Type[] types;
-        //     try
-        //     {
-        //         types = a.GetTypes();
-        //     }
-        //     catch (ReflectionTypeLoadException ex)
-        //     {
-        //         var obj = ex.Types?.Where(x => x != null);
-        //         if (obj != null && obj.Any())
-        //         {
-        //             Register(obj!, fullname);
-        //             return true;
-        //         }
-        //         return false;
-        //     }
-        //     Register(types, fullname);
-        //     return true;
-        // }
-        // /// <summary>
-        // /// Add types to the quick lookup cache. 
-        // /// </summary>
-        // /// <param name="types"></param>
-        // /// <param name="fullname"></param>
-        // public static void Register(IEnumerable<Type> types, bool fullname)
-        // {
-        //     foreach (var type in types)
-        //     {
-        //         if (fullname is true && type.FullName != null)
-        //         {
-        //             //  if (Registry.ContainsKey(type.FullName)) //Fullnames will never match so this isnt a problem
-        //             //   throw new TypeAlreadyCachedException(type, type.FullName);
-        //             Registry.TryAdd(type.FullName, type);
-        //         }
-        //         else if (fullname is false)
-        //         {
-        //             if (TryGetValue(type.Name, out Type? value))
-        //                 throw new ShortNameDuplicateException(value!, type.Name);
-        //             Registry.TryAdd(type.Name, type);
-        //         }
-        //     }
-        // }
-
 
     }
 }

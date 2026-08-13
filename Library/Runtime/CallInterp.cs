@@ -35,11 +35,9 @@ namespace XQuinn.Runtime
     {
 
 
-
         //Loading Communicators: Begin your string with these characters to load
-        // * Load an instance from a Static Field or Method (you do not need to load a type first to load an instance from a static field or method)
-        // # Load an instance from an Instance field or Method
-        // @ Load a type (statics only)
+        // * Load from an instance or type member.
+        // @ Load a type's static members
 
         //Method Invocation Communicators:
         // ( Parameters Begin
@@ -50,22 +48,15 @@ namespace XQuinn.Runtime
         // ' Char Declaration (opening and closing) digits and letters technically don't need char declaration enclosures, but i recommend to use them habitually
         // \ Escape Sequence (for strings, chars dont need escapes in this interpreter)
 
-        //What is Loading?
-        //Loading stores a type's fields and methods within the Call Interpreter. Once a type is loaded, you can invoke it's methods by name.
-        //All public, nonpublic and inherited fields and methods available to the loaded type will be accessible.
+        //LOADING:
 
-        //Loading Use:
-
-        //Load Type (static):
+        //Load a type's static members
         //@TypeName
 
-        //Load instance via static: begin string with an * asterisk
-        //*TypeName.Field | load an static field as the current instance
-        //*TypeName.Method() | return an instance from a static method
-
-        //Load instance via instance: After loading an instance via a static field or method, you can load from it's instance fields and methods using 'this'
-        //#this.Field | load an instance field as the current instance.
-        //#this.Method() | return an instance from an instance method
+        //Load an Instance from a Field or Method:
+        //*TypeName.Field or *TypeName.Method() for static or base access if an instance is loaded
+        //*this.Field() or *this.Method() for instance access
+        //You do not need to use "this" or "typename" if you are accessing a member from the loaded type.
 
         //CALLING METHODS:
         //Once a type or instance is loaded, you invoke methods by string name using standard C# syntax, ie.
@@ -83,6 +74,8 @@ namespace XQuinn.Runtime
         //ReadObject(GameHelpers.GetObject()) for a method or ReadObject(GameCore.Player) for a field 
         //Instance example:
         //ReadObject(this.GetInfo()) for a methoid and ReadObject(this.Player) for a field
+
+        //Fields and Methods passed as parameters must always have a typename or "this"
 
         //WHITESPACE:
         //Whitespace functions just like C#. It is usually skipped but once you begin a declaration we stop skipping it and if we read whitespace in the middle of a declaration,
@@ -139,23 +132,20 @@ namespace XQuinn.Runtime
         //NEW/HIDING:
         //If you are trying to access an inherited member that has been hidden with 'new', you can explicitly access hidden members using casting syntax
 
-
-
         //CASTING SYNTAX FOR INSTANCES:
         //When you have an instance loaded, you can explicitly access base members of that instance by leading with the base type's name, similar to static syntax.
         //This works for both parameters, and loading syntax.
         //For loading, you would lead with the basetype's name, instead of loading by this
-        //ex. #BaseType.Field
+        //ex. *BaseType.Field
         //For parameters, instead of accessing by this, you would access it by type name, again, similar to static syntax
         //ex. BaseType.Method()
 
         //This feature also works for accessing base members that have been hidden by the 'new' keyword.
-        //It can also be used to access the "base" version of an override.
         //This also works the other way around, so when you cast to a base type, you can explicitly access members of the instance's actual type by leading with the instance's type name.
 
-        //You can also optionally use the 'base' keyword, this will get the currently loaded type's basetype. ex.
+        //You can also optionally use the 'base' keyword, this will get the instance's basetype. ex.
         // base.Method()
-        //Note that this is the *loaded* type, not the type of the instance.
+
         // Using casting with the ^ character, you can change loadedtype to be different from the instance's actual type.
         //IE. ^BaseTypeName
         //This reloads the immediately available fields and methods and changes the loadedtype, but maintains the instance.
@@ -172,10 +162,17 @@ namespace XQuinn.Runtime
 
         //ASSIGNMENT:
         //You can assign to fields using methods, other fields, or literals. Syntax is pretty normal with a few caveats.
-        //If instance is loaded, you can access fields on the left hand by name or this.name
-        //However, the right hand side of the assingment always needs a type name, even if an instance is loaded
+        //If a type is loaded, you can access fields on the left hand by name or this.name
+        //However, the right hand side of the assingment always needs a type name or this
         //Ex.
         //obj = this.Method() as an example of assinging to the instance field named "obj" from an instance method named "Method"
+        //You can assign to any static members outside of the loaded type by leading with a typename
+
+        //FASTINVOKE/GET FIELDS
+        //To see a field value, begin your invocation with !
+        //IE. !FieldName for a field from the loaded type. You can insert typename to get any static field.
+        //You can also use ! to invoke a static member directly from a type, or to cast the instance and invoke from a base method/field in one quick invocation.
+        //without actually changing the loaded type itself.
 
         //KNOWN BUGS
 
@@ -253,7 +250,7 @@ namespace XQuinn.Runtime
         /// <param name="catchinvoke"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        public object? Interface(string input, bool catchinvoke = false)
+        public object? Interface(string input)
         {
             string? sub = input.Substring(1);
             if (string.IsNullOrWhiteSpace(input) && string.IsNullOrWhiteSpace(sub))
@@ -264,16 +261,14 @@ namespace XQuinn.Runtime
                 '-' => RemoveInstanceFromVariables(sub), ///Remove an instance from the Variables dictionary. Returns null.
                 '$' => LoadInstanceFromVariables(sub), ///Load an instance from the Variables dictionary as the current Instance. Returns loaded value.
 
+                '@' => LoadType(sub), ///Load a type's static members. Returns null.
+                '*' => LoadInstance(sub), ///Load the current Instance from a field or method. Returns loaded value.
                 '^' => CastInstance(sub), ///Cast the current Instance to a different type. Returns null.
-                '@' => LoadTypeStatically(sub), ///Load a type's static members. Returns null.
 
-                '*' => LoadFromStaticMember(sub), ///Load the current Instance from a static field or method. Returns loaded value.
-                '#' => LoadFromInstanceMember(sub), ///Load the current Instance from an Instance field or method. Returns loaded value.
-
-                '!' => FastInvoke(sub), ///Invoke a method or field by type name without changing the loaded type. Returns invoked value.
-                                        ///Can exclude type name to automatically invoke from the loaded type. This is how you view the values of fields, standard invoke
-                                        /// will throw if for anything except method invocations.
-                _ => Invoke(input, catchinvoke) ///Invoke a method from the loaded type, or assign. Returns invoked value if invocation. Returns assigned value if assignment.
+                '!' => IsolatedInvoke(sub), ///Invoke a method or field by type name without changing the loaded type. Returns invoked value.
+                                            ///Can exclude type name to automatically invoke from the loaded type. This is how you view the values of fields, standard invoke
+                                            /// will throw for anything except method invocations. Also allows you to invoke private members from base types without changing the loaded type.
+                _ => StandardInvokeOrAssign(input) ///Invoke a method from the loaded type, or assign. Returns invoked value if invocation. Returns assigned value if assignment.
             };
         }
         /// <summary>
@@ -316,7 +311,7 @@ namespace XQuinn.Runtime
         /// </summary>
         /// <param name="typeName"></param>
 
-        public object? LoadTypeStatically(string typeName)
+        public object? LoadType(string typeName)
         {
             Type t = FindType(TypeString.New(typeName, null));
             LoadTypeMembers(t);
@@ -482,7 +477,7 @@ namespace XQuinn.Runtime
             if (realmethod == null)
                 throw new MissingMethodException($"No method named {method.String} found in {t}'s method or overload dictionary.");
             if (realmethod.IsGenericMethodDefinition)
-                realmethod = method.ConstructGeneric(realmethod, FindType);
+                realmethod = method.ConstructGeneric(realmethod, LocalCache);
 
             return realmethod;
         }
@@ -501,11 +496,11 @@ namespace XQuinn.Runtime
                     throw new InvalidOperationException("Cannot invoke from instance as parameter, instance is null.");
                 if (LoadedType == null)
                     throw new ArgumentException("There is no loaded type who's base type can be accessed.");
-                return LoadedType.BaseType ?? throw new ArgumentException("Base type is null.");
+                return _instanceType!.BaseType ?? throw new ArgumentException("Base type is null.");
             }
             Type t = TypeCache.GetTypeOrThrow(strng.String, LocalCache);
             if (t.IsGenericTypeDefinition)
-                t = strng.ConstructGeneric(t, FindType);
+                t = strng.ConstructGeneric(t, LocalCache);
             return t;
 
         }
@@ -610,40 +605,40 @@ namespace XQuinn.Runtime
         #region Interfacing
 
         ///Checks for method or field syntax. If it detects a method, it runs the entire CallInterpreter like normal and assigns the returned value.
-        object? LoadFromInstanceMember(string input)
-        {
-            if (Instance == null)
-                throw new InvalidOperationException("Cannot load from instance, instance is null.");
-            string? tname = ResolveMemberAccess(input, out string member, out bool field);
-            Type t = tname == null ? LoadedType! : FindType(TypeString.New(tname, null)); ;
-            object? instance;
-            if (t != LoadedType)
-            {
-                if (t.IsAssignableFrom(_instanceType))
-                    LoadTypeMembers(t);
-                else
-                    throw new InvalidCastException($"{_instanceType} cannot cast to {t}.");
-            }
-            if (!field)
-                instance = Invoke(member);
-            else
-                instance = GetFieldParameter(t, member);
-            if (instance == null)
-                throw new ArgumentException($"Load returned null, unable to load instance. Input: {input}");
-            LoadInstance(instance);
-            return Instance;
-        }
+        // object? LoadFromInstanceMember(string input)
+        // {
+        //     if (Instance == null)
+        //         throw new InvalidOperationException("Cannot load from instance, instance is null.");
+        //     string? tname = ResolveMemberAccess(input, out string member, out bool field);
+        //     Type t = tname == null ? LoadedType! : FindType(TypeString.New(tname, null)); ;
+        //     object? instance;
+        //     if (t != LoadedType)
+        //     {
+        //         if (t.IsAssignableFrom(_instanceType))
+        //             LoadTypeMembers(t);
+        //         else
+        //             throw new InvalidCastException($"{_instanceType} cannot cast to {t}.");
+        //     }
+        //     if (!field)
+        //         instance = Invoke(member);
+        //     else
+        //         instance = GetFieldParameter(t, member);
+        //     if (instance == null)
+        //         throw new ArgumentException($"Load returned null, unable to load instance. Input: {input}");
+        //     LoadInstance(instance);
+        //     return Instance;
+        // }
 
 
         //Checks for method or field syntax. If it detects a method, it diverts to an isolated type load and method invocation.
-        object? LoadFromStaticMember(string input)
+        object? LoadInstance(string input)
         {
-            object instance = FastInvoke(input) ?? throw new ArgumentException($"Failed to load new instance from {input}");
+            object instance = IsolatedInvoke(input) ?? throw new ArgumentException($"Failed to load new instance from {input}");
             LoadInstance(instance);
             return Instance;
         }
         //Isolated lexing, loading and invocation for "quick invocation" without resetting loaded instance, method or type.
-        object? FastInvoke(string input)
+        object? IsolatedInvoke(string input)
         {
             string? tname = ResolveMemberAccess(input, out string member, out bool field);
             Type type;
@@ -657,32 +652,6 @@ namespace XQuinn.Runtime
             else
                 instance = GetFieldParameter(type, member);
             return instance;
-        }
-
-        /// <summary>
-        /// Invoke from a string after loading a type or instance.
-        /// </summary>
-        object? Invoke(string invocation)
-        {
-            object?[]? objs = LoadInvocation(invocation);
-            return LoadedMethod!.Invoke(Instance, objs);
-        }
-
-        /// <summary>
-        /// This is a very specific method for dynamic invoker that i will probably move over there soon. It catches outside exceptions to prevent them from "escaping" and causing memleaks.
-        /// </summary>
-        void CatchInvoke(string invocation)
-        {
-            object?[]? objs = LoadInvocation(invocation);
-            try
-            {
-                LoadedMethod!.Invoke(null, objs); ;
-            }
-            catch (TargetInvocationException ex) //memory leak prevention, though im not sure if this is fully necessary
-            {
-                var inner = ex.InnerException;
-                throw new CapturedException(LoadedMethod!, inner);
-            }
         }
 
         // object? GetFieldValue(string input)
@@ -705,21 +674,32 @@ namespace XQuinn.Runtime
             return null;
         }
 
-        object? Invoke(string input, bool catchinvoke)
+        object? StandardInvokeOrAssign(string input)
         {
-            string[] assignmnet = input.Split('=');
-            if (assignmnet.Length > 1)
-                return Assignment(assignmnet, input);
-            if (!catchinvoke)
-                return Invoke(input);
-            CatchInvoke(input);
-            return null;
+            if (Assignment(input, out object? assigned))
+                return assigned;
+            object?[]? parameters = LoadInvocation(input);
+            object? returned;
+            try
+            {
+                returned = LoadedMethod!.Invoke(Instance, parameters); ;
+            }
+            catch (TargetInvocationException ex) //memory leak prevention, though im not sure if this is fully necessary
+            {
+                var inner = ex.InnerException;
+                throw new CapturedException(LoadedMethod!, inner);
+            }
+            return returned;
         }
 
-        object? Assignment(string[] assignment, string originalinput)
+        bool Assignment(string input, out object? assigned)
         {
+            assigned = null;
+            string[] assignment = input.Split('=');
+            if (assignment.Length == 1)
+                return false;
             if (assignment.Length != 2)
-                throw new ArgumentException($"Invalid assignment, can only contain left hand and right hand. Bad assignment: {originalinput}");
+                throw new ArgumentException($"Invalid assignment, can only contain left hand and right hand. Bad assignment: {input}");
             string lefthand = assignment[0];
             string righthand = assignment[1];
 
@@ -728,33 +708,32 @@ namespace XQuinn.Runtime
                 throw new ArgumentException($"Can only assign to fields. Bad input: {lefthand}");
             Type lefthandtype;
             if (lefthandTypeName == null)
-                lefthandtype = LoadedType ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {originalinput}");
+                lefthandtype = LoadedType ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {input}");
             else
                 lefthandtype = FindType(TypeString.New(lefthandTypeName, null));
             FieldInfo f = lefthandtype.GetField(lefthand.Trim(), Flag) ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
 
             string? righthandTypeName = ResolveMemberAccess(righthand, out righthand, out bool righthandfield);
-            object? obj;
             if (righthandTypeName != null)
             {
                 Type righthandType = FindType(TypeString.New(righthandTypeName, null));
 
                 if (righthandfield)
-                    obj = GetFieldParameter(righthandType, righthand.Trim());
+                    assigned = GetFieldParameter(righthandType, righthand.Trim());
                 else
                 {
                     MethodString main = Lexer.ParameterTemplate(righthand);
-                    obj = InvokeMethodParameter(main, righthandType);
+                    assigned = InvokeMethodParameter(main, righthandType);
                 }
             }
             else
-                obj = ParseParameter(new(righthand.Trim()), f.FieldType);
+                assigned = ParseParameter(new(righthand.Trim()), f.FieldType);
 
             if (lefthandtype.IsAssignableFrom(_instanceType))
-                f.SetValue(Instance, obj);
+                f.SetValue(Instance, assigned);
             else
-                f.SetValue(null, obj);
-            return obj;
+                f.SetValue(null, assigned);
+            return true;
         }
 
         object? RemoveInstanceFromVariables(string key)

@@ -68,7 +68,7 @@ namespace XQuinn.ObjectModel
         public static InstanceReader New(string outputFilePath, bool makeFileIfNotFound, Type? loopLimit = null)
         {
             if (makeFileIfNotFound)
-                XQuinn.IO.Write.SafetyCheck(outputFilePath);
+                XQuinn.IO.Logger.SafetyCheck(outputFilePath);
             return new(outputFilePath, loopLimit);
         }
         public void Read<T>(T component, int skip = 0) where T : notnull
@@ -138,12 +138,12 @@ namespace XQuinn.ObjectModel
                             Write("Detected a collection as an element in a collection or a field for a custom type in a collection, skipping for readability.");
                     }
                     break;
-                case ObjectToken.IList:
+                case ObjectToken.ICollection:
                     {
                         if (cameFromReferenceType)
                             goto case ObjectToken.ClassOrStruct;
                         if (!isInCollection && !cameFromCollection)     //reading collections inside of collections is not easy to understand so it is not allowed
-                            ReadIList((IList)obj!);
+                            ReadIList((ICollection)obj!);
                         else
                             Write("Detected a collection as an element in a collection or a field for a custom type in a collection, skipping for readability.");
                     }
@@ -182,7 +182,7 @@ namespace XQuinn.ObjectModel
 
         }
 
-        void ReadIList(IList list)
+        void ReadIList(ICollection list)
         {
             Skip(1);
             Write("READING ILIST OF COUNT " + list.Count.ToString());
@@ -242,26 +242,25 @@ namespace XQuinn.ObjectModel
             return SortByToken(fieldDetails);
         }
 
-        static List<ElementObject> SortElements(IList list) //on the off chance you have a List<object>
+        static List<ElementObject> SortElements(ICollection list) //on the off chance you have a List<object>
         {                                       //you cant control dictionary order and ObjectInfo doesn't support making a "KeyValue" class for a theoretical List<KeyValue> (i tried it, its a mess)
             List<ElementObject> elements = new();     //so we dont sort dictionaries by order
-            for (int i = 0; i < list.Count; i++)
+            foreach(var element in list)
             {
-                object? element = list[i];
-                if (element != null)
-                {
+              //  if (element != null)
+              //  {
                     ObjectToken token = TokenizedObject.GetToken(element);
                     elements.Add(new ElementObject(token, element));
-                }
+              //  }
             }
             return SortByToken(elements);
         }
 
-        static List<O> SortByToken<O>(List<O> infoObjects) where O : TokenizedObject
+        static List<T> SortByToken<T>(List<T> infoObjects) where T : TokenizedObject
         {
-            List<O> referenceTypes = new();
-            List<O> simpleTypes = new();
-            List<O> collections = new();
+            List<T> referenceTypes = new();
+            List<T> simpleTypes = new();
+            List<T> collections = new();
             foreach (var info in infoObjects)
             {
                 if (info.IsCollection)
@@ -271,7 +270,7 @@ namespace XQuinn.ObjectModel
                 else if (info.IsReferenceType)
                     referenceTypes.Add(info);
             }
-            List<O> sortedInfo = new(infoObjects.Count);
+            List<T> sortedInfo = new(infoObjects.Count);
             sortedInfo.AddRange(simpleTypes);
             sortedInfo.AddRange(collections);
             sortedInfo.AddRange(referenceTypes);
@@ -320,8 +319,7 @@ namespace XQuinn.ObjectModel
 
         protected void Skip(int value)
         {
-            value--;
-            for (int i = 0; i < value; i++)
+            for (int i = 1; i <= value; i++)
                 Write("\n");
         }
 

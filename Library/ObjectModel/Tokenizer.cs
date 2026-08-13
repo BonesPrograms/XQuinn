@@ -21,7 +21,7 @@ public abstract class TokenizedObject
 
     public bool IsReferenceType => Token == ObjectToken.ClassOrStruct;
 
-    public bool IsCollection => Token == ObjectToken.IList || Token == ObjectToken.IDictionary;
+    public bool IsCollection => Token == ObjectToken.IList || Token == ObjectToken.IDictionary|| Token == ObjectToken.ICollection;
 
     public bool IsSimple
     => Token switch
@@ -42,6 +42,7 @@ public abstract class TokenizedObject
             IDictionary => ObjectToken.IDictionary,
             IList => ObjectToken.IList,
             Delegate => ObjectToken.Delegate, //this may require extra work, dont know how to read the delegate value yet
+            ICollection => ObjectToken.ICollection,
             _ => ObjectToken.ClassOrStruct
         };
     static ObjectToken EvaluateValueType(object obj)
@@ -83,11 +84,12 @@ public enum ObjectToken  //tokens are used to figure out what means we will use 
     Null,
     IList, //IList and ICollection can probably be grouped together but we need to check if its an IDictionary first then
     IDictionary, //need to add ICollection support for hashish tables
+    ICollection,
     PrimitiveStruct, 
     String, //strings are classes read like primitive structs
     ClassOrStruct, //Classes and nonprimitive structs (called "Custom Types" by the reader)
     Enum,
     Delegate,
-    Boolean //booltostring is converted to its lower variant
+    Boolean //booltostring is converted to its lower varian
 }
 }

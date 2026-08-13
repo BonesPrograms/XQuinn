@@ -146,9 +146,9 @@ namespace XQuinn.Parsing.AST
         public IReadOnlyList<TypeString>? Generics => _generics;
         IReadOnlyList<TypeString>? _generics;
 
-        public T ConstructGeneric<T>(T obj, Func<TypeString, Type>? getTypeByString = null) where T : MemberInfo
+        public T ConstructGeneric<T>(T obj, IReadOnlyDictionary<string, Type>? types = null) where T : MemberInfo
         {
-            Type[] generics = GetGenerics(getTypeByString);
+            Type[] generics = GetGenerics(types);
             if (obj is Type type)
             {
                 if (this is TypeString)
@@ -168,16 +168,20 @@ namespace XQuinn.Parsing.AST
         }
 
         ///Gets generic string arguments from a Method AST object.
-        public Type[] GetGenerics(Func<TypeString, Type>? func)
+        public Type[] GetGenerics(IReadOnlyDictionary<string, Type>? dic)
         {
             if (_generics != null)
             {
                 Type[] arr = new Type[_generics.Count];
                 for (int i = 0; i < arr.Length; i++)
-                    if (func != null)
-                        arr[i] = func.Invoke(_generics[i]);
-                    else
-                        arr[i] = TypeCache.GetTypeOrThrow(_generics[i].String);
+                {
+                    arr[i] = TypeCache.GetTypeOrThrow(_generics[i].String, dic);
+                    if (arr[i].IsGenericTypeDefinition)
+                    {
+                        Type[] generics = _generics[i].GetGenerics(dic);
+                        arr[i] = arr[i].MakeGenericType(generics);
+                    }
+                }
                 return arr;
             }
             throw new ArgumentException($"No generic parameters were provided to {GetType().Name} with name value {String} ");
