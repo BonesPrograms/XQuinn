@@ -138,7 +138,7 @@ namespace XQuinn.ObjectModel
                             Write("Detected a collection as an element in a collection or a field for a custom type in a collection, skipping for readability.");
                     }
                     break;
-                case ObjectToken.ICollection:
+                case ObjectToken.ICollection or ObjectToken.IList:
                     {
                         if (cameFromReferenceType)
                             goto case ObjectToken.ClassOrStruct;
