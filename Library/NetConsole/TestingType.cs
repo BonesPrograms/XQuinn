@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using _xquinn_prgrm;
 
 namespace XQuinn.NetConsole
 {
@@ -19,13 +20,11 @@ namespace XQuinn.NetConsole
         protected readonly StringBuilder sb = new();
         protected abstract Type TestOf { get; }
         static readonly Dictionary<Type, TestingType> Tests = GetTests();
-        protected virtual void Display(StringBuilder sb) => Console.WriteLine(sb.ToString());
-        protected abstract void Test(string obj);
-
         protected TestingType()
         {
-            
+
         }
+        protected abstract void Test(string obj);
         public static void Test<T>()
         {
             try
@@ -48,18 +47,15 @@ namespace XQuinn.NetConsole
         {
             while (true)
             {
+
                 string? text = Console.ReadLine();
                 if (text == "exit")
                     return;
                 if (text != null)
-                {
-                    StringBuilder? sb = TryCatchToString(text);
-                    if (sb != null)
-                        Display(sb);
-                }
+                    TestAndCatchForDisplay(text);
             }
         }
-        StringBuilder? TryCatchToString(string obj)
+        void TestAndCatchForDisplay(string obj)
         {
             try
             {
@@ -67,22 +63,13 @@ namespace XQuinn.NetConsole
             }
             catch (Exception ex)
             {
+                sb.Append($"{ex.GetType()}\n");
+                sb.Append($"{ex.Message}\n");
+                sb.Append($"{ex.StackTrace}\n");
+                sb.Append($"{ex.Data}\n{ex.TargetSite}\n{ex.Source}\n");
+                Console.WriteLine(sb);
                 sb.Length = 0;
-                sb.Append(ex.GetType());
-                sb.Append(' ');
-                sb.Append(ex.Message);
-                sb.Append(' ');
-                sb.Append(ex.StackTrace);
-                sb.Append(' ');
-             //   sb.Append(ex.Data);
-             //   sb.Append(' ');
-             //   sb.Append(ex.TargetSite);
-              //  sb.Append(' ');
-              //  sb.Append(ex.Source);
-              //  sb.Append(' ');
-                return sb;
             }
-            return null;
         }
 
         static Dictionary<Type, TestingType> GetTests()
@@ -100,18 +87,18 @@ namespace XQuinn.NetConsole
         }
     }
 
-    internal class LexTest : TestingType
+    internal sealed class LexTest : TestingType
     {
 
         LexTest()
         {
-            
+
         }
         protected override Type TestOf => typeof(InvocationLexer);
         readonly InvocationLexer lex = new();
         protected override void Test(string obj)
         {
-            MethodString method = lex.ParameterTemplate(obj);
+            MethodString method = lex.ParameterTemplate(obj, "discard");
             Read(method);
         }
 
@@ -129,11 +116,11 @@ namespace XQuinn.NetConsole
             }
         }
     }
-    internal class RuntimeCommandTest : TestingType
+    internal sealed class RuntimeCommandTest : TestingType
     {
         RuntimeCommandTest()
         {
-            
+
         }
         protected override Type TestOf => typeof(RuntimeCommand);
         protected override void Test(string obj)
@@ -144,11 +131,11 @@ namespace XQuinn.NetConsole
         }
     }
 #if NET6_0_OR_GREATER
-    internal class RuntimeInvokerTest : TestingType
+    internal sealed class RuntimeInvokerTest : TestingType
     {
         RuntimeInvokerTest()
         {
-            
+
         }
         protected override Type TestOf => typeof(InvokerInterface);
         protected override void Test(string obj)
@@ -161,24 +148,44 @@ namespace XQuinn.NetConsole
 
     }
 #endif
-    internal class CallInterpTest : TestingType
+    internal sealed class CallInterpTest : TestingType
     {
         CallInterpTest()
         {
-            
+
         }
+
+        static FieldInfo _key = typeof(CallInterpreter).GetField("_key", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        static FieldInfo _variableKey = typeof(CallInterpreter).GetField("_variableKey", BindingFlags.NonPublic | BindingFlags.Instance)!;
         protected override Type TestOf => typeof(CallInterpreter);
         readonly CallInterpreter interp = new();
         protected override void Test(string obj)
         {
-            Console.WriteLine("::");
-            Console.WriteLine($"Loaded Type: {interp.LoadedType}");
-            Console.WriteLine($"Loaded method {interp.LoadedMethod}");
+            Console.Clear();
+            Console.WriteLine(DateTime.Now);
+            if (obj == "variables")
+            {
+                ConsoleTools.WriteMany(interp.Variables, x => x.Key);
+                return;
+            }
+            Display(true);
+            Console.WriteLine("Invoking...");
             object? ret = interp.Interface(obj);
-            Console.WriteLine("Invoked:");
-            Console.WriteLine($"Returned: {ret}");
-            Console.WriteLine($"Loaded type: {interp.LoadedType}");
-            Console.WriteLine($"Loaded method {interp.LoadedMethod}");
+            Display(false);
+        }
+
+        void Display(bool before)
+        {
+            string timing = before ? "Last Loaded" : "Current Loaded";
+            Console.WriteLine($"{timing} Type: {interp.LoadedType}");
+            Console.WriteLine($"{timing} Method: {interp.LoadedMethod}");
+            Console.WriteLine($"{timing} Instance Type: {interp.InstanceType}");
+            string? key = (string?)_key.GetValue(interp);
+            Console.WriteLine($"{timing} _key {key}");
+            string? variableKey = (string?)_variableKey.GetValue(interp);
+            Console.WriteLine($"{timing} _variableKey {variableKey}");
+
         }
     }
 }

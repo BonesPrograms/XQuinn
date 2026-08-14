@@ -5,9 +5,15 @@ using System.Linq;
 using System.Reflection;
 using System;
 using XQuinn.Reflection;
+using HarmonyLib;
 
 namespace XQuinn.Parsing.AST
 {
+
+    public interface IMember
+    {
+        public TypeString? DeclaringType {get;}
+    }
     //"abstract syntax tree"
 
     //This is tightly coupled to CallInterpreter. It can be used elsewhere (I use it in RuntimeCommands) but actually turning parameters to objects or generic parameters to type arrays
@@ -23,36 +29,35 @@ namespace XQuinn.Parsing.AST
             protected set => _string = value;
 
         }
-        public MethodString? _paramOf
+        public MethodString? ParamOf
         {
-            get => _paramOfInternal;
-            protected set => _paramOfInternal = value;
+            get => _paramOf;
+            protected set => _paramOf = value;
         }
-        string _string = null!;
-        MethodString? _paramOfInternal;
-        public string? ParamOf => _paramOf?.String;
+        string _string;
+        MethodString? _paramOf;
+        readonly bool _isParemterString;
+        public ParameterString(string String, MethodString? paramof)
+        {
+            _string = String;
+            ParamOf = paramof;
+            _isParemterString = GetType() == typeof(ParameterString);
+        }
 
-        protected ParameterString()
-        {
-
-        }
-        public ParameterString(string name, MethodString? paramof) : this(name)
-        {
-            _paramOf = paramof;
-        }
-        public ParameterString(string name)
-        {
-            _string = name;
-        }
 
         public override string ToString()
         {
             return String + $" Param Of: {ParamOf}";
         }
 
-        public object? ParseParameter(Type type) //need half and int128 support
+        ///This does not work with FieldString,MethodString or TypeString. it is for true ParameterStrings
+        public object? ParseParameter(Type type)
         {
+            if (!_isParemterString)
+                throw new NotSupportedException("ParseParameter does not function properly for MethodString,TypeString and FieldString.");
             string strng = String;
+            if (strng == "default")
+                return type.GetDefaultValue();
             if (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>)) //ValueType of Nullable<T>
             {
                 if (strng == "null")
@@ -125,18 +130,13 @@ namespace XQuinn.Parsing.AST
         }
     }
 
-    public class FieldString : ParameterString
+    public sealed class FieldString : ParameterString, IMember
     {
-        public string DeclaringType => _type.String;
-        public TypeString _type;
-
-        public FieldString(string name, TypeString type) : base(name)
+        public TypeString DeclaringType => _type;
+        TypeString _type;
+        public FieldString(string name, MethodString? paramOf, TypeString declaringType) : base(name, paramOf)
         {
-            _type = type;
-        }
-        public FieldString(string name, MethodString? paramOf, TypeString type) : base(name, paramOf)
-        {
-            _type = type;
+            _type = declaringType;
         }
 
     }
@@ -145,74 +145,50 @@ namespace XQuinn.Parsing.AST
     {
         public IReadOnlyList<TypeString>? Generics => _generics;
         IReadOnlyList<TypeString>? _generics;
-
-        public T ConstructGeneric<T>(T obj, IReadOnlyDictionary<string, Type>? types = null) where T : MemberInfo
+        protected GenericString(string name, MethodString? paramOf) : base(name, paramOf)
         {
-            Type[] generics = GetGenerics(types);
-            if (obj is Type type)
-            {
-                if (this is TypeString)
-                    return (T)(object)type.MakeGenericType(generics);
-                else
-                    throw new ArgumentException("Attempting to construct generic Type from Method AST.");
-            }
-            else if (obj is MethodInfo method)
-            {
-                if (this is MethodString)
-                    return (T)(object)method.MakeGenericMethod(generics);
-                else
-                    throw new ArgumentException("Attempting to construct generic method from TypeString AST.");
-            }
-            else
-                throw new NotSupportedException("Can only construct generics from type and method definitions.");
-        }
 
-        ///Gets generic string arguments from a Method AST object.
-        public Type[] GetGenerics(IReadOnlyDictionary<string, Type>? dic)
+        }
+        protected static T New<T>(T genericString) where T : GenericString
+        {
+            genericString.GenericNames();
+            return genericString;
+        }
+        public Type[] ConvertGenericArguments(IReadOnlyDictionary<string, Type>? dic)
         {
             if (_generics != null)
             {
-                Type[] arr = new Type[_generics.Count];
-                for (int i = 0; i < arr.Length; i++)
+                Type[] genericArgs = new Type[_generics.Count];
+                for (int i = 0; i < genericArgs.Length; i++)
                 {
-                    arr[i] = TypeCache.GetTypeOrThrow(_generics[i].String, dic);
-                    if (arr[i].IsGenericTypeDefinition)
+                    TypeString tstring = _generics[i];
+                    Type t = TypeCache.GetTypeOrThrow(tstring.String, dic);
+                    if (t.IsGenericTypeDefinition)
                     {
-                        Type[] generics = _generics[i].GetGenerics(dic);
-                        arr[i] = arr[i].MakeGenericType(generics);
+                        Type[] subGenericArgs = tstring.ConvertGenericArguments(dic);
+                        t = t.MakeGenericType(subGenericArgs);
                     }
+                    genericArgs[i] = t;
                 }
-                return arr;
+                return genericArgs;
             }
             throw new ArgumentException($"No generic parameters were provided to {GetType().Name} with name value {String} ");
         }
-        protected GenericString()
-        {
 
-        }
-        protected static T New<T>(string name, MethodString? paramOf) where T : GenericString
-        {
-            T genericParameter = (T)Activator.CreateInstance(typeof(T), true)!;
-            genericParameter.String = name.Trim();
-            genericParameter._paramOf = paramOf;
-            genericParameter.GenericNames(name);
-            return genericParameter;
-        }
-
-        void GenericNames(string name)
+        void GenericNames()
         {
             const string regex = "<([^>]+)>";
-            var matches = Regex.Match(name, regex);
+            var matches = Regex.Match(String, regex);
             if (matches.Success)
             {
                 string[] args = matches.Groups[1].Value.Split(',');
-                _generics = args.Select(x => TypeString.New(x, null)).ToList().AsReadOnly();
+                _generics = args.Select(x => TypeString.New(x.Trim(), null)).ToList().AsReadOnly();
                 int i = String.IndexOf('>');
                 for (int x = i + 1; x < String.Length; x++)
                 {
                     if (String[x] != ' ')
                     {
-                        throw new LexicalException($"Detected trailing characters after generic input. ", name);
+                        throw new LexicalException($"Detected trailing characters after generic input. ", String);
                     }
                 }
                 String = String.Remove(String.IndexOf('<'));
@@ -220,38 +196,49 @@ namespace XQuinn.Parsing.AST
 
         }
     }
-    public class TypeString : GenericString
+    public sealed class TypeString : GenericString
     {
-        TypeString()
+        TypeString(string name, MethodString? paramOf) : base(name, paramOf)
         {
+
+        }
+
+        public Type ConvertToGenericType(Type genericTypeDefinition, IReadOnlyDictionary<string, Type>? types = null)
+        {
+            Type[] generics = ConvertGenericArguments(types);
+            return genericTypeDefinition.MakeGenericType(generics);
 
         }
 
         public static TypeString New(string name, MethodString? paramOf)
         {
-            return New<TypeString>(name, paramOf);
+            return New<TypeString>(new(name.Trim(), paramOf));
         }
 
     }
-    public class MethodString : GenericString
+    public sealed class MethodString : GenericString, IMember
     {
-        MethodString()
-        {
-            Params = _params.AsReadOnly();
-        }
-        public string? DeclaringType => _type?.String;
-        public TypeString? _type => _typeInternal;
-        TypeString? _typeInternal;
+
+        public TypeString? DeclaringType => _type;
+        TypeString? _type;
         public readonly IReadOnlyList<ParameterString> Params;
         List<ParameterString> _params = new();
-        public static MethodString New(string name, MethodString? NestedIn, TypeString? typeName)
+        public static MethodString New(string name, MethodString? paramOf, TypeString? type)
         {
-            MethodString method = New<MethodString>(name, NestedIn);
-            method._typeInternal = typeName;
-            return method;
+            return New<MethodString>(new(name, paramOf, type));
+        }
+        MethodString(string name, MethodString? paramOf, TypeString? type) : base(name, paramOf)
+        {
+            _type = type;
+            Params = _params.AsReadOnly();
         }
 
-        public void Add(ParameterString param)
+        public MethodInfo ConvertToGenericMethod(MethodInfo genericMethodDefinition, IReadOnlyDictionary<string, Type>? types = null)
+        {
+            Type[] generics = ConvertGenericArguments(types);
+            return genericMethodDefinition.MakeGenericMethod(generics);
+        }
+        public void AddParameter(ParameterString param)
         {
             _params.Add(param);
         }
@@ -260,7 +247,7 @@ namespace XQuinn.Parsing.AST
             StringBuilder sb = new();
             sb.Append(String);
             sb.Append($" :: Nested in {ParamOf} :: ");
-            sb.Append($"TypeName {DeclaringType} :: ");
+            sb.Append($"TypeName {DeclaringType?.String} :: ");
             sb.Append("Params: ");
             for (int i = 0; i < Params.Count; i++)
             {

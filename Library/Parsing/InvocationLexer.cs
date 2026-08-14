@@ -123,8 +123,9 @@ namespace XQuinn.Parsing
         //1) you will append a communicator (SUPER ILLEGAL)
         //2) you will append an extra character to the parameter
         //That being said,if you do not jump to append before the parameter read is finished, you will cause things like strings to fail to parse, since they can contain terminators.
-        public MethodString ParameterTemplate(string invocation)
+        public MethodString ParameterTemplate(string invocation, string? declaringType)
         {
+
             if (string.IsNullOrWhiteSpace(invocation))
                 throw new ArgumentException("Invocation cannot be null or whitespace.");
             int i = 0;
@@ -134,7 +135,7 @@ namespace XQuinn.Parsing
                 Value = invocation[i];
                 if (Start) //Method(Param1,Param2)
                 {
-                    if (ReadMainMethod(ref i, invocation))
+                    if (ReadMainMethod(ref i, invocation, declaringType))
                         goto Append;
                     else
                         goto Increment;
@@ -177,7 +178,7 @@ namespace XQuinn.Parsing
                 }
                 if (LastReadingValue > ReadingSubparamsOf)
                 {
-                    CurrentMethod = CurrentMethod!._paramOf;
+                    CurrentMethod = CurrentMethod!.ParamOf;
                     LastReadingValue--;
                 }
                 if (Value == MethodTerminate)
@@ -333,7 +334,7 @@ namespace XQuinn.Parsing
         }
 
         //all errors stop the program, but these errors mean you really messed up 
-        bool ReadMainMethod(ref int i, string invocation)
+        bool ReadMainMethod(ref int i, string invocation, string? declaringType)
         {
             if (BeganFirstRead)
             {
@@ -343,7 +344,7 @@ namespace XQuinn.Parsing
                 }
                 if (Value == MethodStart)
                 {
-                    ReadMain();
+                    ReadMain(declaringType);
                     Start = false;
                     MethodBegan = true;
                     BeganFirstRead = false;
@@ -359,10 +360,10 @@ namespace XQuinn.Parsing
             return true;
         }
 
-        void ReadMain()
+        void ReadMain(string? declaringType)
         {
             //reads everything prior to (
-            MethodString method = MethodString.New(sb.ToString(), null, null);
+            MethodString method = MethodString.New(sb.ToString(), null, declaringType != null ? TypeString.New(declaringType, null) : null);
             sb.Length = 0;
             CurrentMethod = method;
             Main = method;
@@ -436,7 +437,7 @@ namespace XQuinn.Parsing
             TypeString type = TypeString.New(typename, null);
             FieldString field = new(fieldname, CurrentMethod, type);
             sb.Length = 0;
-            CurrentMethod!.Add(field);
+            CurrentMethod!.AddParameter(field);
             ReadingIdentifier = false;
         }
 
@@ -444,10 +445,10 @@ namespace XQuinn.Parsing
         void ReadMethod(string invocation)
         {
             string typename = ResolveMemberAccess(out string methodname);
-            TypeString type = TypeString.New(typename,null);
-            MethodString method = MethodString.New(methodname,CurrentMethod,type);
+            TypeString type = TypeString.New(typename, null);
+            MethodString method = MethodString.New(methodname, CurrentMethod, type);
             sb.Length = 0;
-            CurrentMethod!.Add(method);
+            CurrentMethod!.AddParameter(method);
             CurrentMethod = method;
             ReadingIdentifier = false;
             ReadingSubparamsOf++;
@@ -459,7 +460,7 @@ namespace XQuinn.Parsing
             string prm = sb.ToString();
             ParameterString param = new(prm, CurrentMethod);
             sb.Length = 0;
-            CurrentMethod!.Add(param);
+            CurrentMethod!.AddParameter(param);
         }
         void FatalLexicalError(string invocation)
         {

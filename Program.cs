@@ -28,8 +28,9 @@ namespace _xquinn_prgrm
             IEnumerable<Type> types = typeof(_xquinn_prgrm_Main).Module.GetTypes().Where(x => x.Namespace == "_xquinn_prgrm");
             TypeBook book = TypeBook.New(types, x => x.SnipGenericShortName(), StringComparer.OrdinalIgnoreCase);
             TypeCache.CacheTypes(book);
-            RuntimeCommand.Register(types, "XQuinn");
-            TestingType.Test<InvokerInterface>();
+             RuntimeCommand.Register(types, "XQuinn");
+            Console.Clear();
+            TestingType.Test<CallInterpreter>();
 
 
         }
@@ -37,14 +38,21 @@ namespace _xquinn_prgrm
     }
 
     [HasRuntimeCommand]
-    class Command
+    class Class
     {
-        [RuntimeCommand("Method")]
-        static void Method<T>(out int i)
+
+        static int i = 0;
+        static readonly string[] _keys = { "one", "two", "three", "four", "five" };
+        public static Class @new() => new();
+        public string Get() => key;
+        public readonly string key;
+        public Class()
         {
-            i = 15;
-            Console.WriteLine("Hi");
+            key = _keys[i];
+            i++;
         }
+
+        public void Print(string i) => Console.WriteLine(i);
     }
 
 }
@@ -52,13 +60,13 @@ namespace _xquinn_prgrm
 //     public class Lex
 //     {
 
-//         static int Num = 1;
+//         static string Num = 1;
 
 //         public static void Char(char i, char d)
 //         {
 //             Console.WriteLine(i);
 //         }
-//         public static void Call(string i, int x, bool value)
+//         public static void Call(string i, string x, bool value)
 //         {
 //             Console.WriteLine(x);
 //         }

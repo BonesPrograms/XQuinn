@@ -196,6 +196,8 @@ namespace XQuinn.Runtime
         /// </summary>
         public object? Instance => _instance;
         object? _instance;
+        public string? LoadedVariable => _variableKey;
+        public Type? InstanceType => _instanceType;
         Type? _instanceType; //used for polymorphism checks
 
         /// <summary>
@@ -203,6 +205,9 @@ namespace XQuinn.Runtime
         /// </summary>
         public Type? LoadedType => _loadedType;
         Type? _loadedType;
+        public string? LoadedTypeKey => _key;
+        string? _key;
+        string? _variableKey;
         Dictionary<string, MethodInfo> _methods = new(StringComparer.OrdinalIgnoreCase);
         readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
 
@@ -242,7 +247,7 @@ namespace XQuinn.Runtime
             _loadedMethod = null;
             _loadedParams = null;
         }
-
+        #region Interface
         /// <summary>
         /// Primary method for interfacing with call interpreter's various features.
         /// </summary>
@@ -265,22 +270,47 @@ namespace XQuinn.Runtime
                 '*' => LoadInstance(sub), ///Load the current Instance from a field or method. Returns loaded value.
                 '^' => CastInstance(sub), ///Cast the current Instance to a different type. Returns null.
 
-                '!' => IsolatedInvoke(sub), ///Invoke a method or field by type name without changing the loaded type. Returns invoked value.
-                                            ///Can exclude type name to automatically invoke from the loaded type. This is how you view the values of fields, standard invoke
-                                            /// will throw for anything except method invocations. Also allows you to invoke private members from base types without changing the loaded type.
+                '!' => IsolatedInvoke(sub, false), ///Invoke a method or field by type name without changing the loaded type. Returns invoked value.
+                                                   ///Can exclude type name to automatically invoke from the loaded type. This is how you view the values of fields, standard invoke
+                                                   /// will throw for anything except method invocations. Also allows you to invoke private members from base types without changing the loaded type.
                 _ => StandardInvokeOrAssign(input) ///Invoke a method from the loaded type, or assign. Returns invoked value if invocation. Returns assigned value if assignment.
             };
         }
+        #endregion
         /// <summary>
         /// Convert a method AST object to actual parameters by matching it to a MethodInfo's parameter array.
         /// </summary>
         public object?[] GetParsedParameters(ParameterInfo[] methodparams, MethodString method)
         {
+            object?[] prms = new object[methodparams.Length];
             if (method.Params.Count != methodparams.Length)
-                throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {methodparams.Length} method name {method.String}");
-            object?[] prms = new object[method.Params.Count];
-            for (int i = 0; i < methodparams.Length; i++)
-                prms[i] = ParameterToObject(method.Params[i], methodparams[i].ParameterType);
+            {
+                int inputAmount = method.Params.Count;
+                int reqAmount = methodparams.Length;
+
+                if (inputAmount < reqAmount)
+                {
+                    for (int i = inputAmount; i < reqAmount; i++)
+                    {
+                        ParameterInfo parameter = methodparams[i];
+                        if (parameter.HasDefaultValue)
+                            prms[i] = parameter.DefaultValue;
+                        else
+                            throw new TargetParameterCountException($"Parameter {parameter} does not have a default value. Input param count {inputAmount} Required count {reqAmount}");
+                    }
+                    for (int i = 0; i < inputAmount; i++)
+                        prms[i] = ParameterToObject(method.Params[i], methodparams[i].ParameterType);
+                }
+                else
+                    throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {methodparams.Length} method name {method.String}");
+            }
+            else
+            {
+                for (int i = 0; i < methodparams.Length; i++)
+                    prms[i] = ParameterToObject(method.Params[i], methodparams[i].ParameterType);
+            }
+            // throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {methodparams.Length} method name {method.String}");
+
             return prms;
         }
         /// <summary>
@@ -313,10 +343,13 @@ namespace XQuinn.Runtime
 
         public object? LoadType(string typeName)
         {
-            Type t = FindType(TypeString.New(typeName, null));
+            TypeString tstring = TypeString.New(typeName, null);
+            Type t = FindType(tstring);
+            _key = tstring.String;
             LoadTypeMembers(t);
             _instance = null;
             _instanceType = null;
+            _variableKey = null;
             return null;
         }
 
@@ -356,7 +389,7 @@ namespace XQuinn.Runtime
         //Begins the cycle - lexes the invocation, loads the method, and then sends data off for parsing.
         object?[]? LoadInvocation(string invocation)
         {
-            MethodString main = Lexer.ParameterTemplate(invocation); //at this point we cannot know if the generic arguments are the same yet, but incase youre reloading the same method with diff generic parameters, we always reload if we detect generic vs generic
+            MethodString main = Lexer.ParameterTemplate(invocation, null); //at this point we cannot know if the generic arguments are the same yet, but incase youre reloading the same method with diff generic parameters, we always reload if we detect generic vs generic
             if (LoadedMethod == null || !LoadedMethod.Name.EqualsCaseless(main.String) || LoadedMethod.IsGenericMethod)// && main.IsGeneric)
             {
                 if (LoadedType == null)
@@ -378,9 +411,11 @@ namespace XQuinn.Runtime
         {
             object? obj;
             if (param is FieldString f)
-                obj = GetFieldParameter(FindType(f._type), f.String);
+                obj = GetFieldWithVariable(f);
             else if (param is MethodString m)
-                obj = InvokeMethodParameter(m, FindType(m._type!));
+            {
+                obj = InvokeMethodWithVariable(m);
+            }
             else
             {
                 obj = ParseParameter(param, paramType);
@@ -394,6 +429,7 @@ namespace XQuinn.Runtime
             return obj;
 
         }
+
 
         object? ParseParameter(ParameterString p, Type type) //need half and int128 support
         {
@@ -415,8 +451,7 @@ namespace XQuinn.Runtime
             return p.ParseParameter(type);
         }
 
-
-        object? GetFieldParameter(Type t, string fname)
+        object? GetFieldParameter(Type t, string fname, object? variable)
         {
             FieldInfo? field;
             if (t == LoadedType)
@@ -431,9 +466,10 @@ namespace XQuinn.Runtime
                 if (!SupportedMember(field))
                     throw new NotSupportedException($"Delegates are unsupported. Bad object: {field.DeclaringType}.{field.Name}");
             }
-            return t.IsAssignableFrom(_instanceType) ? field.GetValue(Instance) : field.GetValue(null);
+            object? instance = GetVariableInstance(t, variable);
+            return field.GetValue(instance);
         }
-        object? InvokeMethodParameter(MethodString method, Type t)
+        object? InvokeMethodParameter(MethodString method, Type t, object? variable)
         {
             MethodInfo? call = null;
             if (t != LoadedType)
@@ -464,31 +500,56 @@ namespace XQuinn.Runtime
             }
             ParameterInfo[] methodparams = call.GetParameters();
             object?[]? subparams = GetParsedParameters(methodparams, method);
-            object? instance = t.IsAssignableFrom(_instanceType) ? Instance : null;
+            object? instance = GetVariableInstance(t, variable);
             return call.Invoke(instance, subparams);
             //if you are getting a type that you know will be in a metadata map, it doesnt need to have case //but if the map is null, then you need full casing  //namespace is ALWAYS required
         }
-
-        MethodInfo FindMethod(Type t, Dictionary<string, MethodInfo> overloads, Dictionary<string, MethodInfo> methods, MethodString method)
+        object? GetVariableInstance(Type t, object? variable)
         {
-            methods.TryGetValue(method.String, out MethodInfo? realmethod);
-            if (realmethod == null)
-                overloads.TryGetValue(method.String, out realmethod);
-            if (realmethod == null)
-                throw new MissingMethodException($"No method named {method.String} found in {t}'s method or overload dictionary.");
-            if (realmethod.IsGenericMethodDefinition)
-                realmethod = method.ConstructGeneric(realmethod, LocalCache);
-
-            return realmethod;
+            object? instance;
+            if (variable != null)
+                instance = variable;
+            else
+                instance = t.IsAssignableFrom(_instanceType) ? Instance : null;
+            return instance;
+        }
+        object? InvokeMethodWithVariable(MethodString m)
+        {
+            Type t = GetTypeFromVariable(m, out object? variable);
+            return InvokeMethodParameter(m, t, variable);
+        }
+        object? GetFieldWithVariable(FieldString s)
+        {
+            Type t = GetTypeFromVariable(s, out object? variable);
+            return GetFieldParameter(t, s.String, variable);
         }
 
-        Type FindType(TypeString strng)
+        Type GetTypeFromVariable(IMember m, out object? variable)
         {
-            if (strng.String == "this")
+            Type t;
+            if (m.DeclaringType == null)
+                throw new ArgumentException();
+            if (Variables.TryGetValue(m.DeclaringType.String, out variable))
+                t = variable.GetType();
+            else
+                t = FindType(m.DeclaringType);
+            return t;
+        }
+
+        Type FindType(TypeString strng, bool cast = false)
+        {
+            if (!cast)
             {
-                if (Instance == null)
-                    throw new InvalidOperationException("Cannot invoke from instance as parameter, instance is null.");
-                return _instanceType!;
+                if (Variables.TryGetValue(strng.String, out object? variable))
+                    return variable.GetType();
+                if (strng.String == _key && LoadedType != null) //if you start off with a load like *class.field , then loadedType will be null, but key will be == strng.String
+                    return LoadedType;
+                if (strng.String == "this")
+                {
+                    if (Instance == null)
+                        throw new InvalidOperationException("Cannot invoke from instance as parameter, instance is null.");
+                    return _instanceType!;
+                }
             }
             if (strng.String == "base")
             {
@@ -500,9 +561,22 @@ namespace XQuinn.Runtime
             }
             Type t = TypeCache.GetTypeOrThrow(strng.String, LocalCache);
             if (t.IsGenericTypeDefinition)
-                t = strng.ConstructGeneric(t, LocalCache);
+                t = strng.ConvertToGenericType(t, LocalCache);
             return t;
 
+        }
+
+        MethodInfo FindMethod(Type t, Dictionary<string, MethodInfo> overloads, Dictionary<string, MethodInfo> methods, MethodString method)
+        {
+            methods.TryGetValue(method.String, out MethodInfo? realmethod);
+            if (realmethod == null)
+                overloads.TryGetValue(method.String, out realmethod);
+            if (realmethod == null)
+                throw new MissingMethodException($"No method named {method.String} found in {t}'s method or overload dictionary.");
+            if (realmethod.IsGenericMethodDefinition)
+                realmethod = method.ConvertToGenericMethod(realmethod, LocalCache);
+
+            return realmethod;
         }
 
         #endregion
@@ -604,70 +678,45 @@ namespace XQuinn.Runtime
 
         #region Interfacing
 
-        ///Checks for method or field syntax. If it detects a method, it runs the entire CallInterpreter like normal and assigns the returned value.
-        // object? LoadFromInstanceMember(string input)
-        // {
-        //     if (Instance == null)
-        //         throw new InvalidOperationException("Cannot load from instance, instance is null.");
-        //     string? tname = ResolveMemberAccess(input, out string member, out bool field);
-        //     Type t = tname == null ? LoadedType! : FindType(TypeString.New(tname, null)); ;
-        //     object? instance;
-        //     if (t != LoadedType)
-        //     {
-        //         if (t.IsAssignableFrom(_instanceType))
-        //             LoadTypeMembers(t);
-        //         else
-        //             throw new InvalidCastException($"{_instanceType} cannot cast to {t}.");
-        //     }
-        //     if (!field)
-        //         instance = Invoke(member);
-        //     else
-        //         instance = GetFieldParameter(t, member);
-        //     if (instance == null)
-        //         throw new ArgumentException($"Load returned null, unable to load instance. Input: {input}");
-        //     LoadInstance(instance);
-        //     return Instance;
-        // }
-
 
         //Checks for method or field syntax. If it detects a method, it diverts to an isolated type load and method invocation.
         object? LoadInstance(string input)
         {
-            object instance = IsolatedInvoke(input) ?? throw new ArgumentException($"Failed to load new instance from {input}");
+            object instance = IsolatedInvoke(input, true) ?? throw new ArgumentException($"Failed to load new instance from {input}");
             LoadInstance(instance);
+            _variableKey = null;
             return Instance;
         }
         //Isolated lexing, loading and invocation for "quick invocation" without resetting loaded instance, method or type.
-        object? IsolatedInvoke(string input)
+        object? IsolatedInvoke(string input, bool getkey)
         {
             string? tname = ResolveMemberAccess(input, out string member, out bool field);
-            Type type;
+
             if (tname == null)
-                type = LoadedType ?? throw new ArgumentException("Cannot FastInvoke from loaded type, loaded type is null.");
-            else
-                type = FindType(TypeString.New(tname, null));
+                tname = _key;
+            else if (getkey)
+                _key = tname;
             object? instance;
             if (!field)
-                instance = InvokeMethodParameter(Lexer.ParameterTemplate(input), type);
+            {
+                instance = InvokeMethodWithVariable(Lexer.ParameterTemplate(member, tname!));
+            }
             else
-                instance = GetFieldParameter(type, member);
+            {
+                instance = GetFieldWithVariable(new(member, null, TypeString.New(tname!, null)));
+            }
             return instance;
         }
 
-        // object? GetFieldValue(string input)
-        // {
-        //     string? tname = ResolveMemberAccess(input, out string member, out bool field);
-        //     if (!field)
-        //         throw new ArgumentException("Input must be a field.");
-        //     Type t = tname == null ? LoadedType! : FindType(TypeString.New(tname, null));
-        //     return GetFieldParameter(t, member);
-        // }
+
         object? CastInstance(string input)
         {
             if (Instance == null)
                 throw new InvalidOperationException("Cannot cast, instance is null.");
-            TypeString typeString = TypeString.New(input, null);
-            Type t = FindType(typeString);
+            TypeString tstring = TypeString.New(input, null);
+            Type t = FindType(tstring, true);
+            _key = tstring.String;
+            _variableKey = null;
             if (!t.IsAssignableFrom(_instanceType))
                 throw new InvalidCastException($"{_instanceType} cannot cast to {t}.");
             LoadTypeMembers(t);
@@ -716,18 +765,17 @@ namespace XQuinn.Runtime
             string? righthandTypeName = ResolveMemberAccess(righthand, out righthand, out bool righthandfield);
             if (righthandTypeName != null)
             {
-                Type righthandType = FindType(TypeString.New(righthandTypeName, null));
 
                 if (righthandfield)
-                    assigned = GetFieldParameter(righthandType, righthand.Trim());
+                    assigned = GetFieldWithVariable(new(righthand.Trim(), null, TypeString.New(righthandTypeName, null)));
                 else
                 {
-                    MethodString main = Lexer.ParameterTemplate(righthand);
-                    assigned = InvokeMethodParameter(main, righthandType);
+                    MethodString main = Lexer.ParameterTemplate(righthand, righthandTypeName);
+                    assigned = InvokeMethodWithVariable(main);
                 }
             }
             else
-                assigned = ParseParameter(new(righthand.Trim()), f.FieldType);
+                assigned = ParseParameter(new(righthand.Trim(), null), f.FieldType);
 
             if (lefthandtype.IsAssignableFrom(_instanceType))
                 f.SetValue(Instance, assigned);
@@ -739,6 +787,8 @@ namespace XQuinn.Runtime
         object? RemoveInstanceFromVariables(string key)
         {
             _variables.Remove(key);
+            if (_variableKey == key)
+                _variableKey = null;
             return null;
         }
 
@@ -748,11 +798,10 @@ namespace XQuinn.Runtime
                 throw new InvalidOperationException("No instance is loaded.");
             if (key == "this" || key == "null" || key == "base")
                 throw new ArgumentException($"Key is illegal. Bad Key {key}.");
-            if (InvocationLexer.IsDigit(key[0]))
-                throw new ArgumentException($"Keys cannot begin with a digit. Bad Key: {key}");
-            for (int i = 0; i < key.Length; i++)
-                if (InvocationLexer.Illegal(key[i]))
-                    throw new ArgumentException($"Keys can only consist of alphanumeric and underscore characters. Bad Key: {key}");
+            Type? t = TypeCache.GetTypeCached(key, LocalCache);
+            if (t != null)
+                throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
+            TypeCache.ThrowIfBadKey(key);
             if (_variables.TryGetValue(key, out object? val))
             {
                 if (!Instance.Equals(val))
@@ -770,6 +819,7 @@ namespace XQuinn.Runtime
                 throw new InvalidOperationException("No instances are currently stored.");
             if (!_variables.TryGetValue(key, out object? instance))
                 throw new ArgumentException($"There is no stored instance with the key {key}.");
+            _variableKey = key;
             LoadInstance(instance);
             return instance;
         }

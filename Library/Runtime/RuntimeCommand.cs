@@ -100,17 +100,17 @@ namespace XQuinn.Runtime
             MethodString method = MethodString.New(name, null, null); //automatically slices off any generic parameters
             if (_registry.TryGetValue(method.String, out MethodInfo? cmd))
             {
-                if(!CallInterpreter.SupportedMember(cmd))
-                throw new ArgumentException($"RuntimeCommand {name} has an unsupported in out or ref parameter.");
+                if (!CallInterpreter.SupportedMember(cmd))
+                    throw new ArgumentException($"RuntimeCommand {name} has an unsupported in out or ref parameter.");
                 if (cmd.IsGenericMethodDefinition)
                 {
-                    cmd = method.ConstructGeneric(cmd);
+                    cmd = method.ConvertToGenericMethod(cmd);
                 }
                 object?[]? parameters = null;
                 if (num != -1)
                 {
                     Interpreter.LoadMethodDirectly(cmd);
-                    MethodString call = Interpreter.Lexer.ParameterTemplate(invoc);
+                    MethodString call = Interpreter.Lexer.ParameterTemplate(invoc, null);
                     parameters = Interpreter.GetParsedParameters(cmd.GetParameters(), call);
                     Interpreter.Clear();
                 }
