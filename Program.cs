@@ -40,15 +40,6 @@ namespace _xquinn_prgrm
 
     }
 
-    class T
-    {
-        public static string Call(int x = -1, int z = -1, int y = -1)
-        {
-            Console.WriteLine("T.Call(intintint)");
-            return $"{x} {z} {y}";;
-        } 
-    }
-
 }
 // //char(lex.get(lex.oth('x', lex.get('y'))), lex.get(lex.get(lex.get(lex.oth('x',lex.get('y')))))
 //     public class Lex

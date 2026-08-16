@@ -10,8 +10,7 @@
       "XQuinn/1.0.0": {
         "dependencies": {
           "Lib.Harmony": "2.4.2",
-          "Mono.Reflection": "2.0.0",
-          "System.Collections.Immutable": "10.0.11"
+          "Mono.Reflection": "2.0.0"
         },
         "runtime": {
           "XQuinn.dll": {}
@@ -30,14 +29,6 @@
           "lib/netstandard2.0/Mono.Reflection.dll": {
             "assemblyVersion": "2.0.0.0",
             "fileVersion": "2.0.0.0"
-          }
-        }
-      },
-      "System.Collections.Immutable/10.0.11": {
-        "runtime": {
-          "lib/netstandard2.0/System.Collections.Immutable.dll": {
-            "assemblyVersion": "10.0.0.0",
-            "fileVersion": "10.0.1126.37416"
           }
         }
       }
@@ -62,13 +53,6 @@
       "sha512": "sha512-gipqt3dO1NsgM9wfUsQeNVLYmSskDfaN+muNQHLJYkCuYxx2bIp6gAA8j2Rp+Ey6YNHloZv+BJY56r9fl3tfew==",
       "path": "mono.reflection/2.0.0",
       "hashPath": "mono.reflection.2.0.0.nupkg.sha512"
-    },
-    "System.Collections.Immutable/10.0.11": {
-      "type": "package",
-      "serviceable": true,
-      "sha512": "sha512-BQY956wwWSjRDoOspL6L1JscbFoSgJK606mO3PYalBHIZRV+Sc2xokvR/NHLlpUEfju6EbW5GbKbNpVYQ65cLw==",
-      "path": "system.collections.immutable/10.0.11",
-      "hashPath": "system.collections.immutable.10.0.11.nupkg.sha512"
     }
   }
 }

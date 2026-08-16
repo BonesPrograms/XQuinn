@@ -17,4 +17,3 @@ C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\Debug\net6.0-windows\win-x64\refint\XQ
 C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\Debug\net6.0-windows\win-x64\XQuinn.pdb
 C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\Debug\net6.0-windows\win-x64\XQuinn.genruntimeconfig.cache
 C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\Debug\net6.0-windows\win-x64\ref\XQuinn.dll
-C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Debug\net6.0-windows\win-x64\System.Collections.Immutable.dll
