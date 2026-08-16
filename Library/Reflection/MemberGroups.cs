@@ -3,6 +3,7 @@ using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Reflection;
 using System;
+using System.Collections.Immutable;
 using static XQuinn.Reflection.MemberGroup;
 
 namespace XQuinn.Reflection
@@ -29,7 +30,7 @@ namespace XQuinn.Reflection
     public static class MemberGroups
     {
 
-        public static readonly ReadOnlyCollection<MemberGroup> Groups = new(new MemberGroup[] { Field, Property, Method, Event, Constructor });
+        public static readonly ImmutableArray<MemberGroup> Groups = new MemberGroup[] { Field, Property, Method, Event, Constructor }.ToImmutableArray();
 
         public static MemberGroup GetGroup(MemberInfo info) => info switch
         {

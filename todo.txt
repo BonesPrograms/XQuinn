@@ -158,6 +158,22 @@ dont need to worry about ._ syntax anymore if i figure out local calling
 Lexer:
 methods actually can have a whitespace trail between the name and the ( but ima not worry abt that rn.the reason its like this is because SkipWhitespaceTrail look for a terminator, not a method start
 
+The New Dillema Two Options:
+1) Figure out how to resolve if a method is declared 'new'
+2) Figure out how to do implicit parameter resolution, because overloads also cause some confusion anyways, but I still need casting so, fuck that.
+
+In reality everything is very confusing with the counting thing. The best option would be allowing casting. Even if we fixed new i can come up with infinite combinations that confuse you as to how the names will resolve. Tho wouldnt hurt if i could identify how a method is 'new'
+
+CASTING/OVERLOAD RESOLTUION PROBLEM:
+
+i have no idea how to do overload res from classes
+our system relies on being able to compare to an already existing method
+if you send me the value "lex.field" - actually i can handle that, so even better - if you send me the value "wednesday" i cant rly know like
+id need to have a cache of literally all enums to guess which enum that is, and do enum parse on all of them
+in essence my overload resolver would be astronomically slow as fuck
+sending me variable names would make it wholly impossible unless i expanded access to a variable list
+i thinki  could do it but id need some massive caches + lots of boilerplate
+
 
 Important
 -25 If we update our generic regex, it will work for sub-parameters

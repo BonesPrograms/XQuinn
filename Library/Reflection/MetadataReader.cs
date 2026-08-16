@@ -131,7 +131,7 @@ namespace XQuinn.Reflection
                 txt.Append(tname);
                 if (names)
                     txt.Append($" {arg.Name}");
-                if (args.Length > 1 && i < args.Length - 1)
+                if (For.Multiples(args.Length,i))
                     txt.Append(", ");
             }
             txt.Append(')');
@@ -171,7 +171,7 @@ namespace XQuinn.Reflection
                 for (int i = 0; i < genericargs.Length; i++)
                 {
                     sb.Append(FixGenericString(genericargs[i].Name));
-                    if (genericargs.Length > 1 && i < genericargs.Length - 1)
+                    if (For.Multiples(genericargs.Length,i))
                         sb.Append(", ");
                 }
                 sb.Append('>');

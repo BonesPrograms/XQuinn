@@ -1,9 +1,9 @@
 using System.Text;
-using XQuinn.Parsing.AST;
+using XQuinn.CodeAnalysis.AST;
 using System.Reflection;
 using System;
 
-namespace XQuinn.Parsing
+namespace XQuinn.CodeAnalysis
 {
 
 
@@ -320,7 +320,7 @@ namespace XQuinn.Parsing
             if (Value == MethodStart)
             {
                 MethodBegan = true;
-                ReadMethod(invocation); //unfortunately i cant know at compile time if you insert one of these 4 communicators into your identifier mistakenly, or if youre using it as a terminator/namespace accessor
+                ReadMethod(); //unfortunately i cant know at compile time if you insert one of these 4 communicators into your identifier mistakenly, or if youre using it as a terminator/namespace accessor
                 return false;           //so if you mess that up, it will fail to resolve somwhere in CallInterpreter, you will either get a parameter count mismatch, or it will say it cannot find the type/member with that name.
             }
             if (ReadingIdentifierLead)
@@ -442,7 +442,7 @@ namespace XQuinn.Parsing
         }
 
 
-        void ReadMethod(string invocation)
+        void ReadMethod()
         {
             string typename = ResolveMemberAccess(out string methodname);
             TypeString type = TypeString.New(typename, null);
@@ -458,7 +458,7 @@ namespace XQuinn.Parsing
         void ReadParam()
         {
             string prm = sb.ToString();
-            ParameterString param = new(prm, CurrentMethod);
+            ValueString param = new(prm, CurrentMethod!);
             sb.Length = 0;
             CurrentMethod!.AddParameter(param);
         }

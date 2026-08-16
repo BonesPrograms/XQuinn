@@ -80,7 +80,7 @@ namespace XQuinn.NetConsole.Apps
 
 
 
-    class ResourcesReplacer : IApp
+    sealed class ResourcesReplacer : IApp
     {
         static readonly string GameResourcesFolder = Path.Combine(VietnamWarSource.Path, "Vietnam War_Data");
         static readonly string BackupResourcesFolder = Path.Combine(VietnamWarModLab.Path, @"ResourcesGetter\BackupResources");
@@ -166,7 +166,7 @@ namespace XQuinn.NetConsole.Apps
         }
     }
 
-    class PluginMaker : IApp
+    sealed class PluginMaker : IApp
     {
         PluginMaker()
         {
@@ -287,7 +287,7 @@ namespace XQuinn.NetConsole.Apps
     }
 
 
-    class InteropDLLGetter : IApp //The idea with this is that if i get a new pc, i dont need to update all my project references
+    sealed class InteropDLLGetter : IApp //The idea with this is that if i get a new pc, i dont need to update all my project references
     {
 
         InteropDLLGetter()

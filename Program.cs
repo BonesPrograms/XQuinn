@@ -9,9 +9,11 @@ using XQuinn.IO;
 using System.Text;
 using System;
 using System.Runtime.Versioning;
+using XQuinn.CodeAnalysis;
 using System.Linq;
 using System.Collections.Generic;
 using XQuinn.Extensions;
+using XQuinn.Parsing;
 
 namespace _xquinn_prgrm
 {
@@ -28,7 +30,8 @@ namespace _xquinn_prgrm
             IEnumerable<Type> types = typeof(_xquinn_prgrm_Main).Module.GetTypes().Where(x => x.Namespace == "_xquinn_prgrm");
             TypeBook book = TypeBook.New(types, x => x.SnipGenericShortName(), StringComparer.OrdinalIgnoreCase);
             TypeCache.CacheTypes(book);
-             RuntimeCommand.Register(types, "XQuinn");
+            TypeCache.CacheType("Console", typeof(Console));
+            //RuntimeCommand.Register(types, "XQuinn");
             Console.Clear();
             TestingType.Test<CallInterpreter>();
 
@@ -37,22 +40,13 @@ namespace _xquinn_prgrm
 
     }
 
-    [HasRuntimeCommand]
-    class Class
+    class T
     {
-
-        static int i = 0;
-        static readonly string[] _keys = { "one", "two", "three", "four", "five" };
-        public static Class @new() => new();
-        public string Get() => key;
-        public readonly string key;
-        public Class()
+        public static string Call(int x = -1, int z = -1, int y = -1)
         {
-            key = _keys[i];
-            i++;
-        }
-
-        public void Print(string i) => Console.WriteLine(i);
+            Console.WriteLine("T.Call(intintint)");
+            return $"{x} {z} {y}";;
+        } 
     }
 
 }

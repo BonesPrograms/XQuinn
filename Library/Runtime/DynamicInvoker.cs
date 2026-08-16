@@ -9,6 +9,7 @@ using XQuinn.Parsing;
 using System.Runtime.Loader;
 using System;
 using System.IO;
+using XQuinn.CodeAnalysis;
 
 
 namespace XQuinn.Runtime
@@ -112,11 +113,11 @@ public class DynamicInvoker : IDisposable
         return monitor;
     }
 
-    public void Interface(string invocation)
+    public object? Interface(string invocation)
     {
         if (CheckForReload())
             Reload();
-        Interpreter.Interface(invocation);
+        return Interpreter.Interface(invocation);
     }
 
     //This is the dynamic part

@@ -181,13 +181,13 @@ namespace XQuinn.ObjectModel
         protected void ReadObjectBasic(TokenizedObject info, FieldInfo? field, Type? sourceType, bool isInCollection)
         {
             StringBuilder text = new(); //sourceType and field will be null if in collection
-            text.Append($"Reading {(isInCollection ? "ELEMENT" : $"FIELD \"{field!.Name}\"")} from {(isInCollection ? "collection" : $"type {GenericTypeToString(sourceType)}")}:\n");
-            text.Append($"Type: {(isInCollection ? info.IsNull ? "null value in keyValuePair, cannot get type info" : GenericTypeToString(info.Instance!.GetType()) : GenericTypeToString(field!.FieldType))}\n");
+            text.Append($"Reading {(isInCollection ? "ELEMENT" : $"FIELD \"{field!.Name}\"")} from {(isInCollection ? "collection" : $"type {GenericTypeToString(sourceType)}")}:{Environment.NewLine}");
+            text.Append($"Type: {(isInCollection ? info.IsNull ? "null value in keyValuePair, cannot get type info" : GenericTypeToString(info.Instance!.GetType()) : GenericTypeToString(field!.FieldType))}{Environment.NewLine}");
             text.Append(DisplayValue(info)); //I have prevented lists from sending null elements, and IDictionary from sending null keys, but keys with null values are permitted
             if (!isInCollection)                //so in those cases it is possible for us to be unable to retrieve the value's type
             {                                   //though you can just see the dictionary's generic arguments to get an idea of what type it would've been
-                text.Append($"Declared in: {GenericTypeToString(field!.DeclaringType)}\n");
-                text.Append($"Attributes {field.Attributes}\n");
+                text.Append($"Declared in: {GenericTypeToString(field!.DeclaringType)}{Environment.NewLine}");
+                text.Append($"Attributes {field.Attributes}{Environment.NewLine}");
             }
             Write(text.ToString());
 
@@ -291,12 +291,12 @@ namespace XQuinn.ObjectModel
 
         static string DisplayValue(TokenizedObject info)
         {
-            string msg = $"Value: {$"{info.Instance}" ?? "null"}\n";
+            string msg = $"Value: {$"{info.Instance}" ?? "null"}{Environment.NewLine}";
             if (info.IsSimple && !info.IsNull)
             {
 
                 string valueDisplay = SimpleValueDisplay(info.Instance, info.Token);
-                msg = $"Value: {valueDisplay}\n";
+                msg = $"Value: {valueDisplay}{Environment.NewLine}";
             }
             return msg;
 
@@ -331,7 +331,7 @@ namespace XQuinn.ObjectModel
         protected void Skip(int value)
         {
             for (int i = 1; i <= value; i++)
-                Write("\n");
+                Write("{Environment.NewLine}");
         }
 
 

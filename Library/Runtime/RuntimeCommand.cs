@@ -7,7 +7,8 @@ using HarmonyLib;
 using System.Collections.ObjectModel;
 using System.Reflection;
 using XQuinn.Extensions;
-using XQuinn.Parsing.AST;
+using XQuinn.CodeAnalysis;
+using XQuinn.CodeAnalysis.AST;
 
 
 
@@ -89,7 +90,7 @@ namespace XQuinn.Runtime
         /// <summary>
         /// Invokes Commands by name. Not case sensitive. Returns true if the command was found. Will throw if there is an issue parsing parameters or invoking.
         /// </summary>
-        public static bool InvokeCommand(string invoc)
+        public static object? InvokeCommand(string invoc)
         {
             string name;
             int num = invoc.IndexOf('(');
@@ -114,11 +115,10 @@ namespace XQuinn.Runtime
                     parameters = Interpreter.GetParsedParameters(cmd.GetParameters(), call);
                     Interpreter.Clear();
                 }
-                cmd.Invoke(null, parameters);
+                return cmd.Invoke(null, parameters);
                 //LogAll($"cmdCall {cmd.Name}::{method.Name}() invoked as Command!");
-                return true;
             }
-            return false;
+            return null;
         }
         /// <summary>
         /// Must be unique per Command (caseless)

@@ -24,3 +24,23 @@ for the parameter type
 optimal struct max size is 16 bytes
 
 
+(T)(Object)  explanation:
+
+had a method like
+
+T MakeIntoGeneric<T>(T obj) where T : memberinfo
+
+it turned generic Methods and Types definitions into concrete Generic Methods and Types
+
+so for example, for Types, it would check this
+
+if(typeof(T) == typeof(Type))
+
+then it would return
+
+type.MakeGenericType()
+
+a value of class Type
+wasnt working, i couldnt Return a Type, even though Type is a MemberInfo
+you need to cast it to object, then T
+

@@ -5,6 +5,34 @@ using System.Linq;
 
 namespace XQuinn.Extensions
 {
+    public static class StringBuilderExtensions
+    {
+
+        public static void AppendMany<T>(this StringBuilder sb, IEnumerable<T?> many, string? divider = null, Func<T?, string?>? toString = null)
+        {
+            int length = many.Count();
+            int i = 0;
+            foreach (T? element in many)
+            {
+                string? text;
+                if (toString != null)
+                    text = toString.Invoke(element);
+                else
+                    text = element?.ToString();
+                sb.Append(text);
+                if (divider != null && For.Multiples(length, i))
+                    sb.Append(divider);
+                i++;
+            }
+        }
+        public static void CatchException(this StringBuilder sb, Exception ex)
+        {
+            sb.Append($"{ex.GetType()}{Environment.NewLine}");
+            sb.Append($"{ex.Message}{Environment.NewLine}");
+            sb.Append($"{ex.StackTrace}{Environment.NewLine}");
+            sb.Append($"{ex.Data}{Environment.NewLine}{ex.TargetSite}{Environment.NewLine}{ex.Source}{Environment.NewLine}");
+        }
+    }
 
     public static class TypeExtensions
     {

@@ -5,3 +5,11 @@ Will need to have lots of null checks and shit lol, to make sure were running of
 MrBeast
 
 if il2cpp is an independent assembly not part of unity ima get it and make the il2cpp versions in xquinn. Then we net6 lmao
+
+
+
+https://docs.unity3d.com/6000.0/Documentation/Manual/scripting-restrictions.html
+
+https://gurrenm3.github.io/BTD-Mod-Helper/wiki/IL2CPP-Is-Weird
+
+il2cpp plan: "separate bridges" there are few places where we access type, like findtype, invokemethod and getfield, so pretty much at these locations we have to figure out if a type is an il2cpp type and then divert to il2cpp type edition code, the return values will still work fine

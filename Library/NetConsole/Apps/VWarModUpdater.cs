@@ -14,7 +14,7 @@ namespace XQuinn.NetConsole.Apps
 {
 
 
-    internal class VWarModUpdater : IApp
+    internal  sealed class VWarModUpdater : IApp
     {
         VWarModUpdater()
         {
@@ -107,7 +107,7 @@ namespace XQuinn.NetConsole.Apps
 
     }
 
-    class Mod
+     sealed class Mod
     {
         public List<CSFile> Files;
         public string Name;
@@ -121,7 +121,7 @@ namespace XQuinn.NetConsole.Apps
     }
 
     [XmlRoot("CSFile")]
-    class CSFile
+     sealed class CSFile
     {
         [XmlElement]
         public DateTime LastWrite = default!;

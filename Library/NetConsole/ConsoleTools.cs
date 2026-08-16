@@ -1,24 +1,24 @@
 using System;
 using System.Collections.Generic;
+using System.Text;
+using XQuinn.Extensions;
 
 namespace XQuinn.NetConsole
 {
 public static class ConsoleTools
 {
 
-    public static void WriteMany<T>(IEnumerable<T> objs, Func<T, string>? toString = null)
+    public static void WriteMany<T>(IEnumerable<T?> objs, string? divider = null, Func<T?, string>? toString = null)
     {
-        foreach (var obj in objs)
-        {
-            string? msg = toString?.Invoke(obj) ?? obj?.ToString();
-            Console.WriteLine(msg);
-        }
+        StringBuilder sb = new();
+        sb.AppendMany(objs, divider, toString);
+        Console.WriteLine(sb);
     }
     public static T? Choices<T>(IList<T> array, string? msg = null, Func<T, string>? toString = null, bool forwardLoop = true)
     {
         int index = 0;
         if (msg != null)
-            msg += "\n";
+            msg += $"{Environment.NewLine}";
         while (true)
         {
             Console.Clear();

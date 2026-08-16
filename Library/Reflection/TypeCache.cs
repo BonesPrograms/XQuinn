@@ -6,6 +6,9 @@ using System.Collections.Generic;
 using HarmonyLib;
 using XQuinn.Runtime;
 using XQuinn.Parsing;
+using XQuinn.CodeAnalysis;
+using XQuinn.Extensions;
+using System.Collections.Immutable;
 
 
 namespace XQuinn.Reflection
@@ -50,7 +53,7 @@ namespace XQuinn.Reflection
             ["nint"] = typeof(nint),
             ["nuint"] = typeof(nuint)
         };
-
+        static readonly ImmutableArray<string> BadKeys = new string[] { "this", "null", "base" }.ToImmutableArray();
         static TypeCache()
         {
             GlobalCache = new ReadOnlyDictionary<string, Type>(_registry);
@@ -85,21 +88,30 @@ namespace XQuinn.Reflection
         /// <returns></returns>
         public static bool CacheType(string key, Type type)
         {
+            ThrowIfBadKey(key);
             if (CheckDuplicateOrCached(key, type))
                 return false;
-            ThrowIfBadKey(key);
             _registry.TryAdd(key, type);
             return true;
         }
 
-        //Not sure if this should be a thing... its mostly so that keys can work with invocationlexer
+        //Not sure if this should be a thing... its mostly so that keys can work with invocationlexer and callinterp. typecache was pretty much made *for* callinterp so not a problem imo
         public static void ThrowIfBadKey(string key)
         {
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentException("Empty key.");
             if (InvocationLexer.IsDigit(key[0]))
                 throw new ArgumentException($"Keys cannot begin with a digit. Bad Key: {key}");
+            for (int i = 0; i < BadKeys.Length; i++)
+            {
+                if (key.EqualsCaseless(BadKeys[i]))
+                    throw new ArgumentException($"Key is illegal. Bad Key {key}.");
+            }
             for (int i = 0; i < key.Length; i++)
+            {
                 if (InvocationLexer.Illegal(key[i]))
                     throw new ArgumentException($"Keys can only consist of alphanumeric and underscore characters. Bad Key: {key}");
+            }
         }
 
         public static void CacheTypes(IEnumerable<KeyValuePair<string, Type>> book)

@@ -5,7 +5,7 @@ using System.Text;
 namespace XQuinn.IO
 {
 
-    public class Logger : IDisposable
+    public sealed class Logger : IDisposable
     {
 
         readonly StringBuilder sb = new();
@@ -30,10 +30,10 @@ namespace XQuinn.IO
         public void Log(string text, int newLinesBefore = 0, int newLinesAfter = 0)
         {
             for (int i = 1; i <= newLinesBefore; i++)
-                sb.Append('\n');
+                sb.Append($"{Environment.NewLine}");
             sb.Append($"[{DateTime.Now}] {text}");
             for (int i = 1; i <= newLinesAfter; i++)
-                sb.Append('\n');
+                sb.Append($"{Environment.NewLine}");
             Writer.WriteLine(sb);
             sb.Length = 0;
         }

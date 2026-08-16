@@ -3,7 +3,7 @@ using XQuinn.Extensions;
 using System.Text.RegularExpressions;
 using XQuinn.Reflection;
 using XQuinn.Parsing;
-using XQuinn.Parsing.AST;
+using XQuinn.CodeAnalysis.AST;
 using XQuinn.NetConsole;
 using System.ComponentModel;
 using System.Data;
@@ -11,9 +11,32 @@ using System.Linq;
 using System.Collections.ObjectModel;
 using System;
 using System.Collections.Generic;
+using XQuinn.CodeAnalysis;
+using System.Text;
 
-namespace XQuinn.Runtime
+namespace XQuinn.CodeAnalysis
 {
+
+        public sealed class Variable
+        {
+            public readonly string VariableKey;
+            public readonly string TypeCacheKey;
+            public readonly object Object;         
+            public readonly Type ObjectType;
+            public Variable(string typekey, string varkey, object instance)
+            {
+                VariableKey = varkey;
+                TypeCacheKey = typekey;
+                Object = instance;
+                ObjectType = instance.GetType();
+            }
+
+            public override string ToString()
+            {
+                return $"VariableKey: {VariableKey} Type: {ObjectType} TypeKey: {TypeCacheKey}";
+            }
+        }
+
     /// <summary>
     /// Wrapper around an exception thrown by a method invoked via reflection, primarily to prevent memory leakage from hot-reloaded assemblies.
     /// </summary>
@@ -162,11 +185,12 @@ namespace XQuinn.Runtime
 
         //ASSIGNMENT:
         //You can assign to fields using methods, other fields, or literals. Syntax is pretty normal with a few caveats.
-        //If a type is loaded, you can access fields on the left hand by name or this.name
+        //If a type is loaded, you can access fields on the left hand by name
         //However, the right hand side of the assingment always needs a type name or this
         //Ex.
         //obj = this.Method() as an example of assinging to the instance field named "obj" from an instance method named "Method"
-        //You can assign to any static members outside of the loaded type by leading with a typename
+        //You can assign to any static members outside of the loaded type by leading with a typename on the lefthand
+        //You can also assign to variables in the variable dictionary by leading with it's key on the lefthand
 
         //FASTINVOKE/GET FIELDS
         //To see a field value, begin your invocation with !
@@ -189,14 +213,17 @@ namespace XQuinn.Runtime
         /// <summary>
         /// A dictionary of all stored instances.
         /// </summary>
-        public readonly IReadOnlyDictionary<string, object> Variables;
-        Dictionary<string, object> _variables = new(StringComparer.OrdinalIgnoreCase);
+        public readonly IReadOnlyDictionary<string, Variable> Variables;
+        Dictionary<string, Variable> _variables = new(StringComparer.OrdinalIgnoreCase);
+
+
         /// <summary>
         /// The currently loaded instance.
         /// </summary>
         public object? Instance => _instance;
         object? _instance;
         public string? LoadedVariable => _variableKey;
+        string? _variableKey;
         public Type? InstanceType => _instanceType;
         Type? _instanceType; //used for polymorphism checks
 
@@ -207,7 +234,6 @@ namespace XQuinn.Runtime
         Type? _loadedType;
         public string? LoadedTypeKey => _key;
         string? _key;
-        string? _variableKey;
         Dictionary<string, MethodInfo> _methods = new(StringComparer.OrdinalIgnoreCase);
         readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
 
@@ -224,15 +250,25 @@ namespace XQuinn.Runtime
         public MethodInfo? LoadedMethod => _loadedMethod;
         MethodInfo? _loadedMethod;
         ParameterInfo[]? _loadedParams;
-        static readonly HashSet<string> AmbiguousMatches = new(StringComparer.OrdinalIgnoreCase);
+        static readonly HashSet<string> GlobalAmbiguousMatches = new(StringComparer.OrdinalIgnoreCase);
+        static readonly Dictionary<Type, Dictionary<string, MemberInfo>> GlobalCache = new();
+
+        /// <summary>
+        /// Caching adds methods and fields to a global cache as they are invoked by CallInterpreter.
+        /// </summary>
+        public bool Caching = true;
         //this dictionary keeps track of ambiguous matches for method names per type, allows minor efficiency upgrade, we dont always have to map out an entire type if the method is not overloaded
         public const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
+        public static void FlushStaticCache()
+        {
+            GlobalCache.Clear();
+        }
         public CallInterpreter(IReadOnlyDictionary<string, Type>? localCache = null)
         {
             LocalCache = localCache;
             Overloads = new ReadOnlyDictionary<string, MethodInfo>(_overloads);
-            Variables = new ReadOnlyDictionary<string, object>(_variables);
+            Variables = new ReadOnlyDictionary<string, Variable>(_variables);
         }
         public void Clear()
         {
@@ -258,7 +294,7 @@ namespace XQuinn.Runtime
         public object? Interface(string input)
         {
             string? sub = input.Substring(1);
-            if (string.IsNullOrWhiteSpace(input) && string.IsNullOrWhiteSpace(sub))
+            if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(sub))
                 throw new ArgumentException("Input cannot be null or whitespace.");
             return input[0] switch
             {
@@ -270,9 +306,9 @@ namespace XQuinn.Runtime
                 '*' => LoadInstance(sub), ///Load the current Instance from a field or method. Returns loaded value.
                 '^' => CastInstance(sub), ///Cast the current Instance to a different type. Returns null.
 
-                '!' => IsolatedInvoke(sub, false), ///Invoke a method or field by type name without changing the loaded type. Returns invoked value.
-                                                   ///Can exclude type name to automatically invoke from the loaded type. This is how you view the values of fields, standard invoke
-                                                   /// will throw for anything except method invocations. Also allows you to invoke private members from base types without changing the loaded type.
+                '!' => IsolatedInvoke(sub), ///Invoke a method or field by type name without changing the loaded type. Returns invoked value.
+                                            ///Can exclude type name to automatically invoke from the loaded type. This is how you view the values of fields, standard invoke
+                                            /// will throw for anything except method invocations. Also allows you to invoke private members from base types without changing the loaded type.
                 _ => StandardInvokeOrAssign(input) ///Invoke a method from the loaded type, or assign. Returns invoked value if invocation. Returns assigned value if assignment.
             };
         }
@@ -370,11 +406,11 @@ namespace XQuinn.Runtime
         /// Load an instance directly via object reference. Resets loaded method, instance and type.
         /// </summary>
         /// <param name="obj"></param>
-        void LoadInstance(object obj)
+        void LoadInstance(object obj, Type objectType)
         {
             _instance = obj;
-            LoadTypeMembers(obj.GetType());
-            _instanceType = LoadedType;
+            LoadTypeMembers(objectType);
+            _instanceType = objectType;
         }
         void LoadTypeMembers(Type t)
         {
@@ -418,7 +454,7 @@ namespace XQuinn.Runtime
             }
             else
             {
-                obj = ParseParameter(param, paramType);
+                obj = ParseParameter((ValueString)param, paramType);
                 if (obj == null)
                 {       //This should never return null except for Nullable<T> and and classes, it will always throw a Format exception otherwise because the only other things it parses are primitives
                     bool validNullableInput = paramType.IsClass || (paramType.IsGenericType && paramType.GetGenericTypeDefinition() == typeof(Nullable<>));
@@ -431,9 +467,9 @@ namespace XQuinn.Runtime
         }
 
 
-        object? ParseParameter(ParameterString p, Type type) //need half and int128 support
+        object? ParseParameter(ValueString value, Type type) //need half and int128 support
         {
-            string strng = p.String;
+            string strng = value.String;
             if (strng == "this")
             {
                 if (Instance == null)
@@ -442,40 +478,44 @@ namespace XQuinn.Runtime
                     throw new InvalidCastException($"Current instance is a {_instanceType} and does not cast to parameter type {type}");
                 return Instance;
             }
-            if (Variables?.TryGetValue(strng, out object? instance) ?? false)
+            if (Variables?.TryGetValue(strng, out Variable? variable) ?? false)
             {
-                if (!type.IsAssignableFrom(instance.GetType()))
-                    throw new InvalidCastException($"Instance index object with key {strng} is a {instance.GetType()} and does not cast to parameter type {type}");
-                return instance;
+                if (!type.IsAssignableFrom(variable.ObjectType))
+                    throw new InvalidCastException($"Instance index object with key {strng} is a {variable.ObjectType} and does not cast to parameter type {type}");
+                return variable;
             }
-            return p.ParseParameter(type);
+            return value.ParseValue(type);
         }
 
-        object? GetFieldParameter(Type t, string fname, object? variable)
+
+
+        object? GetFieldParameter(Type t, FieldString f, object? variable)
         {
-            FieldInfo? field;
-            if (t == LoadedType)
+            string fname = f.String;
+            FieldInfo? field = CheckGlobalCache<FieldInfo>(f.String, t, out bool typeCached, out bool fieldCached);
+            if (field == null && t == LoadedType)
             {
                 _fields.TryGetValue(fname, out field);
                 if (field == null)
                     throw new MissingFieldException($"No field found named {fname} in {LoadedType}. Delegate type fields are not supported and would have been removed.");
             }
-            else
+            else if (field == null)
             {
                 field = t.GetField(fname, Flag) ?? throw new MissingFieldException($"No field found in type {t} named {fname}");
                 if (!SupportedMember(field))
                     throw new NotSupportedException($"Delegates are unsupported. Bad object: {field.DeclaringType}.{field.Name}");
             }
+            CacheMember(typeCached, fieldCached, t, field, f.String);
             object? instance = GetVariableInstance(t, variable);
             return field.GetValue(instance);
         }
         object? InvokeMethodParameter(MethodString method, Type t, object? variable)
         {
-            MethodInfo? call = null;
-            if (t != LoadedType)
+            MethodInfo? call = CheckGlobalCache<MethodInfo>(method.NameWithGenerics, t, out bool typeCached, out bool methodCached);
+            if (call == null && t != LoadedType)
             {
                 string key = $"{t.FullName}.{method.String}";
-                if (!AmbiguousMatches.Contains(key))
+                if (!GlobalAmbiguousMatches.Contains(key))
                 {
                     try
                     {
@@ -484,12 +524,12 @@ namespace XQuinn.Runtime
                     catch (AmbiguousMatchException)
                     {
 
-                        AmbiguousMatches.Add(key);
+                        GlobalAmbiguousMatches.Add(key);
                         throw new AmbiguousMatchException($"Method named {method.String} in type {t} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
                     }
                 }
-                else
-                    throw new AmbiguousMatchException($"Method named {method.String} in type {t} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
+                // else
+                //   throw new AmbiguousMatchException($"Method named {method.String} in type {t} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
             }
             if (call == null)
             {
@@ -498,12 +538,18 @@ namespace XQuinn.Runtime
                 this.MapMethods(t, ref overloads, ref methods);
                 call = FindMethod(t, overloads!, methods!, method);
             }
+            else if (call.IsGenericMethodDefinition)
+                call = method.ConvertToGenericMethod(call, LocalCache);
             ParameterInfo[] methodparams = call.GetParameters();
             object?[]? subparams = GetParsedParameters(methodparams, method);
             object? instance = GetVariableInstance(t, variable);
+            CacheMember(typeCached, methodCached, t, call, method.NameWithGenerics);
             return call.Invoke(instance, subparams);
             //if you are getting a type that you know will be in a metadata map, it doesnt need to have case //but if the map is null, then you need full casing  //namespace is ALWAYS required
         }
+
+
+
         object? GetVariableInstance(Type t, object? variable)
         {
             object? instance;
@@ -515,22 +561,24 @@ namespace XQuinn.Runtime
         }
         object? InvokeMethodWithVariable(MethodString m)
         {
-            Type t = GetTypeFromVariable(m, out object? variable);
-            return InvokeMethodParameter(m, t, variable);
+            Type t = FindTypeWithVariable(m, out Variable? variable);
+            return InvokeMethodParameter(m, t, variable?.Object);
         }
         object? GetFieldWithVariable(FieldString s)
         {
-            Type t = GetTypeFromVariable(s, out object? variable);
-            return GetFieldParameter(t, s.String, variable);
+            Type t = FindTypeWithVariable(s, out Variable? variable);
+            return GetFieldParameter(t, s, variable?.Object);
         }
+        #endregion
 
-        Type GetTypeFromVariable(IMember m, out object? variable)
+        #region Finding
+        Type FindTypeWithVariable(IMemberString m, out Variable? variable)
         {
-            Type t;
             if (m.DeclaringType == null)
                 throw new ArgumentException();
+            Type t;
             if (Variables.TryGetValue(m.DeclaringType.String, out variable))
-                t = variable.GetType();
+                t = variable.ObjectType;
             else
                 t = FindType(m.DeclaringType);
             return t;
@@ -540,24 +588,22 @@ namespace XQuinn.Runtime
         {
             if (!cast)
             {
-                if (Variables.TryGetValue(strng.String, out object? variable))
-                    return variable.GetType();
-                if (strng.String == _key && LoadedType != null) //if you start off with a load like *class.field , then loadedType will be null, but key will be == strng.String
-                    return LoadedType;
+                if (Variables.TryGetValue(strng.String, out Variable? variable))
+                    return variable.ObjectType;
+                if (strng.String == _key)
+                    return LoadedType ?? throw new InvalidOperationException();
                 if (strng.String == "this")
                 {
                     if (Instance == null)
-                        throw new InvalidOperationException("Cannot invoke from instance as parameter, instance is null.");
+                        throw new InvalidOperationException("Cannot pass this, instance is null.");
                     return _instanceType!;
                 }
             }
             if (strng.String == "base")
             {
                 if (Instance == null)
-                    throw new InvalidOperationException("Cannot invoke from instance as parameter, instance is null.");
-                if (LoadedType == null)
-                    throw new ArgumentException("There is no loaded type who's base type can be accessed.");
-                return _instanceType!.BaseType ?? throw new ArgumentException("Base type is null.");
+                    throw new InvalidOperationException("Cannot get instance base, instance is null.");
+                return _instanceType!.BaseType ?? throw new ArgumentException("Base type of instance is null.");
             }
             Type t = TypeCache.GetTypeOrThrow(strng.String, LocalCache);
             if (t.IsGenericTypeDefinition)
@@ -575,13 +621,49 @@ namespace XQuinn.Runtime
                 throw new MissingMethodException($"No method named {method.String} found in {t}'s method or overload dictionary.");
             if (realmethod.IsGenericMethodDefinition)
                 realmethod = method.ConvertToGenericMethod(realmethod, LocalCache);
-
             return realmethod;
         }
+
+        T? CheckGlobalCache<T>(string key, Type t, out bool typeCached, out bool memberCached) where T : MemberInfo
+        {
+            typeCached = false;
+            memberCached = false;
+            if (Caching)
+            {
+                typeCached = GlobalCache.TryGetValue(t, out var cachedMembers);
+
+                if (typeCached)
+                {
+                    memberCached = cachedMembers!.TryGetValue(key, out MemberInfo? realmember);
+                    if (memberCached)
+                        return (T)realmember!;
+                    
+                }
+            }
+            return null;
+        }
+        void CacheMember(bool typeCached, bool memberCached, Type t, MemberInfo member, string key)
+        {
+            if (Caching)
+            {
+                Dictionary<string, MemberInfo> cachedMembers;
+                if (!typeCached)
+                {
+                    cachedMembers = new(StringComparer.OrdinalIgnoreCase);
+                    GlobalCache[t] = cachedMembers;
+                }
+                else
+                    cachedMembers = GlobalCache[t];
+                if (!memberCached)
+                    cachedMembers[key] = member;
+            }
+        }
+
 
         #endregion
 
         #region Mapping
+
 
         static string? ResolveMemberAccess(string input, out string member, out bool field) //returns typename, outputs the accessed member
         {
@@ -680,22 +762,19 @@ namespace XQuinn.Runtime
 
 
         //Checks for method or field syntax. If it detects a method, it diverts to an isolated type load and method invocation.
-        object? LoadInstance(string input)
+        object LoadInstance(string input)
         {
-            object instance = IsolatedInvoke(input, true) ?? throw new ArgumentException($"Failed to load new instance from {input}");
-            LoadInstance(instance);
+            object instance = IsolatedInvoke(input) ?? throw new ArgumentException($"Failed to load new instance from {input}");
+            LoadInstance(instance, instance.GetType());
             _variableKey = null;
-            return Instance;
+            _key = "this";
+            return instance;
         }
         //Isolated lexing, loading and invocation for "quick invocation" without resetting loaded instance, method or type.
-        object? IsolatedInvoke(string input, bool getkey)
+        object? IsolatedInvoke(string input)
         {
             string? tname = ResolveMemberAccess(input, out string member, out bool field);
-
-            if (tname == null)
-                tname = _key;
-            else if (getkey)
-                _key = tname;
+            tname ??= _key;
             object? instance;
             if (!field)
             {
@@ -716,7 +795,6 @@ namespace XQuinn.Runtime
             TypeString tstring = TypeString.New(input, null);
             Type t = FindType(tstring, true);
             _key = tstring.String;
-            _variableKey = null;
             if (!t.IsAssignableFrom(_instanceType))
                 throw new InvalidCastException($"{_instanceType} cannot cast to {t}.");
             LoadTypeMembers(t);
@@ -751,21 +829,27 @@ namespace XQuinn.Runtime
                 throw new ArgumentException($"Invalid assignment, can only contain left hand and right hand. Bad assignment: {input}");
             string lefthand = assignment[0];
             string righthand = assignment[1];
-
             string? lefthandTypeName = ResolveMemberAccess(lefthand, out lefthand, out bool lefthandfield);
             if (!lefthandfield)
                 throw new ArgumentException($"Can only assign to fields. Bad input: {lefthand}");
             Type lefthandtype;
+            object? instance;
+            lefthand = lefthand.Trim();
             if (lefthandTypeName == null)
+            {
                 lefthandtype = LoadedType ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {input}");
+                instance = Instance;
+            }
             else
-                lefthandtype = FindType(TypeString.New(lefthandTypeName, null));
-            FieldInfo f = lefthandtype.GetField(lefthand.Trim(), Flag) ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
+            {
+                lefthandtype = FindTypeWithVariable(new FieldString(lefthand, null, TypeString.New(lefthandTypeName, null)), out Variable? variable);
+                instance = variable?.Object;
+            }
 
+            FieldInfo assigningTo = lefthandtype.GetField(lefthand, Flag) ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
             string? righthandTypeName = ResolveMemberAccess(righthand, out righthand, out bool righthandfield);
             if (righthandTypeName != null)
             {
-
                 if (righthandfield)
                     assigned = GetFieldWithVariable(new(righthand.Trim(), null, TypeString.New(righthandTypeName, null)));
                 else
@@ -775,12 +859,9 @@ namespace XQuinn.Runtime
                 }
             }
             else
-                assigned = ParseParameter(new(righthand.Trim(), null), f.FieldType);
-
-            if (lefthandtype.IsAssignableFrom(_instanceType))
-                f.SetValue(Instance, assigned);
-            else
-                f.SetValue(null, assigned);
+                assigned = ParseParameter(new(righthand.Trim(), null), assigningTo.FieldType);
+            instance = GetVariableInstance(lefthandtype, instance);
+            assigningTo.SetValue(instance, assigned);
             return true;
         }
 
@@ -796,34 +877,34 @@ namespace XQuinn.Runtime
         {
             if (Instance == null)
                 throw new InvalidOperationException("No instance is loaded.");
-            if (key == "this" || key == "null" || key == "base")
-                throw new ArgumentException($"Key is illegal. Bad Key {key}.");
-            Type? t = TypeCache.GetTypeCached(key, LocalCache);
-            if (t != null)
-                throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
             TypeCache.ThrowIfBadKey(key);
-            if (_variables.TryGetValue(key, out object? val))
+            Type? typeWithConflictingKey = TypeCache.GetTypeCached(key, LocalCache);
+            if (typeWithConflictingKey != null)
+                throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
+            if (_variables.TryGetValue(key, out Variable? variable))
             {
-                if (!Instance.Equals(val))
+                if (!ReferenceEquals(Instance, variable.Object))
                     throw new ArgumentException("Duplicate keyname detected.");
             }
             else
-                _variables[key] = Instance;
+                _variables[key] = new(_key ?? "this", key, Instance);
+            _variableKey = key;
             return null;
         }
 
 
-        object LoadInstanceFromVariables(string key)
+        Variable LoadInstanceFromVariables(string key)
         {
             if (_variables == null)
                 throw new InvalidOperationException("No instances are currently stored.");
-            if (!_variables.TryGetValue(key, out object? instance))
+            if (!_variables.TryGetValue(key, out Variable? variable))
                 throw new ArgumentException($"There is no stored instance with the key {key}.");
             _variableKey = key;
-            LoadInstance(instance);
-            return instance;
+            _key = variable.TypeCacheKey ?? "this";
+            LoadInstance(variable.Object, variable.ObjectType);
+            return variable;
         }
-        #endregion
+        #endregion  
 
 
 

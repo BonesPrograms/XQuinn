@@ -11,7 +11,7 @@ namespace XQuinn.NetConsole.Apps
 {
 
 
-    internal class QudModUpdater : IApp
+    internal sealed class QudModUpdater : IApp
     {
         QudModUpdater()
         {
@@ -38,7 +38,7 @@ namespace XQuinn.NetConsole.Apps
     //It will copy your manifest.json, preview.png, and workshop.json but will not create them.
     //Organization is lost, all CS and XML files are dumped into the mod root.
     //Only image files in the Textures folder have their directories recreated at copy destination.
-    class ModCopier
+     sealed class ModCopier
     {
         readonly string CopyRoot; //root for the overlying directory - mods will be copied to matching subdirectories in this directory
         string? CopyDest;

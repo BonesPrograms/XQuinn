@@ -2,30 +2,38 @@ using System.Reflection;
 using System.Text;
 using XQuinn.NetConsole;
 using XQuinn.Parsing;
-using XQuinn.Parsing.AST;
+using XQuinn.CodeAnalysis.AST;
+using XQuinn.CodeAnalysis;
 using XQuinn.Reflection;
 using XQuinn.Runtime;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using XQuinn.Extensions;
 using _xquinn_prgrm;
 
 namespace XQuinn.NetConsole
 {
-
+    internal enum TestOptions
+    {
+        _invalid = 0,
+        Preload
+    }
     internal abstract class TestingType
     {
 
         protected readonly StringBuilder sb = new();
         protected abstract Type TestOf { get; }
         static readonly Dictionary<Type, TestingType> Tests = GetTests();
+
+        protected TestOptions? Option;
         protected TestingType()
         {
 
         }
-        protected abstract void Test(string obj);
-        public static void Test<T>()
+
+        public static void Test<T>(TestOptions? option = null)
         {
             try
             {
@@ -37,25 +45,19 @@ namespace XQuinn.NetConsole
             }
             if (Tests.TryGetValue(typeof(T), out TestingType? test))
             {
+                test.Option = option;
                 test.WhileTrueTestLoop();
             }
             else
                 throw new ArgumentException($"There is no test for type {typeof(T)}.");
         }
-
-        void WhileTrueTestLoop()
+        protected virtual string? PreDisplay()
         {
-            while (true)
-            {
-
-                string? text = Console.ReadLine();
-                if (text == "exit")
-                    return;
-                if (text != null)
-                    TestAndCatchForDisplay(text);
-            }
+            return null;
         }
-        void TestAndCatchForDisplay(string obj)
+        protected abstract void Test(string obj);
+
+        protected virtual void TestAndCatchForDisplay(string obj)
         {
             try
             {
@@ -63,15 +65,23 @@ namespace XQuinn.NetConsole
             }
             catch (Exception ex)
             {
-                sb.Append($"{ex.GetType()}\n");
-                sb.Append($"{ex.Message}\n");
-                sb.Append($"{ex.StackTrace}\n");
-                sb.Append($"{ex.Data}\n{ex.TargetSite}\n{ex.Source}\n");
+                sb.CatchException(ex);
                 Console.WriteLine(sb);
                 sb.Length = 0;
             }
         }
-
+        void WhileTrueTestLoop()
+        {
+            while (true)
+            {
+                Console.WriteLine(PreDisplay());
+                string? text = Console.ReadLine();
+                if (text == "exit")
+                    return;
+                if (text != null)
+                    TestAndCatchForDisplay(text);
+            }
+        }
         static Dictionary<Type, TestingType> GetTests()
         {                                                                                                       //cant use IsAssignableTo in NetStandard2.0, not a big deal, i dont feel like adding NET6_OR_GREATER precompiler directives whenever I want to run a console test
             IEnumerable<Type> testTypes = typeof(TestingType).Module.GetTypes().Where(x => !x.IsAbstract && typeof(TestingType).IsAssignableFrom(x));
@@ -125,9 +135,7 @@ namespace XQuinn.NetConsole
         protected override Type TestOf => typeof(RuntimeCommand);
         protected override void Test(string obj)
         {
-            bool val = RuntimeCommand.InvokeCommand(obj);
-            string invoked = val == true ? "invoked" : "failed";
-            Console.WriteLine(invoked);
+            RuntimeCommand.InvokeCommand(obj);
         }
     }
 #if NET6_0_OR_GREATER
@@ -141,7 +149,7 @@ namespace XQuinn.NetConsole
         protected override void Test(string obj)
         {
 
-            new InvokerInterface().Interface(obj);
+            new InvokerInterface().Interface(obj, out _, false, out _);
 
 
         }
@@ -150,42 +158,42 @@ namespace XQuinn.NetConsole
 #endif
     internal sealed class CallInterpTest : TestingType
     {
-        CallInterpTest()
-        {
 
-        }
-
-        static FieldInfo _key = typeof(CallInterpreter).GetField("_key", BindingFlags.NonPublic | BindingFlags.Instance)!;
-
-        static FieldInfo _variableKey = typeof(CallInterpreter).GetField("_variableKey", BindingFlags.NonPublic | BindingFlags.Instance)!;
         protected override Type TestOf => typeof(CallInterpreter);
-        readonly CallInterpreter interp = new();
+        CallInterpreter Interp => monitor.Interp;
+        readonly InterpMonitor monitor = new();
+        InterpPreload? Preload;
         protected override void Test(string obj)
         {
-            Console.Clear();
-            Console.WriteLine(DateTime.Now);
-            if (obj == "variables")
-            {
-                ConsoleTools.WriteMany(interp.Variables, x => x.Key);
-                return;
-            }
-            Display(true);
-            Console.WriteLine("Invoking...");
-            object? ret = interp.Interface(obj);
-            Display(false);
         }
-
-        void Display(bool before)
+        CallInterpTest()
         {
-            string timing = before ? "Last Loaded" : "Current Loaded";
-            Console.WriteLine($"{timing} Type: {interp.LoadedType}");
-            Console.WriteLine($"{timing} Method: {interp.LoadedMethod}");
-            Console.WriteLine($"{timing} Instance Type: {interp.InstanceType}");
-            string? key = (string?)_key.GetValue(interp);
-            Console.WriteLine($"{timing} _key {key}");
-            string? variableKey = (string?)_variableKey.GetValue(interp);
-            Console.WriteLine($"{timing} _variableKey {variableKey}");
-
+            Preload = new(monitor.Interp, new string[] {  });
         }
+        protected override string? PreDisplay()
+        {
+            if (Option == TestOptions.Preload)
+            {
+                if (Preload != null)
+                {
+                    Preload.Preload();
+                    Variable variable = Interp.Variables.FirstOrDefault().Value;
+                    Preload = null;
+                    return $"{variable} loaded";
+                }
+            }
+            else
+                Preload = null;
+            Option = null;
+            return null;
+        }
+
+        protected override void TestAndCatchForDisplay(string obj)
+        {            //    Console.Clear();
+            string output = monitor.TryCatchInterface(obj, out _, out _);
+            Console.WriteLine(output);
+        }
+
+
     }
 }
