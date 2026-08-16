@@ -44,3 +44,6 @@ a value of class Type
 wasnt working, i couldnt Return a Type, even though Type is a MemberInfo
 you need to cast it to object, then T
 
+
+
+If an IEnumerables underlying type is an ICollection, Count() is optimized

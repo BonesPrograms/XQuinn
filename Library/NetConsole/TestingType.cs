@@ -15,25 +15,20 @@ using _xquinn_prgrm;
 
 namespace XQuinn.NetConsole
 {
-    internal enum TestOptions
-    {
-        _invalid = 0,
-        Preload
-    }
+
     internal abstract class TestingType
     {
 
         protected readonly StringBuilder sb = new();
         protected abstract Type TestOf { get; }
         static readonly Dictionary<Type, TestingType> Tests = GetTests();
-
-        protected TestOptions? Option;
+        bool preloadComplete;
         protected TestingType()
         {
 
         }
 
-        public static void Test<T>(TestOptions? option = null)
+        public static void Test<T>(IEnumerable<string>? preload = null)
         {
             try
             {
@@ -45,17 +40,19 @@ namespace XQuinn.NetConsole
             }
             if (Tests.TryGetValue(typeof(T), out TestingType? test))
             {
-                test.Option = option;
-                test.WhileTrueTestLoop();
+                test.WhileTrueTestLoop(preload);
             }
             else
                 throw new ArgumentException($"There is no test for type {typeof(T)}.");
         }
-        protected virtual string? PreDisplay()
+        protected virtual string? PreLoad(IEnumerable<string>? preload)
         {
             return null;
         }
-        protected abstract void Test(string obj);
+        protected virtual void Test(string obj)
+        {
+            
+        }
 
         protected virtual void TestAndCatchForDisplay(string obj)
         {
@@ -70,11 +67,17 @@ namespace XQuinn.NetConsole
                 sb.Length = 0;
             }
         }
-        void WhileTrueTestLoop()
+        void WhileTrueTestLoop(IEnumerable<string>? preload)
         {
             while (true)
             {
-                Console.WriteLine(PreDisplay());
+                if (!preloadComplete)
+                {
+                    string? pre = PreLoad(preload);
+                    if (pre != null)
+                        Console.WriteLine(pre);
+                    preloadComplete = true;
+                }
                 string? text = Console.ReadLine();
                 if (text == "exit")
                     return;
@@ -162,34 +165,28 @@ namespace XQuinn.NetConsole
         protected override Type TestOf => typeof(CallInterpreter);
         CallInterpreter Interp => monitor.Interp;
         readonly InterpMonitor monitor = new();
-        InterpPreload? Preload;
-        protected override void Test(string obj)
+        protected override string? PreLoad(IEnumerable<string>? preloads)
         {
-        }
-        CallInterpTest()
-        {
-            Preload = new(monitor.Interp, new string[] {  });
-        }
-        protected override string? PreDisplay()
-        {
-            if (Option == TestOptions.Preload)
+            if (preloads != null)
             {
-                if (Preload != null)
+                Interp.RunCommands(preloads);
+                Variable? variable = null;
+                try
                 {
-                    Preload.Preload();
-                    Variable variable = Interp.Variables.FirstOrDefault().Value;
-                    Preload = null;
-                    return $"{variable} loaded";
+                    KeyValuePair<string, Variable> pair = Interp.Variables.First();
+                    variable = pair.Value;
                 }
+                catch
+                {
+
+                }
+                return variable == null ? null : $"{variable} loaded";
             }
-            else
-                Preload = null;
-            Option = null;
             return null;
         }
 
         protected override void TestAndCatchForDisplay(string obj)
-        {            //    Console.Clear();
+        {
             string output = monitor.TryCatchInterface(obj, out _, out _);
             Console.WriteLine(output);
         }

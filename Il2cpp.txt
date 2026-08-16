@@ -13,3 +13,6 @@ https://docs.unity3d.com/6000.0/Documentation/Manual/scripting-restrictions.html
 https://gurrenm3.github.io/BTD-Mod-Helper/wiki/IL2CPP-Is-Weird
 
 il2cpp plan: "separate bridges" there are few places where we access type, like findtype, invokemethod and getfield, so pretty much at these locations we have to figure out if a type is an il2cpp type and then divert to il2cpp type edition code, the return values will still work fine
+There will beed to be an Il2cpp TypeCache
+
+Fuck I hate IL2CPP

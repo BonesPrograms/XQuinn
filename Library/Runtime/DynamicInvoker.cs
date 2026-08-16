@@ -16,125 +16,116 @@ namespace XQuinn.Runtime
 {
 
 
-/// <summary>
-/// Invokes methods from a specific type in a dynamically loaded assembly. Only supports static methods with primitive, enum or string parameters. No in, outs or refs.
-/// Gets declared-only members, and does not support overloaded methods.
-/// </summary>
-/// <summary>
-/// Only supports single-file assemblies. Loads an assembly into the runtime and dynamically reloads it if it detects any updates to the file.
-/// </summary>
-/// 
-public class DynamicInvoker : IDisposable
-{
-
-    class DLLBox : AssemblyLoadContext
-    {
-        public DLLBox() : base(isCollectible: true)
-        {
-
-        }
-    }
-    DLLBox? Box;
-    Assembly? LoadedAssembly;
-    public readonly CallInterpreter Interpreter = new();
     /// <summary>
-    /// Inheritors should not expose internal reflection data under any circumstances.
+    /// Invokes methods from a specific type in a dynamically loaded assembly. Only supports static methods with primitive, enum or string parameters. No in, outs or refs.
+    /// Gets declared-only members, and does not support overloaded methods.
     /// </summary>
-    protected TypeBook? Book;
-
     /// <summary>
-    /// If you change this, you most certainly will want to call reload afterwards.
+    /// Only supports single-file assemblies. Loads an assembly into the runtime and dynamically reloads it if it detects any updates to the file.
     /// </summary>
-    public string DLLPath;
-    DateTime LastWrite;
-    public bool FullName;
-    public string? DefaultLoadedTypeName;
-    DynamicInvoker(string path) //DynamicReloader exists purely as a base class for DynamicInvoker. It is not intended for anyone else to inherit from.
+    /// 
+    public sealed class DynamicInvoker : IDisposable
     {
-        if (!File.Exists(path))
-            throw new FileNotFoundException(path);
-        if (Path.GetExtension(path) != ".dll")
-            throw new ArgumentException("only .dll is supported by DynamicReloader");
-        DLLPath = path;
-    }
 
-    public static DynamicInvoker New(string dllpath)
-    {
-        DynamicInvoker invoker = new(dllpath);
-        invoker.Reload();
-        return invoker;
-    }
-    ~DynamicInvoker()
-    {
-        Unload();
-    }
-
-    public void Reload()
-    {
-        var monitor = Unload();
-        // if (monitor != null)
-        //     Collect(monitor);
-        Load();
-        Module[] modules = LoadedAssembly!.GetModules();
-        if (modules.Length > 1)
-            throw new NotSupportedException("Only single file assemblies are supported.");
-        Interpreter.LocalCache = TypeBook.New(LoadedAssembly.ManifestModule.GetTypes(), FullName, StringComparer.OrdinalIgnoreCase).Book;
-        if (DefaultLoadedTypeName != null)
-            Interpreter.LoadType(DefaultLoadedTypeName);
-        LastWrite = File.GetLastWriteTime(DLLPath);
-    }
-
-    public void Dispose()
-    {
-        Unload();
-        GC.SuppressFinalize(this);
-    }
-
-
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    void Load()
-    {
-        Box = new DLLBox();
-        using FileStream stream = File.OpenRead(DLLPath);
-        LoadedAssembly = Box.LoadFromStream(stream);
-    }
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    WeakReference? Unload()
-    {
-        if (Box == null)
-            return null;
-        Interpreter.Clear();
-        Book = null;
-        LoadedAssembly = null;
-        WeakReference monitor = new(Box, trackResurrection: true);
-        Box?.Unload();
-        Box = null;
-        return monitor;
-    }
-
-    public object? Interface(string invocation)
-    {
-        if (CheckForReload())
-            Reload();
-        return Interpreter.Interface(invocation);
-    }
-
-    //This is the dynamic part
-    //Whenever you try to get or invoke a method it will check if the assembly has been recompiled
-    //and will reload its manifest module if so
-    bool CheckForReload()
-    {
-        DateTime write = File.GetLastWriteTime(DLLPath);
-        if (write != LastWrite)
+        sealed class DLLBox : AssemblyLoadContext
         {
-            Reload();
-            return true;
-        }
-        return false;
-    }
+            public DLLBox() : base(isCollectible: true)
+            {
 
-}
+            }
+        }
+        DLLBox? Box;
+        Assembly? LoadedAssembly;
+        public readonly CallInterpreter Interpreter = new();
+
+        /// <summary>
+        /// If you change this, you most certainly will want to call reload afterwards.
+        /// </summary>
+        public string DLLPath;
+        DateTime LastWrite;
+        public Func<Type, string?> BookDelegate;
+        public string? DefaultLoadedTypeName;
+        DynamicInvoker(string path, Func<Type, string?> bookDelegate) //DynamicReloader exists purely as a base class for DynamicInvoker. It is not intended for anyone else to inherit from.
+        {
+            this.BookDelegate = bookDelegate;
+            if (!File.Exists(path))
+                throw new FileNotFoundException(path);
+            if (Path.GetExtension(path) != ".dll")
+                throw new ArgumentException("only .dll is supported by DynamicReloader");
+            DLLPath = path;
+        }
+
+        public static DynamicInvoker New(string dllpath, Func<Type, string?> bookDelegate)
+        {
+            DynamicInvoker invoker = new(dllpath, bookDelegate);
+            invoker.Reload();
+            return invoker;
+        }
+        public void Reload()
+        {
+            var monitor = Unload();
+            // if (monitor != null)
+            //     Collect(monitor);
+            Load();
+            Module[] modules = LoadedAssembly!.GetModules();
+            if (modules.Length > 1)
+                throw new NotSupportedException("Only single file assemblies are supported.");
+            Interpreter.LocalCache = TypeBook.New(LoadedAssembly.ManifestModule.GetTypes(), BookDelegate, StringComparer.OrdinalIgnoreCase).Book;
+            if (DefaultLoadedTypeName != null)
+                Interpreter.LoadType(DefaultLoadedTypeName);
+            LastWrite = File.GetLastWriteTime(DLLPath);
+        }
+
+        public void Dispose()
+        {
+            Unload();
+            GC.SuppressFinalize(this);
+        }
+
+
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        void Load()
+        {
+            Box = new DLLBox();
+            using FileStream stream = File.OpenRead(DLLPath);
+            LoadedAssembly = Box.LoadFromStream(stream);
+        }
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        WeakReference? Unload()
+        {
+            if (Box == null)
+                return null;
+            Interpreter.Clear();
+            LoadedAssembly = null;
+            WeakReference monitor = new(Box, trackResurrection: true);
+            Box?.Unload();
+            Box = null;
+            return monitor;
+        }
+
+        public object? Interface(string invocation)
+        {
+            if (CheckForReload())
+                Reload();
+            return Interpreter.Interface(invocation);
+        }
+
+        //This is the dynamic part
+        //Whenever you try to get or invoke a method it will check if the assembly has been recompiled
+        //and will reload its manifest module if so
+        bool CheckForReload()
+        {
+            DateTime write = File.GetLastWriteTime(DLLPath);
+            if (write != LastWrite)
+            {
+                Reload();
+                return true;
+            }
+            return false;
+        }
+
+    }
 }
 //Usage warnings:
 //If you are invoking one of your reflected methods via dynamic invoker, your reflected methods should avoid the following behaviors:

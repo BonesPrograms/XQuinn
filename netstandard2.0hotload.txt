@@ -1,0 +1,37 @@
+.NET Framework (Legacy)In traditional .NET Framework applications, individual assemblies are completely permanent once loaded into an application domain. You must launch a distinct AppDomain, execute your code, and destroy the entire domain.csharpusing System;
+using System.Reflection;
+
+class LegacyProgram
+{
+    static void Main()
+    {
+        // 1. Spawn a secondary AppDomain
+        AppDomain domain = AppDomain.CreateDomain("PluginDomain");
+
+        // 2. Instantiate a proxy object inside the new domain
+        // Note: Proxy class must inherit from MarshalByRefObject
+        Type proxyType = typeof(AssemblyProxy);
+        AssemblyProxy proxy = (AssemblyProxy)domain.CreateInstanceAndUnwrap(
+            proxyType.Assembly.FullName, 
+            proxyType.FullName
+        );
+
+        // 3. Load and execute via proxy
+        proxy.LoadAndRun("MyLegacyPlugin.dll");
+
+        // 4. Destroy the domain (forces all contained assemblies to unload)
+        AppDomain.Unload(domain);
+    }
+}
+
+// Helper proxy class that lives across domain boundaries
+public class AssemblyProxy : MarshalByRefObject
+{
+    public void LoadAndRun(string path)
+    {
+        Assembly asm = Assembly.LoadFrom(path);
+        // Execute your plugin code here
+    }
+
+    This is just some example code I was going to look into about how youd do hot reloading on an older net version that doesnt have load context
+    This seems kind of terrible so were gonna keep investigating

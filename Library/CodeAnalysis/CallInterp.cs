@@ -17,25 +17,25 @@ using System.Text;
 namespace XQuinn.CodeAnalysis
 {
 
-        public sealed class Variable
+    public sealed class Variable
+    {
+        public readonly string VariableKey;
+        public readonly string TypeCacheKey;
+        public readonly object Object;
+        public readonly Type ObjectType;
+        public Variable(string typekey, string varkey, object instance)
         {
-            public readonly string VariableKey;
-            public readonly string TypeCacheKey;
-            public readonly object Object;         
-            public readonly Type ObjectType;
-            public Variable(string typekey, string varkey, object instance)
-            {
-                VariableKey = varkey;
-                TypeCacheKey = typekey;
-                Object = instance;
-                ObjectType = instance.GetType();
-            }
-
-            public override string ToString()
-            {
-                return $"VariableKey: {VariableKey} Type: {ObjectType} TypeKey: {TypeCacheKey}";
-            }
+            VariableKey = varkey;
+            TypeCacheKey = typekey;
+            Object = instance;
+            ObjectType = instance.GetType();
         }
+
+        public override string ToString()
+        {
+            return $"VariableKey: {VariableKey} Type: {ObjectType} TypeKey: {TypeCacheKey}";
+        }
+    }
 
     /// <summary>
     /// Wrapper around an exception thrown by a method invoked via reflection, primarily to prevent memory leakage from hot-reloaded assemblies.
@@ -264,6 +264,12 @@ namespace XQuinn.CodeAnalysis
         {
             GlobalCache.Clear();
         }
+
+        public void RunCommands(IEnumerable<string> commands)
+        {
+            foreach (string command in commands)
+                Interface(command);
+        }
         public CallInterpreter(IReadOnlyDictionary<string, Type>? localCache = null)
         {
             LocalCache = localCache;
@@ -489,8 +495,9 @@ namespace XQuinn.CodeAnalysis
 
 
 
-        object? GetFieldParameter(Type t, FieldString f, object? variable)
+        object? GetFieldParameter(Type t, FieldString f, Variable? localvar)
         {
+            object? variable = localvar?.Object;
             string fname = f.String;
             FieldInfo? field = CheckGlobalCache<FieldInfo>(f.String, t, out bool typeCached, out bool fieldCached);
             if (field == null && t == LoadedType)
@@ -509,8 +516,9 @@ namespace XQuinn.CodeAnalysis
             object? instance = GetVariableInstance(t, variable);
             return field.GetValue(instance);
         }
-        object? InvokeMethodParameter(MethodString method, Type t, object? variable)
+        object? InvokeMethodParameter(MethodString method, Type t, Variable? localvar)
         {
+            object? variable = localvar?.Object;
             MethodInfo? call = CheckGlobalCache<MethodInfo>(method.NameWithGenerics, t, out bool typeCached, out bool methodCached);
             if (call == null && t != LoadedType)
             {
@@ -562,12 +570,12 @@ namespace XQuinn.CodeAnalysis
         object? InvokeMethodWithVariable(MethodString m)
         {
             Type t = FindTypeWithVariable(m, out Variable? variable);
-            return InvokeMethodParameter(m, t, variable?.Object);
+            return InvokeMethodParameter(m, t, variable);
         }
         object? GetFieldWithVariable(FieldString s)
         {
             Type t = FindTypeWithVariable(s, out Variable? variable);
-            return GetFieldParameter(t, s, variable?.Object);
+            return GetFieldParameter(t, s, variable);
         }
         #endregion
 
@@ -631,13 +639,11 @@ namespace XQuinn.CodeAnalysis
             if (Caching)
             {
                 typeCached = GlobalCache.TryGetValue(t, out var cachedMembers);
-
                 if (typeCached)
                 {
-                    memberCached = cachedMembers!.TryGetValue(key, out MemberInfo? realmember);
+                    memberCached = cachedMembers!.TryGetValue(key, out MemberInfo? member);
                     if (memberCached)
-                        return (T)realmember!;
-                    
+                        return (T)member!;
                 }
             }
             return null;
@@ -868,7 +874,7 @@ namespace XQuinn.CodeAnalysis
         object? RemoveInstanceFromVariables(string key)
         {
             _variables.Remove(key);
-            if (_variableKey == key)
+            if (key.EqualsCaseless(_variableKey))
                 _variableKey = null;
             return null;
         }
@@ -900,7 +906,7 @@ namespace XQuinn.CodeAnalysis
             if (!_variables.TryGetValue(key, out Variable? variable))
                 throw new ArgumentException($"There is no stored instance with the key {key}.");
             _variableKey = key;
-            _key = variable.TypeCacheKey ?? "this";
+            _key = variable.TypeCacheKey;
             LoadInstance(variable.Object, variable.ObjectType);
             return variable;
         }

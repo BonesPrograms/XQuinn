@@ -6,27 +6,7 @@ using System.Collections.Generic;
 
 namespace XQuinn
 {
-    /// <summary>
-    /// Preloads commands to a CallInterpreter instance.
-    /// </summary>
-    public sealed class InterpPreload
-    {
-        readonly CallInterpreter Interpreter;
 
-        readonly IEnumerable<string> Cmds;
-
-        public InterpPreload(CallInterpreter interpreter, IEnumerable<string> cmds)
-        {
-            Interpreter = interpreter;
-            this.Cmds = cmds;
-        }
-
-        public void Preload()
-        {
-            foreach(string cmd in Cmds)
-            Interpreter.Interface(cmd);
-        }
-    }
 
     /// <summary>
     /// Monitor the output, activity and exceptions of a CallInterpreter instance via strings.
@@ -49,6 +29,7 @@ namespace XQuinn
         public string AfterTypeCacheKey => _atypeCacheKey;
         public string AfterVariableKey => _avariableKey;
         //    public string Exception => _exception;
+        string _rawinvocation = string.Empty;
         string _lastinvoke = string.Empty;
         string _invoking = string.Empty;
         string _ret = string.Empty;
@@ -89,16 +70,15 @@ namespace XQuinn
         }
         public string Interface(string input, out object? interpreterReturned)
         {
-            _lastinvoke = _invoking;
             interpreterReturned = null;
             AppendWithBreak($"{Environment.NewLine}");
             AppendWithBreak($"{DateTime.Now}");
             if (input == "variables" || input == "vars" || input == "var")
                 return GetVariables();
             AppendInterpData(true);
-            AppendWithBreak($"LastInvoke: {_lastinvoke}");
-            _invoking = $"Invoking : {input}";
-            AppendWithBreak(_invoking);
+            _lastinvoke = AppendWithBreak($"LastInvoke: {_rawinvocation}");
+            _rawinvocation = input;
+            _invoking = AppendWithBreak($"Invoking : {input}");
             interpreterReturned = Interp.Interface(input);
             _ret = $"Returned: {interpreterReturned?.ToString()}";
             AppendWithBreak(_ret);
