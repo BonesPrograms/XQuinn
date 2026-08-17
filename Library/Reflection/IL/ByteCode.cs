@@ -153,8 +153,8 @@ namespace XQuinn.Reflection.IL
 #endif
         void OperandToString(StringBuilder sb)
         {
-            if (Operand is LocalVariableInfo lvar) sb.Append($"{GenericTypeToString(lvar.LocalType)} ({lvar.LocalIndex})");
-            else if (Operand is ParameterInfo info) sb.Append(GenericTypeToString(info.ParameterType) + $" {info.Name}");
+            if (Operand is LocalVariableInfo lvar) { GenericTypeToString(sb, lvar.LocalType); sb.Append($" {lvar.LocalIndex}"); }
+            else if (Operand is ParameterInfo info) { GenericTypeToString(sb, info.ParameterType); sb.Append($" {info.Name}"); }
             else if (OpCode.OperandType == OperandType.InlineBrTarget || OpCode.OperandType == OperandType.ShortInlineBrTarget)
             {
                 if (Operand == null) throw new InvalidOperationException();

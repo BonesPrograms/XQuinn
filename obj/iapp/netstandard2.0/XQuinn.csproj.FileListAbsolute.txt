@@ -1,6 +1,0 @@
-C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\iapp\netstandard2.0\XQuinn.csproj.AssemblyReference.cache
-C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\iapp\netstandard2.0\XQuinn.GeneratedMSBuildEditorConfig.editorconfig
-C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\iapp\netstandard2.0\XQuinn.AssemblyInfoInputs.cache
-C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\iapp\netstandard2.0\XQuinn.AssemblyInfo.cs
-C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\iapp\netstandard2.0\XQuinn.csproj.CoreCompileInputs.cache
-C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\iapp\netstandard2.0\XQuinn.sourcelink.json

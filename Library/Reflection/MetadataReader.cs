@@ -130,6 +130,7 @@ namespace XQuinn.Reflection
             sb.Append(FixGenericString(type.Name)); //adds name string here
             AddGenericArguments(sb, type.GetGenericArguments());
         }
+        
 
         static string FixGenericString(string strng)
         {

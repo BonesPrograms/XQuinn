@@ -1,6 +1,0 @@
-C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Release\net10.0-windows\win-x64\publish\XQuinn.exe
-C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Release\net10.0-windows\win-x64\publish\XQuinn.dll
-C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Release\net10.0-windows\win-x64\publish\XQuinn.deps.json
-C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Release\net10.0-windows\win-x64\publish\XQuinn.runtimeconfig.json
-C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Release\net10.0-windows\win-x64\publish\0Harmony.dll
-C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Release\net10.0-windows\win-x64\publish\Mono.Reflection.dll
