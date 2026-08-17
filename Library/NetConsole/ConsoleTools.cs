@@ -18,7 +18,7 @@ public static class ConsoleTools
     {
         int index = 0;
         if (msg != null)
-            msg += $"{Environment.NewLine}";
+            msg += Environment.NewLine;
         while (true)
         {
             Console.Clear();

@@ -53,7 +53,7 @@ namespace XQuinn.Reflection
             ["nint"] = typeof(nint),
             ["nuint"] = typeof(nuint)
         };
-        static readonly ImmutableArray<string> BadKeys = new string[] { "this", "null", "base" }.ToImmutableArray();
+        internal static readonly string[] BadKeys = new string[] { "this", "null", "base" };
         static TypeCache()
         {
             GlobalCache = new ReadOnlyDictionary<string, Type>(_registry);

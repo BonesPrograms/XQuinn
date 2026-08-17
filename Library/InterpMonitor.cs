@@ -3,6 +3,8 @@ using System.Text;
 using XQuinn.Extensions;
 using XQuinn.CodeAnalysis;
 using System.Collections.Generic;
+using System.Reflection;
+using XQuinn.Reflection;
 
 namespace XQuinn
 {
@@ -71,10 +73,20 @@ namespace XQuinn
         public string Interface(string input, out object? interpreterReturned)
         {
             interpreterReturned = null;
-            AppendWithBreak($"{Environment.NewLine}");
+            AppendWithBreak(Environment.NewLine);
             AppendWithBreak($"{DateTime.Now}");
-            if (input == "variables" || input == "vars" || input == "var")
-                return GetVariables();
+            if (input[0] == '?')
+                switch (input.Substring(1))
+                {
+                    case "variables" or "var" or "vars":
+                        return GetCollection(Interp.Variables, null);
+                    case "methods":
+                        return GetCollection(Interp._methods, x => $"[Key: {x.Key} :: {ReflectionReader.String(x.Value)}]");
+                    case "fields":
+                        return GetCollection(Interp._fields, x => $"[Key: {x.Key} :: {ReflectionReader.String(x.Value)}]");
+                    case "overloads":
+                        return GetCollection(Interp.Overloads, x => $"[Key: {x.Key} :: {ReflectionReader.String(x.Value)}]");
+                }
             AppendInterpData(true);
             _lastinvoke = AppendWithBreak($"LastInvoke: {_rawinvocation}");
             _rawinvocation = input;
@@ -99,7 +111,7 @@ namespace XQuinn
             string variablekey = $"{timing} VariableKey {Interp.LoadedVariable}";
             sb.Append(variablekey);
             if (before)
-                sb.Append($"{Environment.NewLine}");
+                sb.Append(Environment.NewLine);
             AssignOutputs(type, method, instancetype, cachekey, variablekey, before);
 
 
@@ -124,14 +136,14 @@ namespace XQuinn
             }
         }
 
-
-        string GetVariables()
+        string GetCollection<T>(IEnumerable<T> collection, Func<T?, string>? toString)
         {
-            sb.AppendMany(Interp.Variables, $"{Environment.NewLine}", x => x.Value.ToString());
-            string variablesOutput = sb.ToString();
+            sb.AppendMany(collection, Environment.NewLine, toString);
+            string output = sb.ToString();
             sb.Length = 0;
-            return variablesOutput;
+            return output;
         }
+
 
         string AppendWithBreak(string? strng)
         {

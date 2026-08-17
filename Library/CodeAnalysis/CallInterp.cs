@@ -234,8 +234,8 @@ namespace XQuinn.CodeAnalysis
         Type? _loadedType;
         public string? LoadedTypeKey => _key;
         string? _key;
-        Dictionary<string, MethodInfo> _methods = new(StringComparer.OrdinalIgnoreCase);
-        readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
+        internal Dictionary<string, MethodInfo> _methods = new(StringComparer.OrdinalIgnoreCase);
+        internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// A dictionary of all overload methods found in the current loaded type, incase you are having trouble figuring out an overload's changed name. You can also use

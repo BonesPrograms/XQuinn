@@ -10,6 +10,10 @@ using System;
 namespace XQuinn.Reflection
 {
 
+   /// <summary>
+    /// A bridge to get access modifier values from fieldinfos and methodbases, which cannot cast into one another but share the same exact fields.
+    /// </summary>
+
 
     readonly struct AccessModifiers
     {
@@ -63,23 +67,19 @@ namespace XQuinn.Reflection
     }
 
 
-    /// <summary>
-    /// A bridge to get access modifier values from fieldinfos and methodbases, which cannot cast into one another but share the same exact fields.
-    /// </summary>
-
-
+ 
 
     /// <summary>
     /// Wrapper for a reflection object. Primarily exists to return readable and relatively informative strings about the metadata (it will be roughly as informative as
     /// viewing the type directly in code, it lacks deeper metadata information).
     /// </summary>
 
-    public sealed class MemberReader : MetadataReader
+    public sealed class ReflectionReader : MetadataReader
     {
 
-        public static bool ShowToken = false;
+        public bool ShowToken = false;
 
-        public static bool ShowTokenBytes = false;
+        public bool ShowTokenBytes = false;
         public MemberInfo Info => (MemberInfo)Object!;
         /// <summary>
         /// 32bit byte sequence of the MetadataToken.
@@ -91,14 +91,14 @@ namespace XQuinn.Reflection
 #endif
         public readonly Type? Declared;
         public readonly Type? Base;
-        MemberReader(MemberInfo info) : base(info)
+        ReflectionReader(MemberInfo info) : base(info)
         {
             Declared = info.DeclaringType;
             if (info is Type type && type.BaseType != typeof(object))
                 Base = type.BaseType;
         }
 
-        public static MemberReader New(MemberInfo info)
+        public static ReflectionReader New(MemberInfo info)
         {
             return new(info)
             {

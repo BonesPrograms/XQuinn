@@ -28,8 +28,14 @@ namespace _xquinn_prgrm
 #if NET6_0_OR_GREATER
             XQuinn.NetConsole.Apps.IApp.RunApp(args);
 #endif
-            IEnumerable<Type> types = typeof(_xquinn_prgrm_Main).Module.GetTypes().Where(x => x.Namespace == "_xquinn_prgrm");
-            TypeBook book = TypeBook.New(types, x => x.SnipGenericShortName(), StringComparer.OrdinalIgnoreCase);
+            IEnumerable<Type> types = typeof(_xquinn_prgrm_Main).Module.GetTypes();//.Where(x => x.Namespace == "_xquinn_prgrm");
+            TypeBook book = TypeBook.New(types, x =>
+            {
+                if(x.Name.StartsWith("_"))
+                return null;
+                else
+                return x.SnipGenericShortName();
+            }, StringComparer.OrdinalIgnoreCase);
             TypeCache.CacheTypes(book);
             TypeCache.CacheType("Console", typeof(Console));
             //RuntimeCommand.Register(types, "XQuinn");

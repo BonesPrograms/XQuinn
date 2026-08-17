@@ -31,10 +31,10 @@ namespace XQuinn.Runtime
         public CallInterpreter Interp => Monitor.Interp;
         public readonly InterpMonitor Monitor = new();
         public readonly DynamicInvoker? Invoker;
-        public InvokerInterface(string? assemblyPath = null)
+        public InvokerInterface(string? assemblyPath = null, Func<Type, string?>? bookDelegate = null)
         {
-            if (assemblyPath != null)
-                Invoker = DynamicInvoker.New(assemblyPath);
+            if (assemblyPath != null && bookDelegate != null)
+                Invoker = DynamicInvoker.New(assemblyPath, bookDelegate);
         }
 
         //DynamicInvoker will have its own op call, something like ?

@@ -5,6 +5,7 @@ using System.Reflection;
 using System;
 using System.Collections.Immutable;
 using static XQuinn.Reflection.MemberGroup;
+using System.Collections.Generic;
 
 namespace XQuinn.Reflection
 {
@@ -30,7 +31,7 @@ namespace XQuinn.Reflection
     public static class MemberGroups
     {
 
-        public static readonly ImmutableArray<MemberGroup> Groups = new MemberGroup[] { Field, Property, Method, Event, Constructor }.ToImmutableArray();
+        public static readonly IReadOnlyList<MemberGroup> Groups = Array.AsReadOnly(new MemberGroup[] { Field, Property, Method, Event, Constructor });
 
         public static MemberGroup GetGroup(MemberInfo info) => info switch
         {

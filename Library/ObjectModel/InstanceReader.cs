@@ -331,7 +331,7 @@ namespace XQuinn.ObjectModel
         protected void Skip(int value)
         {
             for (int i = 1; i <= value; i++)
-                Write("{Environment.NewLine}");
+                Write(Environment.NewLine);
         }
 
 

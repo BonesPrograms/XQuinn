@@ -30,10 +30,10 @@ namespace XQuinn.IO
         public void Log(string text, int newLinesBefore = 0, int newLinesAfter = 0)
         {
             for (int i = 1; i <= newLinesBefore; i++)
-                sb.Append($"{Environment.NewLine}");
+                sb.Append(Environment.NewLine);
             sb.Append($"[{DateTime.Now}] {text}");
             for (int i = 1; i <= newLinesAfter; i++)
-                sb.Append($"{Environment.NewLine}");
+                sb.Append(Environment.NewLine);
             Writer.WriteLine(sb);
             sb.Length = 0;
         }
