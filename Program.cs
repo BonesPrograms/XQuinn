@@ -54,8 +54,13 @@ namespace _xquinn_prgrm
 
     public class Fun
     {
-
-        public static string Params(string f, bool y, params int[] prms)
+        public static string Params<T>(params T[] prms)
+        {
+            StringBuilder sb = new();
+            sb.AppendMany(prms);
+            return sb.ToString();
+        }
+        public static string Pa2rams(string f, bool y, params int[] prms)
         {
             StringBuilder sb = new();
             sb.AppendMany(prms);

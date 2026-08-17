@@ -13,6 +13,7 @@ using System.Collections.Generic;
 using XQuinn.CodeAnalysis;
 using System.Text;
 using System.Diagnostics;
+using System.Collections;
 
 namespace XQuinn.CodeAnalysis
 {
@@ -333,11 +334,11 @@ namespace XQuinn.CodeAnalysis
         public object?[] GetParsedParameters(ParameterInfo[] actualParameters, MethodString invocation)
         {
             object?[] prms = new object[actualParameters.Length];
-            if (invocation.Params.Count != actualParameters.Length)
+            int inputAmount = invocation.Params.Count;
+            int reqAmount = actualParameters.Length;
+            int lastparam = reqAmount - 1;
+            if (invocation.Params.Count != reqAmount)
             {
-                int inputAmount = invocation.Params.Count;
-                int reqAmount = actualParameters.Length;
-                int lastparam = reqAmount - 1;
                 if (inputAmount < reqAmount)
                 {
                     for (int i = inputAmount; i < reqAmount; i++)
@@ -348,20 +349,22 @@ namespace XQuinn.CodeAnalysis
                     }
                     for (int i = 0; i < inputAmount; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
                 }
-                else if (lastparam >= 0 && actualParameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
-                {
-                    int lastBeforeThat = lastparam - 1;
-                    if (lastBeforeThat >= 0) for (int i = 0; i < lastBeforeThat; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
-                    Type elementType = actualParameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentException();
-                    Array paramArray = Array.CreateInstance(elementType, invocation.Params.Count - lastparam);
-                    for (int i = lastparam; i < invocation.Params.Count; i++) paramArray.SetValue(ParameterToObject(invocation.Params[i], elementType), i - lastparam);
-                    prms[lastparam] = paramArray;
-
-                }
+                else if (lastparam >= 0 && actualParameters[lastparam].IsDefined(typeof(ParamArrayAttribute))) GetParamArray(lastparam, actualParameters, prms, invocation);
                 else throw new TargetParameterCountException($"input param count: {invocation.Params.Count} required count: {actualParameters.Length} method name {invocation.String}");
             }
+            else if (lastparam >= 0 && actualParameters[lastparam].IsDefined(typeof(ParamArrayAttribute))) GetParamArray(lastparam, actualParameters, prms, invocation);
             else for (int i = 0; i < actualParameters.Length; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
             return prms;
+        }
+
+        void GetParamArray(int lastparam, ParameterInfo[] actualParameters, object?[] prms, MethodString invocation)
+        {
+            int lastBeforeThat = lastparam - 1;
+            if (lastBeforeThat >= 0) for (int i = 0; i < lastBeforeThat; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
+            Type elementType = actualParameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentException();
+            Array paramArray = Array.CreateInstance(elementType, invocation.Params.Count - lastparam); //assign array type via reflection becuase object[] wont work for params keyword
+            for (int i = lastparam; i < invocation.Params.Count; i++) paramArray.SetValue(ParameterToObject(invocation.Params[i], elementType), i - lastparam);
+            prms[lastparam] = paramArray;
         }
 
 
