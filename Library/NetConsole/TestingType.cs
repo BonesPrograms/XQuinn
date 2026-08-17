@@ -29,7 +29,7 @@ namespace XQuinn.NetConsole
 
         }
 
-        public static void Test<T>(IEnumerable<string>? preload = null)
+        public static void Test<T>(params string[] preload)
         {
             try { _ = Console.WindowHeight; }
             catch (IOException) { throw new IOException("Cannot run testing types outside of console apps."); }

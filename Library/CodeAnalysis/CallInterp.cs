@@ -12,6 +12,7 @@ using System;
 using System.Collections.Generic;
 using XQuinn.CodeAnalysis;
 using System.Text;
+using System.Diagnostics;
 
 namespace XQuinn.CodeAnalysis
 {
@@ -270,10 +271,13 @@ namespace XQuinn.CodeAnalysis
                 GenericsCache.Clear();
         }
 
+        public void RunCommands(params string[] commands)
+        {
+            RunCommands((IEnumerable<string>)commands);
+        }
         public void RunCommands(IEnumerable<string> commands)
         {
-            foreach (string command in commands)
-                Interface(command);
+            foreach (string command in commands) Interface(command);
         }
         public CallInterpreter(IReadOnlyDictionary<string, Type>? localCache = null)
         {
@@ -333,6 +337,7 @@ namespace XQuinn.CodeAnalysis
             {
                 int inputAmount = invocation.Params.Count;
                 int reqAmount = actualParameters.Length;
+                int lastparam = reqAmount - 1;
                 if (inputAmount < reqAmount)
                 {
                     for (int i = inputAmount; i < reqAmount; i++)
@@ -343,11 +348,23 @@ namespace XQuinn.CodeAnalysis
                     }
                     for (int i = 0; i < inputAmount; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
                 }
+                else if (lastparam >= 0 && actualParameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
+                {
+                    int lastBeforeThat = lastparam - 1;
+                    if (lastBeforeThat >= 0) for (int i = 0; i < lastBeforeThat; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
+                    Type elementType = actualParameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentException();
+                    Array paramArray = Array.CreateInstance(elementType, invocation.Params.Count - lastparam);
+                    for (int i = lastparam; i < invocation.Params.Count; i++) paramArray.SetValue(ParameterToObject(invocation.Params[i], elementType), i - lastparam);
+                    prms[lastparam] = paramArray;
+
+                }
                 else throw new TargetParameterCountException($"input param count: {invocation.Params.Count} required count: {actualParameters.Length} method name {invocation.String}");
             }
             else for (int i = 0; i < actualParameters.Length; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
             return prms;
         }
+
+
         /// <summary>
         /// Checks if a member is supported by Call Interpreter.
         /// </summary>
@@ -579,8 +596,7 @@ namespace XQuinn.CodeAnalysis
                 if (typeCached)
                 {
                     memberCached = cachedMembers!.TryGetValue(key, out MemberInfo? member);
-                    if (memberCached)
-                        return (T)member!;
+                    if (memberCached) return (T)member!;
                 }
             }
             return null;

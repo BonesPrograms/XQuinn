@@ -1,5 +1,5 @@
 ﻿
-#if DEBUG_BUILD || IAPP_BUILD
+#if !RELEASE_BUILD
 using System.Collections.Concurrent;
 using System.Reflection;
 using XQuinn.Runtime;
@@ -18,7 +18,7 @@ using XQuinn.Extensions;
 using XQuinn.Parsing;
 using System.IO;
 using XQuinn.CodeAnalysis.AST;
-#endif
+
 namespace _xquinn_prgrm
 {
 
@@ -35,11 +35,7 @@ namespace _xquinn_prgrm
             {
                 if (x.Name.StartsWith('_')) return null;
                 string z = x.SnipGenericShortName();
-                if (z == "GenericString")
-                {
-                    if (x.IsGenericTypeDefinition) return $"{z}T";
-                    else return z;
-                }
+                if (z == "GenericString") { if (x.IsGenericTypeDefinition) return $"{z}T"; else return z;}
                 else return z;
             }, StringComparer.OrdinalIgnoreCase);
             //RuntimeCommand.Register(types, "XQuinn");
@@ -54,6 +50,18 @@ namespace _xquinn_prgrm
 
         }
 
+    }
+
+    public class Fun
+    {
+
+        public static string Params(string f, bool y, params int[] prms)
+        {
+            StringBuilder sb = new();
+            sb.AppendMany(prms);
+            return sb.ToString();
+        }
+        public static int Method(int i, char z, string? x = null) => i;
     }
     // public class Lex
     // {
@@ -81,3 +89,4 @@ namespace _xquinn_prgrm
 
 }
 // //char(lex.get(lex.oth('x', lex.get('y'))), lex.get(lex.get(lex.get(lex.oth('x',lex.get('y')))))
+#endif

@@ -138,8 +138,7 @@ namespace XQuinn
                         {
                             if (!method.IsStatic) throw new RuntimeCommandException(method, command, "is not static.");
                             TypeCache.ThrowIfBadKey(command.Name);
-                            if (!CallInterpreter.SupportedMember(method))
-                                throw new RuntimeCommandException(method, command, "has an unsupported in out or ref parameter.");
+                            if (!CallInterpreter.SupportedMember(method)) throw new RuntimeCommandException(method, command, "has an unsupported in out or ref parameter.");
                             if (_registry.TryGetValue(command.Name, out MethodInfo? alreadyCached)) { if (method != alreadyCached) throw new RuntimeCommandException(method, command, "cannot be cached, command name is already taken."); else continue; }
                             _registry.TryAdd(command.Name, method);
                         }
