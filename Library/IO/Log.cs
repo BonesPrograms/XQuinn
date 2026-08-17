@@ -21,19 +21,16 @@ namespace XQuinn.IO
         }
         public static Logger New(string path, bool safe)
         {
-            if (safe)
-                SafetyCheck(path);
+            if (safe) SafetyCheck(path);
             Logger logger = new(path);
             logger.Log("Begin Log", 4, 2);
             return logger;
         }
         public void Log(string text, int newLinesBefore = 0, int newLinesAfter = 0)
         {
-            for (int i = 1; i <= newLinesBefore; i++)
-                sb.Append(Environment.NewLine);
+            for (int i = 1; i <= newLinesBefore; i++) sb.Append(Environment.NewLine);
             sb.Append($"[{DateTime.Now}] {text}");
-            for (int i = 1; i <= newLinesAfter; i++)
-                sb.Append(Environment.NewLine);
+            for (int i = 1; i <= newLinesAfter; i++) sb.Append(Environment.NewLine);
             Writer.WriteLine(sb);
             sb.Length = 0;
         }
@@ -49,17 +46,11 @@ namespace XQuinn.IO
 
         public static void SafetyCheck(string path)
         {
-            if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("Pah cannot be null or whitespace.");
+            if (string.IsNullOrWhiteSpace(path)) throw new ArgumentException("Pah cannot be null or whitespace.");
             string? dir = Path.GetDirectoryName(path);
-            if (string.IsNullOrWhiteSpace(dir))
-                throw new ArgumentException("Unable to get directory name.");
-            if (!Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-            if (!File.Exists(path))
-            {
-                using FileStream fs = File.Create(path);
-            }
+            if (string.IsNullOrWhiteSpace(dir)) throw new ArgumentException("Unable to get directory name.");
+            if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+            if (!File.Exists(path)) { using FileStream fs = File.Create(path); }
 
         }
     }

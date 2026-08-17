@@ -1,4 +1,4 @@
-﻿#if NET6_0_OR_GREATER
+﻿#if IAPP_BUILD
 using XQuinn.IO.Finders;
 using System.Xml.Linq;
 using System;

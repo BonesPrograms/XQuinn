@@ -1,0 +1,7 @@
+Types not available in NetStandard2.0 edition:
+
+Entire XQuinn.IO.Finders namespace (uses EnumerationOptions)
+Entire XQuinn.Reflection.IL namespace (relies in binaryprimitives)
+BytesLittleEndian (relies on binaryprimitives, i dont feel like making a byeteconverter edition) from XQuinn.Numerics
+Some minor features reliant on BytesLittleEndian in the type ByteCode will not be available
+DynamicInvoker (relies on assemblyloadcontext from net6) from XQuinn.Runtime

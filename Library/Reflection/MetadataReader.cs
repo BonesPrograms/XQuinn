@@ -45,9 +45,9 @@ namespace XQuinn.Reflection
             StringBuilder sb = new();
             sb.Append(member.MemberType.ToString());
             sb.Append(' ');
-            sb.Append(GenericTypeToString(member.DeclaringType));
+            GenericTypeToString(sb, member.DeclaringType);
             sb.Append("::");
-            sb.Append(GenericTypeToString(member.GetUnderlyingType()));
+            GenericTypeToString(sb, member.GetUnderlyingType());
             sb.Append(' ');
             sb.Append(FixGenericString(member.Name));
             return sb;
@@ -56,31 +56,21 @@ namespace XQuinn.Reflection
         static StringBuilder TypeToString(Type type)
         {
             StringBuilder sb = new();
-            if (typeof(Delegate).IsAssignableFrom(type))
-                sb.Append("delegate");
-            else if (type.IsEnum)
-                sb.Append("enum");
-            else if (type.IsArray)
-                sb.Append("array");
-            else if (type.IsInterface)
-                sb.Append("interface");
-            else if (type != typeof(string) && (typeof(System.Collections.IEnumerable).IsAssignableFrom(type) || typeof(System.Collections.ICollection).IsAssignableFrom(type)))
-                sb.Append("collection");
-            else if (type.IsClass)
-                sb.Append("class");
-            else
-                sb.Append("struct");
+            if (typeof(Delegate).IsAssignableFrom(type)) sb.Append("delegate");
+            else if (type.IsEnum) sb.Append("enum");
+            else if (type.IsArray) sb.Append("array");
+            else if (type.IsInterface) sb.Append("interface");
+            else if (type != typeof(string) && (typeof(System.Collections.IEnumerable).IsAssignableFrom(type) || typeof(System.Collections.ICollection).IsAssignableFrom(type))) sb.Append("collection");
+            else if (type.IsClass) sb.Append("class");
+            else sb.Append("struct");
             sb.Append(' ');
-            sb.Append(GenericTypeToString(type));
+            GenericTypeToString(sb, type);
             return sb;
         }
         static StringBuilder ConstructorToString(ConstructorInfo ctor)
         {
             StringBuilder sb = new();
-            if (ctor.DeclaringType != null)
-            {
-                sb.Append(GenericTypeToString(ctor.DeclaringType));
-            }
+            if (ctor.DeclaringType != null) GenericTypeToString(sb, ctor.DeclaringType);
             sb.Append($"::.ctor{ParamsToString(ctor.GetParameters())}");
             return sb;
         }
@@ -91,11 +81,9 @@ namespace XQuinn.Reflection
             sb.Append(mthd.IsStatic ? "static " : "instance ");
             GetReturnString(sb, mthd);
             sb.Append(' ');
-
-            sb.Append(GenericTypeToString(mthd.DeclaringType));
+            GenericTypeToString(sb, mthd.DeclaringType);
             sb.Append("::");
             sb.Append(mthd.Name);
-
             AddGenericArguments(sb, mthd.GetGenericArguments());
             sb.Append(ParamsToString(mthd.GetParameters(), parameterNames));
 
@@ -105,34 +93,28 @@ namespace XQuinn.Reflection
         static void GetReturnString(StringBuilder sb, MethodInfo mthd)
         {
             string lowered = mthd.ReturnType.Name.ToLower();
-            if (lowered != "string" && lowered != "bool" && lowered != "void")
-                sb.Append($"{GenericTypeToString(mthd.ReturnType)}");
-            else
-                sb.Append(lowered);
+            if (lowered != "string" && lowered != "bool" && lowered != "void") GenericTypeToString(sb, mthd.ReturnType);
+            else sb.Append(lowered);
 
         }
         static StringBuilder ParamsToString(ParameterInfo[] args, bool names = false)
         {
             StringBuilder txt = new();
+            StringBuilder tname = new();
             txt.Append('(');
             for (int i = 0; i < args.Length; i++)
             {
-                var arg = args[i];
-                if (arg.IsIn)
-                    txt.Append("in ");
-                else if (arg.IsOut)
-                    txt.Append("out ");
-                else if (arg.ParameterType.IsByRef)
-                    txt.Append("ref ");
-                StringBuilder tname = GenericTypeToString(arg.ParameterType)!;
+                ParameterInfo arg = args[i];
+                if (arg.IsIn) txt.Append("in ");
+                else if (arg.IsOut) txt.Append("out ");
+                else if (arg.ParameterType.IsByRef) txt.Append("ref ");
+                tname.Length = 0;
+                GenericTypeToString(tname, arg.ParameterType);
                 int index = tname.Length - 1;
-                if (tname[index] == '&')
-                    tname.Remove(index, 1);
+                if (tname[index] == '&') tname.Remove(index, 1);
                 txt.Append(tname);
-                if (names)
-                    txt.Append($" {arg.Name}");
-                if (For.Multiples(args.Length,i))
-                    txt.Append(", ");
+                if (names) txt.Append($" {arg.Name}");
+                if (For.Multiples(args.Length, i)) txt.Append(", ");
             }
             txt.Append(')');
             return txt;
@@ -142,27 +124,19 @@ namespace XQuinn.Reflection
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        public static StringBuilder? GenericTypeToString(Type? type)
+        public static void GenericTypeToString(StringBuilder sb, Type? type)
         {
-
-            if (type == null)
-                return null;
-            Type[] generics = type.GetGenericArguments();
-            StringBuilder sb = new();
+            if (type == null) return;
             sb.Append(FixGenericString(type.Name)); //adds name string here
-            AddGenericArguments(sb, generics);
-            // if( type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))
-            // sb.Append('?');
-            return sb;
+            AddGenericArguments(sb, type.GetGenericArguments());
         }
 
         static string FixGenericString(string strng)
         {
-            if (strng.Length >= 2 && strng[strng.Length - 2] == '`') //i had such a dumb bug with this
-                strng = strng.Substring(0, strng.Length - 2);  //i was wondering why indexing ^2 was throwing, i thought i was returning the index itself and not the actual char struct
-            return strng;           //even though i do it right there infront of my own eyes string[^2] == '`'
-        }                           // supposed to index ..^2 like this...
-//AsSpan().Slice(0, text.Length - 2);
+            if (strng.Length >= 2 && strng[strng.Length - 2] == '`') strng = strng.Substring(0, strng.Length - 2);
+            return strng;
+        }
+
         static void AddGenericArguments(StringBuilder sb, Type[]? genericargs)
         {
             if (genericargs?.Length > 0)
@@ -171,8 +145,7 @@ namespace XQuinn.Reflection
                 for (int i = 0; i < genericargs.Length; i++)
                 {
                     sb.Append(FixGenericString(genericargs[i].Name));
-                    if (For.Multiples(genericargs.Length,i))
-                        sb.Append(", ");
+                    if (For.Multiples(genericargs.Length, i)) sb.Append(", ");
                 }
                 sb.Append('>');
             }

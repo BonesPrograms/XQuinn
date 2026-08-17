@@ -1,3 +1,5 @@
+#if DEBUG_BUILD || IAPP_BUILD
+
 using System;
 using System.Collections.Generic;
 using System.Text;
@@ -85,3 +87,5 @@ public static class ConsoleTools
 
 }
 }
+
+#endif

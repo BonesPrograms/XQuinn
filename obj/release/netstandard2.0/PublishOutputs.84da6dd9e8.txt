@@ -1,0 +1,3 @@
+C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Release\netstandard2.0\publish\XQuinn.dll
+C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Release\netstandard2.0\publish\XQuinn.deps.json
+C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Release\netstandard2.0\publish\Mono.Reflection.dll

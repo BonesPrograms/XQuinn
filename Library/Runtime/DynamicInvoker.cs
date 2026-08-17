@@ -15,6 +15,10 @@ using XQuinn.CodeAnalysis;
 namespace XQuinn.Runtime
 {
 
+    // public interface IDynamicCleanup
+    // {
+    //     public abstract static void Shutdown(); 
+    // }
 
     /// <summary>
     /// Invokes methods from a specific type in a dynamically loaded assembly. Only supports static methods with primitive, enum or string parameters. No in, outs or refs.
@@ -34,45 +38,51 @@ namespace XQuinn.Runtime
 
             }
         }
+
+        public readonly InterpMonitor Monitor;
+        public Func<Type, string?> BookDelegate;
+        public string? DefaultLoadedTypeName;
+        /// <summary>
+        /// If changing DLLPath, call Reload.
+        /// </summary>
+        public string DLLPath;
         DLLBox? Box;
         Assembly? LoadedAssembly;
-        public readonly CallInterpreter Interpreter = new();
 
         /// <summary>
         /// If you change this, you most certainly will want to call reload afterwards.
         /// </summary>
-        public string DLLPath;
         DateTime LastWrite;
-        public Func<Type, string?> BookDelegate;
-        public string? DefaultLoadedTypeName;
+
         DynamicInvoker(string path, Func<Type, string?> bookDelegate) //DynamicReloader exists purely as a base class for DynamicInvoker. It is not intended for anyone else to inherit from.
         {
-            this.BookDelegate = bookDelegate;
-            if (!File.Exists(path))
-                throw new FileNotFoundException(path);
-            if (Path.GetExtension(path) != ".dll")
-                throw new ArgumentException("only .dll is supported by DynamicReloader");
+            BookDelegate = bookDelegate;
             DLLPath = path;
+            CallInterpreter interp = new()
+            {
+                Caching = false
+            };
+            Monitor = new(interp);
         }
 
         public static DynamicInvoker New(string dllpath, Func<Type, string?> bookDelegate)
         {
+            if (!File.Exists(dllpath)) throw new FileNotFoundException(dllpath);
+            if (Path.GetExtension(dllpath) != ".dll") throw new ArgumentException("only .dll is supported by DynamicReloader");
             DynamicInvoker invoker = new(dllpath, bookDelegate);
             invoker.Reload();
             return invoker;
         }
         public void Reload()
         {
-            var monitor = Unload();
+            WeakReference? monitor = Unload();
             // if (monitor != null)
             //     Collect(monitor);
             Load();
             Module[] modules = LoadedAssembly!.GetModules();
-            if (modules.Length > 1)
-                throw new NotSupportedException("Only single file assemblies are supported.");
-            Interpreter.LocalCache = TypeBook.New(LoadedAssembly.ManifestModule.GetTypes(), BookDelegate, StringComparer.OrdinalIgnoreCase).Book;
-            if (DefaultLoadedTypeName != null)
-                Interpreter.LoadType(DefaultLoadedTypeName);
+            if (modules.Length > 1) throw new NotSupportedException("Only single file assemblies are supported.");
+            Monitor.Interp.LocalCache = TypeBook.New(LoadedAssembly.ManifestModule.GetTypes(), BookDelegate, StringComparer.OrdinalIgnoreCase).Book;
+            if (DefaultLoadedTypeName != null) Monitor.Interp.LoadType(DefaultLoadedTypeName);
             LastWrite = File.GetLastWriteTime(DLLPath);
         }
 
@@ -94,9 +104,8 @@ namespace XQuinn.Runtime
         [MethodImpl(MethodImplOptions.NoInlining)]
         WeakReference? Unload()
         {
-            if (Box == null)
-                return null;
-            Interpreter.Clear();
+            if (Box == null) return null;
+            Monitor.Interp.Clear();
             LoadedAssembly = null;
             WeakReference monitor = new(Box, trackResurrection: true);
             Box?.Unload();
@@ -104,11 +113,11 @@ namespace XQuinn.Runtime
             return monitor;
         }
 
-        public object? Interface(string invocation)
+        public object? Interface(string invocation, out string output, out bool exception)
         {
-            if (CheckForReload())
-                Reload();
-            return Interpreter.Interface(invocation);
+            if (CheckForReload()) Reload();
+            output = Monitor.TryCatchInterface(invocation, out object? ret, out exception);
+            return ret;
         }
 
         //This is the dynamic part
@@ -117,12 +126,8 @@ namespace XQuinn.Runtime
         bool CheckForReload()
         {
             DateTime write = File.GetLastWriteTime(DLLPath);
-            if (write != LastWrite)
-            {
-                Reload();
-                return true;
-            }
-            return false;
+            if (write != LastWrite) { Reload(); return true; }
+            else return false;
         }
 
     }

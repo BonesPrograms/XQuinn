@@ -1,0 +1,12 @@
+If you uninstall one of the default/provided nuget packages using a dotnet command in the terminal,
+you dont have to reinstall it manually, this could potentailly cause issues sometimes anyways
+actually just read the example
+
+For Example: System.Collections.Immutable
+NetStandard2.0 does not have immutable
+I installed a netstandard2.0 package for it, but I had to remove the default package that came with net10/works with net6 because it was causing type conflicts
+However, I didnt want it anymore, so I removed it, but when I ran dotnet restore, i was still able to build netstandard2.0 with classes from the immutable package
+I expected building on netstandard2.0 to throw compilation errors, since they normally shouldnt have that package, this is the "default" behavior
+To fix this, I had to remove netstandard2.0 from my target frameworks, delete bin and obj, run dotnet restore, and then dotnet build
+When I re-add netstandard2.0, netstandard2.0 throws compilation errors again when trying to compile with classes from immutable
+Whatever the case is it automatically got the valid version for net10/net6

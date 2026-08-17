@@ -1,4 +1,4 @@
-#if NET6_0_OR_GREATER
+#if IAPP_BUILD
 using System.Text;
 using System.Xml.Serialization;
 using XQuinn.IO.Finders;

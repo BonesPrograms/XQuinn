@@ -23,8 +23,7 @@ namespace XQuinn.ObjectModel.Tokenizer
 
         public bool IsCollection => Token == ObjectToken.IList || Token == ObjectToken.IDictionary || Token == ObjectToken.ICollection;
 
-        public bool IsSimple
-        => Token switch
+        public bool IsSimple => Token switch
         {
             ObjectToken.PrimitiveStruct or ObjectToken.String or ObjectToken.Enum or ObjectToken.Delegate or ObjectToken.Boolean => true,
             _ => false
@@ -38,21 +37,14 @@ namespace XQuinn.ObjectModel.Tokenizer
                 string => ObjectToken.String,
                 bool => ObjectToken.Boolean,
                 Enum => ObjectToken.Enum,
-                ValueType => EvaluateValueType(obj),
+                ValueType => EvaluateValueType((ValueType)obj),
                 IDictionary => ObjectToken.IDictionary,
                 IList => ObjectToken.IList,
                 Delegate => ObjectToken.Delegate, //this may require extra work, dont know how to read the delegate value yet
                 ICollection => ObjectToken.ICollection,
                 _ => ObjectToken.ClassOrStruct
             };
-        static ObjectToken EvaluateValueType(object obj)
-        {
-            Type type = obj.GetType();
-            if (type.IsPrimitive)
-                return ObjectToken.PrimitiveStruct;
-            else
-                return ObjectToken.ClassOrStruct;
-        }
+        static ObjectToken EvaluateValueType(ValueType valuetype) => valuetype.GetType().IsPrimitive ? ObjectToken.PrimitiveStruct : ObjectToken.ClassOrStruct;
 
     }
 

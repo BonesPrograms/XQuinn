@@ -1,0 +1,118 @@
+Configurations
+
+you can use configurations to set arbitrary rules for compilation
+configurations let you make #if constants
+this project has configuration release and configuration iapp
+dotnet build -c release  // this builds the 'release' version, exlucding files that have #if IAPP_BUILD
+dotnet build -c iapp //this builds the release version + files that have #if IAPP_BUILD on the top
+
+dotnet build still makes a full assembly with all types
+
+You can also use dotnet dotnet publish -c Release -r win-x64 -f net10.0-windows --self-contained true p:PublishSingleFile=true - if you do not have your own Release defined, this uses standard optimized release
+-o ./publish can add this to the end to specify the output subfolder inside of the build output folder
+self contained false for framework dependent, self contained true for totally self contained, p:publishsinglefile for a single file
+
+
+
+
+
+
+
+Conditional Referencing for Packages:
+
+
+
+You can condition a package reference directly in the project file:
+
+xml
+
+Copy
+
+
+<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+  <PackageReference Include="Some.Package" Version="1.2.3" />
+</ItemGroup>
+That package is included only when building for net10.0.
+
+You can also condition the individual reference:
+
+xml
+
+Copy
+
+
+<ItemGroup>
+  <PackageReference
+    Include="Some.Package"
+    Version="1.2.3"
+    Condition="'$(TargetFramework)' == 'net10.0'" />
+</ItemGroup>
+For multiple target frameworks, you could use different packages:
+
+xml
+
+Copy
+
+
+<ItemGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+  <PackageReference Include="Old.Package" Version="1.0.0" />
+</ItemGroup>
+
+<ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+  <PackageReference Include="Modern.Package" Version="2.0.0" />
+</ItemGroup>
+You can condition packages based on the build configuration:
+
+xml
+
+Copy
+
+
+<ItemGroup Condition="'$(Configuration)' == 'Debug'">
+  <PackageReference Include="Some.Debug.Tool" Version="1.0.0" />
+</ItemGroup>
+You can also use a custom property:
+
+xml
+
+Copy
+
+
+<PropertyGroup>
+  <UseExtraPackage>true</UseExtraPackage>
+</PropertyGroup>
+
+<ItemGroup Condition="'$(UseExtraPackage)' == 'true'">
+  <PackageReference Include="Some.Package" Version="1.2.3" />
+</ItemGroup>
+For conditional package versions, define the version in a PropertyGroup and use it in the reference:
+
+xml
+
+Copy
+
+
+<PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
+  <SomePackageVersion>1.0.0</SomePackageVersion>
+</PropertyGroup>
+
+<PropertyGroup Condition="'$(TargetFramework)' == 'net10.0'">
+  <SomePackageVersion>2.0.0</SomePackageVersion>
+</PropertyGroup>
+
+<ItemGroup>
+  <PackageReference
+    Include="Some.Package"
+    Version="$(SomePackageVersion)" />
+</ItemGroup>
+For your earlier scenario, where a package should be available for net6.0 and net10.0 but not netstandard2.0, you could write:
+
+xml
+
+Copy
+
+
+<ItemGroup Condition="'$(TargetFramework)' != 'netstandard2.0'">
+  <PackageReference Include="System.Collections.Immutable" Version="9.0.0" />
+</ItemGroup>
+However, if the package is provided automatically by the target framework and you do not need to pin a specific version, you may not need a PackageReference at all for those frameworks.

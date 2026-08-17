@@ -14,35 +14,29 @@ namespace XQuinn.Extensions
             int i = 0;
             foreach (T? element in many)
             {
-                string? text;
-                if (toString != null)
-                    text = toString.Invoke(element);
-                else
-                    text = element?.ToString();
+                string? text = toString?.Invoke(element);
+                if (toString == null) text = element?.ToString();
                 sb.Append(text);
-                if (divider != null && For.Multiples(length, i))
-                    sb.Append(divider);
+                if (divider != null && For.Multiples(length, i)) sb.Append(divider);
                 i++;
             }
         }
         public static void CatchException(this StringBuilder sb, Exception ex)
         {
-            sb.Append($"{ex.GetType()}{Environment.NewLine}");
-            sb.Append($"{ex.Message}{Environment.NewLine}");
-            sb.Append($"{ex.StackTrace}{Environment.NewLine}");
-            sb.Append($"{ex.Data}{Environment.NewLine}{ex.TargetSite}{Environment.NewLine}{ex.Source}{Environment.NewLine}");
+            sb.AppendLine(ex.GetType().ToString());
+            sb.AppendLine(ex.Message);
+            sb.AppendLine(ex.StackTrace);
+            sb.AppendLine(ex.Data.ToString());
+            sb.AppendLine(ex.TargetSite?.ToString());
+            sb.AppendLine(ex.Source);
         }
     }
 
     public static class TypeExtensions
     {
-        public static string SnipGenericShortName(this Type t)
+        public static string SnipGenericShortName(this Type type)
         {
-            if (t.IsGenericTypeDefinition)
-            {
-                return t.Name.Remove(t.Name.IndexOf('`'));
-            }
-            return t.Name;
+            if (type.IsGenericTypeDefinition) return type.Name.Remove(type.Name.IndexOf('`')); else return type.Name;
         }
     }
 
@@ -50,8 +44,7 @@ namespace XQuinn.Extensions
     {
         public static void ForEach<T>(this IEnumerable<T> objs, Action<T> action)
         {
-            foreach (var obj in objs)
-                action(obj);
+            foreach (var obj in objs) action(obj);
         }
 
     }
@@ -61,29 +54,33 @@ namespace XQuinn.Extensions
         {
             return strng.Equals(txt, StringComparison.OrdinalIgnoreCase);
         }
-        /// <summary>
-        /// Remove all occurances of a specified series of characters.
-        /// </summary>
-        public static string RemoveChar(this string text, params char[] chars)
-        {
-            StringBuilder sb = new();
-            foreach (char c in text)
-            {
-                if (!chars.Any(x => x == c))
-                    sb.Append(c);
-            }
-            return sb.ToString();
-        }
+        // /// <summary>
+        // /// Remove all occurances of a specified series of characters.
+        // /// </summary>
+        // public static string RemoveChar(this string text, params char[] chars)
+        // {
+        //     StringBuilder sb = new();
+        //     foreach (char c in text)
+        //     {
+        //         foreach (var bad in chars)
+        //         {
+        //             if (bad == c)
+        //                 continue;
+        //         }
+        //         sb.Append(c);
+        //     }
+        //     return sb.ToString();
+        // }
 
-        public static string ReplaceChar(this string text, char replace, char replacewith)
-        {
-            StringBuilder sb = new();
-            foreach (char c in text)
-            {
-                sb.Append(c == replace ? replacewith : c);
-            }
-            return sb.ToString();
-        }
+        // public static string ReplaceChar(this string text, char replace, char replacewith)
+        // {
+        //     StringBuilder sb = new();
+        //     foreach (char c in text)
+        //     {
+        //         sb.Append(c == replace ? replacewith : c);
+        //     }
+        //     return sb.ToString();
+        // }
 
 
     }

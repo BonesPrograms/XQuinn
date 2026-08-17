@@ -73,32 +73,28 @@ namespace XQuinn
         public string Interface(string input, out object? interpreterReturned)
         {
             interpreterReturned = null;
-            AppendWithBreak(Environment.NewLine);
             AppendWithBreak($"{DateTime.Now}");
-            if (input[0] == '?')
-                switch (input.Substring(1))
-                {
-                    case "variables" or "var" or "vars":
-                        return GetCollection(Interp.Variables, null);
-                    case "methods":
-                        return GetCollection(Interp._methods, x => $"[Key: {x.Key} :: {ReflectionReader.String(x.Value)}]");
-                    case "fields":
-                        return GetCollection(Interp._fields, x => $"[Key: {x.Key} :: {ReflectionReader.String(x.Value)}]");
-                    case "overloads":
-                        return GetCollection(Interp.Overloads, x => $"[Key: {x.Key} :: {ReflectionReader.String(x.Value)}]");
-                }
+            if (input.Length != 0 && input[0] == '?') return SwitchQuestion(input.Substring(1));
             AppendInterpData(true);
             _lastinvoke = AppendWithBreak($"LastInvoke: {_rawinvocation}");
             _rawinvocation = input;
             _invoking = AppendWithBreak($"Invoking : {input}");
             interpreterReturned = Interp.Interface(input);
-            _ret = $"Returned: {interpreterReturned?.ToString()}";
-            AppendWithBreak(_ret);
+            _ret = AppendWithBreak($"Returned: {interpreterReturned?.ToString()}");
             AppendInterpData(false);
             string output = sb.ToString();
             sb.Length = 0;
             return output;
         }
+
+        string SwitchQuestion(string input) => input switch
+        {
+            "vars" => GetCollection(Interp._variables, null),
+            "methods" => GetCollection(Interp._methods, x => $"[Key: {x.Key} :: {ReflectionReader.String(x.Value)}]"),
+            "fields" => GetCollection(Interp._fields, x => $"[Key: {x.Key} :: {ReflectionReader.String(x.Value)}]"),
+            "overloads" => GetCollection(Interp._overloads, x => $"[Key: {x.Key} :: {ReflectionReader.String(x.Value)}]"),
+            _ => string.Empty
+        };
 
 
         void AppendInterpData(bool before)
@@ -110,8 +106,7 @@ namespace XQuinn
             string cachekey = AppendWithBreak($"{timing} TypeCacheKey {Interp.LoadedTypeKey}");
             string variablekey = $"{timing} VariableKey {Interp.LoadedVariable}";
             sb.Append(variablekey);
-            if (before)
-                sb.Append(Environment.NewLine);
+            if (before) sb.Append(Environment.NewLine);
             AssignOutputs(type, method, instancetype, cachekey, variablekey, before);
 
 
@@ -145,10 +140,9 @@ namespace XQuinn
         }
 
 
-        string AppendWithBreak(string? strng)
+        string AppendWithBreak(string strng)
         {
-            strng = $"{strng}{Environment.NewLine}";
-            sb.Append(strng);
+            sb.AppendLine(strng);
             return strng;
         }
     }

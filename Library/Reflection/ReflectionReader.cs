@@ -10,7 +10,7 @@ using System;
 namespace XQuinn.Reflection
 {
 
-   /// <summary>
+    /// <summary>
     /// A bridge to get access modifier values from fieldinfos and methodbases, which cannot cast into one another but share the same exact fields.
     /// </summary>
 
@@ -67,7 +67,7 @@ namespace XQuinn.Reflection
     }
 
 
- 
+
 
     /// <summary>
     /// Wrapper for a reflection object. Primarily exists to return readable and relatively informative strings about the metadata (it will be roughly as informative as
@@ -94,8 +94,7 @@ namespace XQuinn.Reflection
         ReflectionReader(MemberInfo info) : base(info)
         {
             Declared = info.DeclaringType;
-            if (info is Type type && type.BaseType != typeof(object))
-                Base = type.BaseType;
+            if (info is Type type && type.BaseType != typeof(object)) Base = type.BaseType;
         }
 
         public static ReflectionReader New(MemberInfo info)
@@ -120,21 +119,13 @@ namespace XQuinn.Reflection
             StringBuilder sb = new();
             sb.Append(MetadataTypeToString());
             sb.Append(base.ToStringBuilder());
-            if (Base != null)
-            {
-                sb.Append(" : ");
-                sb.Append(GenericTypeToString(Base));
-            }
+            if (Base != null) { sb.Append(" : "); GenericTypeToString(sb, Base); }
             if (ShowToken)
             {
                 sb.Append($" Token:: {Info.MetadataToken}");
 #if NET6_0_OR_GREATER
                 sb.Append(" AsBytes:: ");
-                if (ShowTokenBytes)
-                    foreach (var bits in TokenAsBytes)
-                    {
-                        sb.Append($"{bits} ");
-                    }
+                if (ShowTokenBytes) foreach (var bits in TokenAsBytes) sb.Append($"{bits} ");
 #endif
             }
             return sb;
@@ -142,7 +133,7 @@ namespace XQuinn.Reflection
 
         StringBuilder? MetadataTypeToString() => Info switch
         {
-            System.Type => TypeToString((Type)Info),
+            Type => TypeToString((Type)Info),
             MethodInfo or ConstructorInfo => MethodToString((MethodBase)Info),
             FieldInfo => FieldToString((FieldInfo)Info),
             _ => null, //lol i never actually used events so im gonna learn them before i start reflecting them
@@ -176,10 +167,8 @@ namespace XQuinn.Reflection
         {
             StringBuilder sb = new();
             sb.Append(new AccessModifiers(field).ToString() + ' ');
-            if (field.IsLiteral)
-                sb.Append("const ");
-            else if (field.IsStatic)
-                sb.Append("static ");
+            if (field.IsLiteral) sb.Append("const ");
+            else if (field.IsStatic) sb.Append("static ");
             return sb;
 
         }
@@ -190,8 +179,7 @@ namespace XQuinn.Reflection
             sb.Append(new AccessModifiers(mthd).ToString() + ' ');
             if (mthd.IsStatic)
             {
-                if (mthd is ConstructorInfo)
-                    sb.Append("static ");
+                if (mthd is ConstructorInfo) sb.Append("static ");
                 return sb;
             }
             bool isoverride = false;
@@ -203,12 +191,9 @@ namespace XQuinn.Reflection
                     isoverride = true;
                 }
             }
-            if (mthd.IsFinal)
-                sb.Append("sealed ");
-            else if (mthd.IsAbstract)
-                sb.Append("abstract ");
-            else if (!isoverride && mthd.IsVirtual)
-                sb.Append("virtual ");
+            if (mthd.IsFinal) sb.Append("sealed ");
+            else if (mthd.IsAbstract) sb.Append("abstract ");
+            else if (!isoverride && mthd.IsVirtual) sb.Append("virtual ");
             return sb;
         }
 
@@ -218,12 +203,9 @@ namespace XQuinn.Reflection
         static StringBuilder TypeToString(Type type) //need to add stuff for nested types i think
         {
             StringBuilder sb = new();
-            if (type.IsAbstract && type.IsSealed)
-                sb.Append("static ");
-            else if (type.IsAbstract)
-                sb.Append("abstract ");
-            else if (type.IsSealed)
-                sb.Append("sealed ");
+            if (type.IsAbstract && type.IsSealed) sb.Append("static ");
+            else if (type.IsAbstract) sb.Append("abstract ");
+            else if (type.IsSealed) sb.Append("sealed ");
             return sb;
         }
 

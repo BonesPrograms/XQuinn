@@ -2,7 +2,7 @@
 using System.Reflection.Emit;
 using System.Reflection;
 using System.Buffers.Binary;
-using static XQuinn.Numerics.BytesLittleEndian;
+using static XQuinn.Numerics.ByteSizes;
 using XQuinn.IO;
 using System.Collections.ObjectModel;
 using System;
@@ -104,10 +104,7 @@ namespace XQuinn.Reflection.IL
 
             }
             writer.WriteLine("");
-            foreach (ByteCode code in codes)
-            {
-                writer.WriteLine("	" + code.ToString());
-            }
+            foreach (ByteCode code in codes) writer.WriteLine("	" + code.ToString());
         }
 
         /// <summary>
@@ -118,8 +115,7 @@ namespace XQuinn.Reflection.IL
         {
             int i = 0;
             List<ByteCode> codes = new();
-            while (i < _il.Length)
-                BytesToIL(codes, ref i);
+            while (i < _il.Length) BytesToIL(codes, ref i);
             return codes;
         }
 
@@ -133,8 +129,7 @@ namespace XQuinn.Reflection.IL
             codes.Add(instruction); //for some reason it is off by 1, you want to shift the offset back by 1 or every label will be off by 1 individually and cumulatively so all labels will be off
             i += size;
             instruction.LastInstruction = LastInstruction;
-            if (LastInstruction != null)
-                LastInstruction.NextInstruction = instruction;
+            if (LastInstruction != null) LastInstruction.NextInstruction = instruction;
             LastInstruction = instruction;
         }
 
@@ -145,8 +140,7 @@ namespace XQuinn.Reflection.IL
             if (indexedbyte == PrefixBit)
             {
                 byte nextbyte = _il[i + 1];
-                //short key = BinaryPrimitives.ReadInt16LittleEndian(IL.AsSpan(i, x16bit));
-                short key = (short)((PrefixBit << 0x08) | nextbyte); //learn how to do bitwise!
+                short key = (short)((PrefixBit << 0x08) | nextbyte);
                 code = OpCodeMap.OpCodes[key];
                 i += 2;
             }
@@ -158,20 +152,7 @@ namespace XQuinn.Reflection.IL
             return code;
         }
 
-        //This needs to return an object for the token, because the token is sometimes just a numeric value for a struct and not an actual 32bit metadata token
-        //(in other words, it is the operand)
-
-        //First off, if you have a double or a float, you will lose floating point precision if you do not return it as anything less than a double.
-        //Second off, if you have a long, you will lose integer precision if you return it as a double
-
-        //A decimal is 128 bits, but still cannot fully maintain integer precision, floating point precision, range and magnitude
-        //of other integral numeric types (such as a double or float) that are cast to decimal, because raw byte count isn't enough to get the job done
-
-        //I should note - actual Int128 structs will be readable until they reach around 19-20 digits (a long can only hold 19 digits)
-        //So far, this cannot be remedied - there is no 128 bit operand type, and even real decompilers (like ilspy)
-        //will not properly decompile the UInt128 number 11111111111111111111, for example. Becaue ilspy doesnt do it, i wont do it either, lol!
-
-        //That being said, decimal values are also very unreadable, but you will see how that works in IL
+ 
         object GetToken(int i, ref int size, OperandType type)
         {
             if (size == x0bit)
@@ -179,9 +160,9 @@ namespace XQuinn.Reflection.IL
             else if (size == x8bit)
                 return _il[i];
             else if (size == x16bit)
-                return BinaryPrimitives.ReadInt16LittleEndian(_il.AsSpan(i, x16bit)); //BitConverter works, but BinaryPrimitives will automatically handle it without us
-            else if (size == x32bit)                                       //having to reverse the bytes to get their token on BigEndian systems
-            {                                                                       //IL is always stored as little endian, but at runtime could be bigendian
+                return BinaryPrimitives.ReadInt16LittleEndian(_il.AsSpan(i, x16bit));
+            else if (size == x32bit)                                   
+            {                                                                     
                 int token;
                 if (type == OperandType.ShortInlineR)
                     return BinaryPrimitives.ReadSingleLittleEndian(_il.AsSpan(i, x32bit));

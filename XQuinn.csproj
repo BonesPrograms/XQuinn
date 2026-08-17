@@ -9,9 +9,11 @@
     <AppendRuntimeIdentifierToOutputPath>true</AppendRuntimeIdentifierToOutputPath>
     <SelfContained>false</SelfContained>
     <Prefer32Bit>false</Prefer32Bit>
-    <LangVersion>9.0</LangVersion> <!--For caves of qud support exclusively.-->
+          <LangVersion>9.0</LangVersion> 
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+   <!--<CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>-->   
+    <Configurations>Release;IApp;Debug</Configurations>
   <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> 
       <NoWarn>$(NoWarn);1591</NoWarn>--> 
   <!--  <TreatWarningsAsErrors>true</TreatWarningsAsErrors>-->
@@ -29,14 +31,41 @@
 
   <PropertyGroup Condition="'$(TargetFramework)' == 'netstandard2.0'">
     <PlatformTarget>AnyCPU</PlatformTarget>
+
     <!--  <LangVersion>9.0</LangVersion>-->
+    <!--  <PackageReference Include="System.Collections.Immutable" Version="6.0.0" />-->
+  </PropertyGroup>
+
+<PropertyGroup Condition="'$(Configuration)' != 'Debug'">
+  <Optimize>true</Optimize>
+  <DebugSymbols>false</DebugSymbols>
+  <DebugType>none</DebugType>
+</PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)' == 'IApp'">
+  <OutputPath>bin\IApp\</OutputPath>
+  <TargetFramework>net10.0-windows</TargetFramework>
+  <DefineConstants>$(DefineConstants);IAPP_BUILD</DefineConstants>
+  </PropertyGroup>
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Release'">
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>$(DefineConstants);RELEASE_BUILD</DefineConstants>
+  </PropertyGroup>
+
+
+    <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <OutputPath>bin\Debug\</OutputPath>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <DefineConstants>$(DefineConstants);DEBUG_BUILD</DefineConstants>
   </PropertyGroup>
 
 
   <ItemGroup>
     <PackageReference Include="Lib.Harmony" Version="2.4.2" />
-    <PackageReference Include="Mono.Reflection" Version="2.0.0" />
-    <PackageReference Include="System.Collections.Immutable" Version="6.0.0" /> <!--For NetStandard2.0 support, needs explicit inclusion -->
+  <!--<PackageReference Include="Mono.Cecil" Version="0.9.4" Condition="'$(Configuration)' == 'Debug'"/>-->
+    <PackageReference Include="Mono.Reflection" Version="2.0.0" /> 
+    <!--sys collections immutable 6.0.0-->
   </ItemGroup>
 
 </Project>

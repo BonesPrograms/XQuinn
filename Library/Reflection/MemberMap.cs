@@ -38,22 +38,16 @@ namespace XQuinn.Reflection
             StaticOnly = statics;
         }
 
-        public static MemberMap New(Type type, bool declaredOnly, bool staticOnly, bool getBasePrivateMembers, MemberGroup member = MemberGroup.All, Func<MemberInfo, bool>? filter = null, bool removeSystemObject = true)
+        public static MemberMap New(Type type, bool declaredOnly, bool staticOnly, bool getBasePrivateMembers, MemberGroup memberType = MemberGroup.All, Func<MemberInfo, bool>? filter = null, bool removeSystemObject = true)
         {
             BindingFlags flag = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
             flag |= declaredOnly ? BindingFlags.DeclaredOnly : BindingFlags.FlattenHierarchy;
-            if (!staticOnly)
-                flag |= BindingFlags.Instance;
-            Dictionary<MemberGroup, List<MemberInfo>> members = new();
-            AddMembers(type, flag, member, members, filter);
-            if (getBasePrivateMembers)
-                BaseTypeTraversal(type, staticOnly, member, members, filter);
-            if (removeSystemObject)
-                foreach (var obj in members)
-                {
-                    obj.Value.RemoveAll(x => x.DeclaringType == typeof(object));
-                }
-            return new(type, members, staticOnly);
+            if (!staticOnly) flag |= BindingFlags.Instance;
+            Dictionary<MemberGroup, List<MemberInfo>> allMembers = new();
+            AddMembers(type, flag, memberType, allMembers, filter);
+            if (getBasePrivateMembers) BaseTypeTraversal(type, staticOnly, memberType, allMembers, filter);
+            if (removeSystemObject) foreach (List<MemberInfo> membersOfKind in allMembers.Values) membersOfKind.RemoveAll(x => x.DeclaringType == typeof(object));
+            return new(type, allMembers, staticOnly);
         }
 
 
@@ -66,15 +60,11 @@ namespace XQuinn.Reflection
 
         public int? MemberCount(MemberGroup key)
         {
-            if (TryGetValue(key, out List<MemberInfo>? list))
-                return list!.Count;
-            return null;
+            if (TryGetValue(key, out List<MemberInfo>? list)) return list.Count; else return null;
         }
         public IEnumerator<MemberInfo> GetEnumerator()
         {
-            foreach (var pair in Map)
-                foreach (var obj in pair.Value)
-                    yield return obj;
+            foreach (var pair in Map) foreach (var obj in pair.Value) yield return obj;
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
@@ -100,242 +90,94 @@ namespace XQuinn.Reflection
                 List<MemberInfo>? transfer = null;
                 if (filter != null)
                 {
-                    var filtered = pair.Value.Where(filter);
-                    if (filtered.Any())
-                        transfer = filtered.ToList();
+                    IEnumerable<MemberInfo> filtered = pair.Value.Where(filter);
+                    if (filtered.Any()) transfer = filtered.ToList();
                 }
-                else
-                    transfer = new(pair.Value);
-                if (transfer?.Count > 0)
-                {
-                    dic[pair.Key] = transfer;
-                }
+                else transfer = new(pair.Value);
+                if (transfer?.Count > 0) dic[pair.Key] = transfer;
             }
             return new(Type, dic, StaticOnly);
         }
 
 
-
-
-
-        static List<MemberInfo>? GetMember<T>(T[] main, Func<MemberInfo, bool>? filter, bool priv) where T : MemberInfo
+        static List<MemberInfo>? GetMembers<T>(T[] members, Func<MemberInfo, bool>? filter, bool priv) where T : MemberInfo
         {
-            IEnumerable<MemberInfo> filteredMembers;
-            if (filter != null)
-                filteredMembers = main.Where(filter);
-            else
-                filteredMembers = main;
-            if (priv)
-            {
-                //if (typeof(T).IsAssignableTo(typeof(MethodBase)) || typeof(T) == typeof(FieldInfo)) //we only call this method with priv == true for methodbases and fields, so this is unecessary
-                filteredMembers = EnumeratePrivateMembers(typeof(T), filteredMembers);
-            }
-            if (filteredMembers.Any())
-                return filteredMembers.ToList();
-            return null;
+            IEnumerable<MemberInfo> filteredMembers = filter != null ? members.Where(filter) : members;
+            if (priv) filteredMembers = EnumeratePrivateMembers(filteredMembers);
+            return filteredMembers.Any() ? filteredMembers.ToList() : null;
         }
 
-        static IEnumerable<MemberInfo> EnumeratePrivateMembers(Type t, IEnumerable<MemberInfo> filteredMembers)
+        static IEnumerable<MemberInfo> EnumeratePrivateMembers(IEnumerable<MemberInfo> filteredMembers)
         {
             foreach (var member in filteredMembers)
             {
-                AccessModifiers modifiers;
-                if (t == typeof(FieldInfo))
-                    modifiers = new((FieldInfo)member);
-                else //will only be something that inherits from methodbase (priv is only true for fields and methodbases)
-                    modifiers = new((MethodBase)member);
-                if (modifiers.IsPrivate)
-                    yield return member;
+                AccessModifiers modifiers = member is FieldInfo field ? new(field) : new((MethodBase)member);
+                if (modifiers.IsPrivate) yield return member;
             }
         }
-        static void AddBasePrivates<T>(MemberGroup flagcheck, MemberGroup member, Dictionary<MemberGroup, List<MemberInfo>> members, Func<MemberInfo, bool>? filter, T[] arr) where T : MemberInfo
+        static void AddBasePrivates<T>(MemberGroup flagcheck, MemberGroup memberType, Dictionary<MemberGroup, List<MemberInfo>> allTypeMembers, Func<MemberInfo, bool>? filter, T[] arr) where T : MemberInfo
         {
-            if (member.HasFlag(flagcheck))
+            if (memberType.HasFlag(flagcheck))
             {
-                if (members.TryGetValue(flagcheck, out List<MemberInfo>? list))
+                if (allTypeMembers.TryGetValue(flagcheck, out List<MemberInfo>? list))
                 {
-                    var reflections = GetMember<T>(arr, filter, true);
-                    if (reflections != null)
-                        list.AddRange(reflections);
+                    List<MemberInfo>? retrievedMembers = GetMembers(arr, filter, true);
+                    if (retrievedMembers != null) list.AddRange(retrievedMembers);
                 }
                 else
                 {
-                    var reflections = GetMember(arr, filter, true);
-                    if (reflections != null)
-                        members[member] = reflections;
+                    List<MemberInfo>? retrievedMembers = GetMembers(arr, filter, true);
+                    if (retrievedMembers != null) allTypeMembers[memberType] = retrievedMembers;
                 }
             }
         }
 
-        static void BaseTypeTraversal(Type type, bool staticOnly, MemberGroup member, Dictionary<MemberGroup, List<MemberInfo>> members, Func<MemberInfo, bool>? filter)
+        static void BaseTypeTraversal(Type type, bool staticOnly, MemberGroup memberType, Dictionary<MemberGroup, List<MemberInfo>> allTypeMembers, Func<MemberInfo, bool>? filter)
         {
             Type? baseType = type.BaseType;
             BindingFlags flag = BindingFlags.NonPublic | BindingFlags.DeclaredOnly | BindingFlags.Static;
-            if (!staticOnly)
-                flag |= BindingFlags.Instance;
+            if (!staticOnly) flag |= BindingFlags.Instance;
             while (baseType != null && baseType != typeof(object))
             {
-                AddBasePrivates(Field, member, members, filter, baseType.GetFields(flag));
-                AddBasePrivates(Method, member, members, filter, baseType.GetMethods(flag));
+                AddBasePrivates(Field, memberType, allTypeMembers, filter, baseType.GetFields(flag));
+                AddBasePrivates(Method, memberType, allTypeMembers, filter, baseType.GetMethods(flag));
                 //     AddBasePrivates(Property, member, members, filter, baseType.GetProperties(flag));
                 //      AddBasePrivates(Event, member, members, filter, baseType.GetEvents(flag));
-                AddBasePrivates(Constructor, member, members, filter, baseType.GetConstructors(flag));
+                AddBasePrivates(Constructor, memberType, allTypeMembers, filter, baseType.GetConstructors(flag));
                 baseType = baseType.BaseType;
             }
         }
 
 
-        static void AddMembers(Type type, BindingFlags flag, MemberGroup member, Dictionary<MemberGroup, List<MemberInfo>> members, Func<MemberInfo, bool>? filter)
+        static void AddMembers(Type type, BindingFlags flag, MemberGroup memberType, Dictionary<MemberGroup, List<MemberInfo>> allTypeMembers, Func<MemberInfo, bool>? filter)
         {
-            if (member.HasFlag(Field))
+            if (memberType.HasFlag(Field))
             {
-                var fields = GetMember(type.GetFields(flag), filter, false);
-                if (fields != null)
-                    members[Field] = fields;
+                List<MemberInfo>? fields = GetMembers(type.GetFields(flag), filter, false);
+                if (fields != null) allTypeMembers[Field] = fields;
             }
-
-            if (member.HasFlag(Method))
+            else if (memberType.HasFlag(Method))
             {
-                var methods = GetMember(type.GetMethods(flag), filter, false);
-                if (methods != null)
-                    members[Method] = methods;
+                List<MemberInfo>? methods = GetMembers(type.GetMethods(flag), filter, false);
+                if (methods != null) allTypeMembers[Method] = methods;
             }
-
-            if (member.HasFlag(Property))
+            else if (memberType.HasFlag(Property))
             {
-                var props = GetMember(type.GetProperties(flag), filter, false);
-                if (props != null)
-                    members[Property] = props;
+                List<MemberInfo>? props = GetMembers(type.GetProperties(flag), filter, false);
+                if (props != null) allTypeMembers[Property] = props;
             }
-
-            if (member.HasFlag(Event))
+            else if (memberType.HasFlag(Event))
             {
-                var events = GetMember(type.GetEvents(flag), filter, false);
-                if (events != null)
-                    members[Event] = events;
+                List<MemberInfo>? events = GetMembers(type.GetEvents(flag), filter, false);
+                if (events != null) allTypeMembers[Event] = events;
             }
-            if (member.HasFlag(Constructor))
+            else if (memberType.HasFlag(Constructor))
             {
-                var ctors = GetMember(type.GetConstructors(flag), filter, false);
-                if (ctors != null)
-                    members[Constructor] = ctors;
+                List<MemberInfo>? ctors = GetMembers(type.GetConstructors(flag), filter, false);
+                if (ctors != null) allTypeMembers[Constructor] = ctors;
             }
 
         }
-        //static IEnumerable<T> Filter<T>(T[] arr, Func<MemberInfo, bool>? filter) where T : MemberInfo => filter == null ? arr : arr.Where(x => filter(x));
-        // static IEnumerable<T> PrivateMethod<T>(IEnumerable<T> objs) where T : MethodBase => objs.Where(x => x.IsPrivate);
-
-        // static List<MemberInfo>? MakeList(IEnumerable<MemberInfo> enumer)
-        // {
-        //     if (enumer.Any())
-        //         return [.. enumer];
-        //     return null;
-        // }
-        // static List<MemberInfo>? GetFields(Type type, BindingFlags flag, Func<MemberInfo, bool>? filter, bool priv)
-        // {
-        //     var enumer = Filter(type.GetFields(flag), filter);
-        //     if (priv)
-        //         enumer = enumer.Where(x => x.IsPrivate);
-        //     return MakeList(enumer);
-        // }
-
-
-        // static List<MemberInfo>? GetMethods(Type type, BindingFlags flag, Func<MemberInfo, bool>? filter, bool priv)
-        // {
-        //     var enumer = Filter(type.GetMethods(flag), filter);
-        //     enumer = PrivateMethod(enumer, priv);
-        //     return MakeList(enumer);
-        // }
-
-        // static List<MemberInfo>? GetEvents(Type type, BindingFlags flag, Func<MemberInfo, bool>? filter, bool priv)
-        // {
-        //     var enumer = Filter(type.GetProperties(flag), filter);
-        //     //  if (priv)
-        //     // enumer = enumer.Where(x => x.IsPrivate);
-        //     return MakeList(enumer);
-        // }
-
-        // static List<MemberInfo>? GetProperties(Type type, BindingFlags flag, Func<MemberInfo, bool>? filter, bool priv)
-        // {
-        //     var enumer = Filter(type.GetEvents(flag), filter);
-        //     // if (priv)
-        //     //   enumer = enumer.Where(x => x.IsPrivate);
-        //     return MakeList(enumer);
-        // }
-
-        // static List<MemberInfo>? GetConstructors(Type type, BindingFlags flag, Func<MemberInfo, bool>? filter, bool priv)
-        // {
-        //     var enumer = Filter(type.GetConstructors(flag), filter);
-        //     enumer = PrivateMethod(enumer, priv);
-        //     return MakeList(enumer);
-        // }
-
-
-
-
-        //this can maybe be some kind of base method
-
-        //hash set doesnt seem like it would work here though
-        //the issue we were having was duplicate values in a list represented by a single key though...
-        //so i think a hash set would work here probably
-
-        //resorts the list into a dictionary, keyed by ReflectionGroup, all objects of a particular ReflectionGroup are grouped together in a list
-        // static void ResolveByMember(ReflectionGroup member, List<MemberInfo> info, Dictionary<ReflectionGroup, List<MemberInfo>> members)
-        // {
-        //     IEnumerable<MemberInfo> specifiedmembers = info.Where(x => member == x.Group);
-        //     //  specifiedmembers.ForEach(x => info.Remove(x));
-        //     // foreach (var obj in info.ToArray())
-        //     // {
-        //     //     if (member.HasFlag(obj.ReflectionGroup))
-        //     //     {
-        //     //         specifiedmembers.Add(obj);
-        //     //         info.Remove(obj);
-        //     //     }
-        //     // }
-        //     if (specifiedmembers.Any())
-        //         members[member] = [.. specifiedmembers];
-        // }
-
-        /// <summary>
-        /// Will get all static, instance, public and nonpublic members, but only declared by the type (to prevent possible overlapping)
-        /// </summary>
-        /// <param name="type"></param>
-        /// <param name="member"></param>
-        /// <param name="filter"></param>
-        /// <returns></returns>
-
-        // static List<MemberInfo> ResolveTypeMembers(Type type, ReflectionGroup member = ReflectionGroup.All, Func<MemberInfo, bool>? filter = null)
-        // {
-
-        //     MemberInfo[] members = type.GetMembers(allDeclared);
-        //     List<MemberInfo> typedata = new(members.Length);
-        //     foreach (var membertype in ReflectionGroups.Groups)
-        //     {
-        //         if (member.HasFlag(membertype))
-        //         {
-        //             GetMetadataOf(typedata, members, membertype, filter);
-        //         }
-        //     }
-        //     return typedata;
-        // }
-
-        // ///a hash set would be more efficient here and in TypeMap.ResolveByMember, but, using hash sets would
-        // static void GetMetadataOf(List<MemberInfo> metadata, MemberInfo[] array, ReflectionGroup member, Func<MemberInfo, bool>? filter)
-        // {
-        //     List<MemberInfo> members = [.. array
-        //     .Where(obj => !obj.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute))
-        //     && member == ReflectionGroups.GetGroup(obj)
-        //     && (filter?.Invoke(obj) ?? true)).Select(x => new MemberInfo(x))];
-        //     metadata.AddRange(members); //actually faster to allocate it to a list here for addrange purposes rather than sending an enumerable
-        //     // foreach (I obj in array.ToArray())
-        //     // {
-        //     //     if ()
-        //     //     {
-        //     //         metadata.Add(new(obj));
-        //     //         array.Remove(obj);
-        //     //     }
-        //     // }
-        // }
 
     }
 }

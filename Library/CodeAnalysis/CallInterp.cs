@@ -4,7 +4,6 @@ using System.Text.RegularExpressions;
 using XQuinn.Reflection;
 using XQuinn.Parsing;
 using XQuinn.CodeAnalysis.AST;
-using XQuinn.NetConsole;
 using System.ComponentModel;
 using System.Data;
 using System.Linq;
@@ -33,7 +32,7 @@ namespace XQuinn.CodeAnalysis
 
         public override string ToString()
         {
-            return $"VariableKey: {VariableKey} Type: {ObjectType} TypeKey: {TypeCacheKey}";
+            return $"VariableKey: {VariableKey} ObjectType: {ObjectType} TypeKey: {TypeCacheKey} Object: {Object}";
         }
     }
 
@@ -213,9 +212,8 @@ namespace XQuinn.CodeAnalysis
         /// <summary>
         /// A dictionary of all stored instances.
         /// </summary>
-        public readonly IReadOnlyDictionary<string, Variable> Variables;
-        Dictionary<string, Variable> _variables = new(StringComparer.OrdinalIgnoreCase);
-
+       // public readonly IReadOnlyDictionary<string, Variable> _variables;
+        internal Dictionary<string, Variable> _variables = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// The currently loaded instance.
@@ -235,14 +233,15 @@ namespace XQuinn.CodeAnalysis
         public string? LoadedTypeKey => _key;
         string? _key;
         internal Dictionary<string, MethodInfo> _methods = new(StringComparer.OrdinalIgnoreCase);
+        internal Dictionary<string, MethodInfo> _overloads = new(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// A dictionary of all overload methods found in the current loaded type, incase you are having trouble figuring out an overload's changed name. You can also use
         /// the MapOverloads method to see how it is resolved.
         /// </summary>
-        public readonly IReadOnlyDictionary<string, MethodInfo> Overloads;
-        Dictionary<string, MethodInfo> _overloads = new(StringComparer.OrdinalIgnoreCase);
+    //    public readonly IReadOnlyDictionary<string, MethodInfo> Overloads;
+
 
         /// <summary>
         /// This represents the most recently invoked method.
@@ -250,8 +249,9 @@ namespace XQuinn.CodeAnalysis
         public MethodInfo? LoadedMethod => _loadedMethod;
         MethodInfo? _loadedMethod;
         ParameterInfo[]? _loadedParams;
-        static readonly HashSet<string> GlobalAmbiguousMatches = new(StringComparer.OrdinalIgnoreCase);
-        static readonly Dictionary<Type, Dictionary<string, MemberInfo>> GlobalCache = new();
+        static readonly HashSet<string> AmbiguousMatches = new(StringComparer.OrdinalIgnoreCase);
+        static readonly Dictionary<Type, Dictionary<string, MemberInfo>> MemberCache = new(); //all members ever accessed by callinterp 
+        static readonly Dictionary<string, Type> GenericsCache = new(StringComparer.OrdinalIgnoreCase); //reified generics
 
         /// <summary>
         /// Caching adds methods and fields to a global cache as they are invoked by CallInterpreter.
@@ -260,9 +260,14 @@ namespace XQuinn.CodeAnalysis
         //this dictionary keeps track of ambiguous matches for method names per type, allows minor efficiency upgrade, we dont always have to map out an entire type if the method is not overloaded
         public const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
-        public static void FlushStaticCache()
+        public static void FlushStaticCache(bool ambiguousMatches = false, bool typeMembers = true, bool reifiedGenerics = true)
         {
-            GlobalCache.Clear();
+            if (ambiguousMatches)
+                AmbiguousMatches.Clear(); //technically not part of 'caching' system, doesnt care if caching is false, will always store ambiguous matches
+            if (typeMembers)                    //may be a thing later, for now you can clear at least
+                MemberCache.Clear();
+            if (reifiedGenerics)
+                GenericsCache.Clear();
         }
 
         public void RunCommands(IEnumerable<string> commands)
@@ -273,8 +278,8 @@ namespace XQuinn.CodeAnalysis
         public CallInterpreter(IReadOnlyDictionary<string, Type>? localCache = null)
         {
             LocalCache = localCache;
-            Overloads = new ReadOnlyDictionary<string, MethodInfo>(_overloads);
-            Variables = new ReadOnlyDictionary<string, Variable>(_variables);
+            //   Overloads = new ReadOnlyDictionary<string, MethodInfo>(_overloads);
+            //Variables = new ReadOnlyDictionary<string, Variable>(_variables);
         }
         public void Clear()
         {
@@ -293,86 +298,66 @@ namespace XQuinn.CodeAnalysis
         /// <summary>
         /// Primary method for interfacing with call interpreter's various features.
         /// </summary>
-        /// <param name="input"></param>
+        /// <param name="invocation"></param>
         /// <param name="catchinvoke"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        public object? Interface(string input)
+        public object? Interface(string invocation)
         {
-            string? sub = input.Substring(1);
-            if (string.IsNullOrWhiteSpace(input) || string.IsNullOrWhiteSpace(sub))
-                throw new ArgumentException("Input cannot be null or whitespace.");
-            return input[0] switch
+            if (string.IsNullOrWhiteSpace(invocation) || invocation.Length < 2)
+                throw new ArgumentException("Input cannot be null, whitespace, or less than 2 chars in length.");
+            return invocation[0] switch
             {
-                '+' => AddInstanceToVariables(sub), ///Add the current Instance to the Variables dictionary. Returns null.
-                '-' => RemoveInstanceFromVariables(sub), ///Remove an instance from the Variables dictionary. Returns null.
-                '$' => LoadInstanceFromVariables(sub), ///Load an instance from the Variables dictionary as the current Instance. Returns loaded value.
+                '+' => AddViarable(invocation.Substring(1)), ///Add the current Instance to the Variables dictionary. Returns null.
+                '-' => RemoveVariable(invocation.Substring(1)), ///Remove an instance from the Variables dictionary. Returns null.
+                '$' => LoadVariable(invocation.Substring(1)), ///Load an instance from the Variables dictionary as the current Instance. Returns loaded value.
 
-                '@' => LoadType(sub), ///Load a type's static members. Returns null.
-                '*' => LoadInstance(sub), ///Load the current Instance from a field or method. Returns loaded value.
-                '^' => CastInstance(sub), ///Cast the current Instance to a different type. Returns null.
+                '@' => LoadType(invocation.Substring(1)), ///Load a type's static members. Returns null.
+                '*' => LoadInstance(invocation.Substring(1)), ///Load the current Instance from a field or method. Returns loaded value.
+                '^' => CastInstance(invocation.Substring(1)), ///Cast the current Instance to a different type. Returns null.
 
-                '!' => IsolatedInvoke(sub), ///Invoke a method or field by type name without changing the loaded type. Returns invoked value.
-                                            ///Can exclude type name to automatically invoke from the loaded type. This is how you view the values of fields, standard invoke
-                                            /// will throw for anything except method invocations. Also allows you to invoke private members from base types without changing the loaded type.
-                _ => StandardInvokeOrAssign(input) ///Invoke a method from the loaded type, or assign. Returns invoked value if invocation. Returns assigned value if assignment.
+                '!' => IsolatedInvoke(invocation.Substring(1)), ///Invoke a method or field by type name without changing the loaded type. Returns invoked value.
+                                                                ///Can exclude type name to automatically invoke from the loaded type. This is how you view the values of fields, standard invoke
+                                                                /// will throw for anything except method invocations. Also allows you to invoke private members from base types without changing the loaded type.
+                _ => StandardInvokeOrAssign(invocation) ///Invoke a method from the loaded type, or assign. Returns invoked value if invocation. Returns assigned value if assignment.
             };
         }
         #endregion
         /// <summary>
         /// Convert a method AST object to actual parameters by matching it to a MethodInfo's parameter array.
         /// </summary>
-        public object?[] GetParsedParameters(ParameterInfo[] methodparams, MethodString method)
+        public object?[] GetParsedParameters(ParameterInfo[] actualParameters, MethodString invocation)
         {
-            object?[] prms = new object[methodparams.Length];
-            if (method.Params.Count != methodparams.Length)
+            object?[] prms = new object[actualParameters.Length];
+            if (invocation.Params.Count != actualParameters.Length)
             {
-                int inputAmount = method.Params.Count;
-                int reqAmount = methodparams.Length;
-
+                int inputAmount = invocation.Params.Count;
+                int reqAmount = actualParameters.Length;
                 if (inputAmount < reqAmount)
                 {
                     for (int i = inputAmount; i < reqAmount; i++)
                     {
-                        ParameterInfo parameter = methodparams[i];
-                        if (parameter.HasDefaultValue)
-                            prms[i] = parameter.DefaultValue;
-                        else
-                            throw new TargetParameterCountException($"Parameter {parameter} does not have a default value. Input param count {inputAmount} Required count {reqAmount}");
+                        ParameterInfo parameter = actualParameters[i];
+                        if (parameter.HasDefaultValue) prms[i] = parameter.DefaultValue;
+                        else throw new TargetParameterCountException($"Parameter {parameter} does not have a default value. Input param count {inputAmount} Required count {reqAmount}");
                     }
-                    for (int i = 0; i < inputAmount; i++)
-                        prms[i] = ParameterToObject(method.Params[i], methodparams[i].ParameterType);
+                    for (int i = 0; i < inputAmount; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
                 }
-                else
-                    throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {methodparams.Length} method name {method.String}");
+                else throw new TargetParameterCountException($"input param count: {invocation.Params.Count} required count: {actualParameters.Length} method name {invocation.String}");
             }
-            else
-            {
-                for (int i = 0; i < methodparams.Length; i++)
-                    prms[i] = ParameterToObject(method.Params[i], methodparams[i].ParameterType);
-            }
-            // throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {methodparams.Length} method name {method.String}");
-
+            else for (int i = 0; i < actualParameters.Length; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
             return prms;
         }
         /// <summary>
         /// Checks if a member is supported by Call Interpreter.
         /// </summary>
-        /// <param name="mem"></param>
+        /// <param name="member"></param>
         /// <returns></returns>
-        public static bool SupportedMember(MemberInfo mem)
+        public static bool SupportedMember(MemberInfo member)
         {
-            if (mem is MethodInfo meth)
-            {
-                var parameters = meth.GetParameters();
-                if (parameters.Any(x => x.IsOut || x.IsIn || x.ParameterType.IsByRef || typeof(Delegate).IsAssignableFrom(x.ParameterType)))
-                    return false;
-                return true;
-
-            }
-            else if (mem is FieldInfo f)
-                return !typeof(Delegate).IsAssignableFrom(f.FieldType);
-            return false;
+            if (member is MethodInfo method) return !method.GetParameters().Any(x => x.IsOut || x.IsIn || x.ParameterType.IsByRef || typeof(Delegate).IsAssignableFrom(x.ParameterType));
+            else if (member is FieldInfo field) return !typeof(Delegate).IsAssignableFrom(field.FieldType);
+            else return false;
         }
 
 
@@ -402,25 +387,21 @@ namespace XQuinn.CodeAnalysis
         /// <exception cref="ArgumentException"></exception>
         public void LoadMethodDirectly(MethodInfo method)
         {
-            if (!SupportedMember(method) || !method.IsStatic)
-                throw new NotSupportedException($"Method {method} has delegate, in/out/or ref params, or is nonstatic.");
+            if (!SupportedMember(method) || !method.IsStatic) throw new NotSupportedException($"Method {method} has delegate, in/out/or ref params, or is nonstatic.");
             _loadedMethod = method;
             _loadedParams = method.GetParameters();
         }
 
-        /// <summary>
-        /// Load an instance directly via object reference. Resets loaded method, instance and type.
-        /// </summary>
-        /// <param name="obj"></param>
-        void LoadInstance(object obj, Type objectType)
+
+        void LoadInstance(object instance, Type instanceType)
         {
-            _instance = obj;
-            LoadTypeMembers(objectType);
-            _instanceType = objectType;
+            _instance = instance;
+            LoadTypeMembers(instanceType);
+            _instanceType = instanceType;
         }
-        void LoadTypeMembers(Type t)
+        void LoadTypeMembers(Type type)
         {
-            _loadedType = t;
+            _loadedType = type;
             _loadedParams = null;
             _loadedMethod = null;
             MapMethods(LoadedType!, ref _overloads!, ref _methods!, true);
@@ -434,8 +415,7 @@ namespace XQuinn.CodeAnalysis
             MethodString main = Lexer.ParameterTemplate(invocation, null); //at this point we cannot know if the generic arguments are the same yet, but incase youre reloading the same method with diff generic parameters, we always reload if we detect generic vs generic
             if (LoadedMethod == null || !LoadedMethod.Name.EqualsCaseless(main.String) || LoadedMethod.IsGenericMethod)// && main.IsGeneric)
             {
-                if (LoadedType == null)
-                    throw new InvalidOperationException("Must load a type before attempting to invoke.");
+                if (LoadedType == null) throw new InvalidOperationException("Must load a type before attempting to invoke.");
                 _loadedMethod = FindMethod(LoadedType, _overloads, _methods, main);
                 _loadedParams = _loadedMethod.GetParameters();
             }
@@ -449,91 +429,73 @@ namespace XQuinn.CodeAnalysis
 
         #region Parsing
         //This sorts between whether or not a parameter is a method invocation as a parameter, or an actual primitive/string value.
-        object? ParameterToObject(ParameterString param, Type paramType)
+        object? ParameterToObject(ParameterString value, Type paramType)
         {
             object? obj;
-            if (param is FieldString f)
-                obj = GetFieldWithVariable(f);
-            else if (param is MethodString m)
-            {
-                obj = InvokeMethodWithVariable(m);
-            }
+            if (value is FieldString field) obj = GetFieldWithVariable(field);
+            else if (value is MethodString method) obj = InvokeMethodWithVariable(method);
             else
             {
-                obj = ParseParameter((ValueString)param, paramType);
-                if (obj == null)
-                {       //This should never return null except for Nullable<T> and and classes, it will always throw a Format exception otherwise because the only other things it parses are primitives
-                    bool validNullableInput = paramType.IsClass || (paramType.IsGenericType && paramType.GetGenericTypeDefinition() == typeof(Nullable<>));
-                    if (!validNullableInput)
-                        throw new ArgumentException($"Expected method syntax for type {paramType}, but received {param.String}");
-                }       //so if its not throwing format exception, it means it is a class or custom struct parameter (it leaves early and avoids throwing), and it requires method syntax, however it should've already jumped to the Method label early, this means it was parsed incorrectly as a Parameter, and will throw to let you know you messed up
+                obj = ParseParameter((ValueString)value, paramType);
+                if (obj == null && !(paramType.IsClass || (paramType.IsGenericType && paramType.GetGenericTypeDefinition() == typeof(Nullable<>))))
+                    throw new ArgumentException($"Expected method syntax for type {paramType}, but received {value.String}");
             }
             return obj;
 
         }
 
 
-        object? ParseParameter(ValueString value, Type type) //need half and int128 support
+        object? ParseParameter(ValueString value, Type paramType) //need half and int128 support
         {
             string strng = value.String;
             if (strng == "this")
             {
-                if (Instance == null)
-                    throw new InvalidOperationException("Cannot pass this as parameter, instance is null.");
-                if (!type.IsAssignableFrom(_instanceType))
-                    throw new InvalidCastException($"Current instance is a {_instanceType} and does not cast to parameter type {type}");
+                if (Instance == null) throw new InvalidOperationException("Cannot pass this as parameter, instance is null.");
+                if (!paramType.IsAssignableFrom(_instanceType)) throw new InvalidCastException($"Current instance is a {_instanceType} and does not cast to parameter type {paramType}");
                 return Instance;
             }
-            if (Variables?.TryGetValue(strng, out Variable? variable) ?? false)
+            if (_variables?.TryGetValue(strng, out Variable? variable) ?? false)
             {
-                if (!type.IsAssignableFrom(variable.ObjectType))
-                    throw new InvalidCastException($"Instance index object with key {strng} is a {variable.ObjectType} and does not cast to parameter type {type}");
-                return variable;
+                if (!paramType.IsAssignableFrom(variable.ObjectType)) throw new InvalidCastException($"Instance index object with key {strng} is a {variable.ObjectType} and does not cast to parameter type {paramType}");
+                else return variable;
             }
-            return value.ParseValue(type);
+            return value.ParseValue(paramType);
         }
 
 
 
-        object? GetFieldParameter(Type t, FieldString f, Variable? localvar)
+        object? GetFieldParameter(Type fromType, FieldString fieldstring, Variable? localvar)
         {
             object? variable = localvar?.Object;
-            string fname = f.String;
-            FieldInfo? field = CheckGlobalCache<FieldInfo>(f.String, t, out bool typeCached, out bool fieldCached);
-            if (field == null && t == LoadedType)
+            string fname = fieldstring.String;
+            FieldInfo? field = CheckGlobalCache<FieldInfo>(fieldstring.String, fromType, out bool typeCached, out bool fieldCached);
+            if (field == null && fromType == LoadedType)
             {
                 _fields.TryGetValue(fname, out field);
-                if (field == null)
-                    throw new MissingFieldException($"No field found named {fname} in {LoadedType}. Delegate type fields are not supported and would have been removed.");
+                if (field == null) throw new MissingFieldException($"No field found named {fname} in {LoadedType}. Delegate type fields are not supported and would have been removed.");
             }
             else if (field == null)
             {
-                field = t.GetField(fname, Flag) ?? throw new MissingFieldException($"No field found in type {t} named {fname}");
-                if (!SupportedMember(field))
-                    throw new NotSupportedException($"Delegates are unsupported. Bad object: {field.DeclaringType}.{field.Name}");
+                field = fromType.GetField(fname, Flag) ?? throw new MissingFieldException($"No field found in type {fromType} named {fname}");
+                if (!SupportedMember(field)) throw new NotSupportedException($"Delegates are unsupported. Bad object: {field.DeclaringType}.{field.Name}");
             }
-            CacheMember(typeCached, fieldCached, t, field, f.String);
-            object? instance = GetVariableInstance(t, variable);
-            return field.GetValue(instance);
+            CacheMember(typeCached, fieldCached, fromType, field, fieldstring.String);
+            return field.GetValue(GetVariableInstance(fromType, variable));
         }
-        object? InvokeMethodParameter(MethodString method, Type t, Variable? localvar)
+        object? InvokeMethodParameter(MethodString method, Type fromType, Variable? localvar)
         {
             object? variable = localvar?.Object;
-            MethodInfo? call = CheckGlobalCache<MethodInfo>(method.NameWithGenerics, t, out bool typeCached, out bool methodCached);
-            if (call == null && t != LoadedType)
+            MethodInfo? call = CheckGlobalCache<MethodInfo>(method.NameWithGenerics, fromType, out bool typeCached, out bool methodCached);
+            if (call == null && fromType != LoadedType)
             {
-                string key = $"{t.FullName}.{method.String}";
-                if (!GlobalAmbiguousMatches.Contains(key))
+                string key = $"{fromType.FullName}.{method.String}";
+                if (!AmbiguousMatches.Contains(key))
                 {
-                    try
-                    {
-                        call = t.GetMethod(method.String, Flag);
-                    }
+                    try { call = fromType.GetMethod(method.String, Flag); }
                     catch (AmbiguousMatchException)
                     {
-
-                        GlobalAmbiguousMatches.Add(key);
-                        throw new AmbiguousMatchException($"Method named {method.String} in type {t} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
+                        AmbiguousMatches.Add(key);
+                        throw new AmbiguousMatchException($"Method named {method.String} in type {fromType} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
                     }
                 }
                 // else
@@ -543,102 +505,77 @@ namespace XQuinn.CodeAnalysis
             {
                 Dictionary<string, MethodInfo>? overloads = null;
                 Dictionary<string, MethodInfo>? methods = null;
-                this.MapMethods(t, ref overloads, ref methods);
-                call = FindMethod(t, overloads!, methods!, method);
+                this.MapMethods(fromType, ref overloads, ref methods);
+                call = FindMethod(fromType, overloads!, methods!, method);
             }
             else if (call.IsGenericMethodDefinition)
-                call = method.ConvertToGenericMethod(call, LocalCache);
-            ParameterInfo[] methodparams = call.GetParameters();
-            object?[]? subparams = GetParsedParameters(methodparams, method);
-            object? instance = GetVariableInstance(t, variable);
-            CacheMember(typeCached, methodCached, t, call, method.NameWithGenerics);
-            return call.Invoke(instance, subparams);
+                call = method.ConvertToGeneric(call, LocalCache);
+            if (!SupportedMember(call))
+                throw new ArgumentException($"Method {call} in type {call.DeclaringType} has invalid in out or ref params");
+            CacheMember(typeCached, methodCached, fromType, call, method.NameWithGenerics);
+            return call.Invoke(GetVariableInstance(fromType, variable), GetParsedParameters(call.GetParameters(), method));
             //if you are getting a type that you know will be in a metadata map, it doesnt need to have case //but if the map is null, then you need full casing  //namespace is ALWAYS required
         }
 
-
-
-        object? GetVariableInstance(Type t, object? variable)
+        object? GetVariableInstance(Type paramType, object? variable)
         {
-            object? instance;
-            if (variable != null)
-                instance = variable;
-            else
-                instance = t.IsAssignableFrom(_instanceType) ? Instance : null;
-            return instance;
+            return variable ?? (paramType.IsAssignableFrom(_instanceType) ? Instance : null);
         }
-        object? InvokeMethodWithVariable(MethodString m)
+        object? InvokeMethodWithVariable(MethodString method)
         {
-            Type t = FindTypeWithVariable(m, out Variable? variable);
-            return InvokeMethodParameter(m, t, variable);
+            Type t = FindTypeWithVariable(method, out Variable? variable);
+            return InvokeMethodParameter(method, t, variable);
         }
-        object? GetFieldWithVariable(FieldString s)
+        object? GetFieldWithVariable(FieldString field)
         {
-            Type t = FindTypeWithVariable(s, out Variable? variable);
-            return GetFieldParameter(t, s, variable);
+            Type t = FindTypeWithVariable(field, out Variable? variable);
+            return GetFieldParameter(t, field, variable);
         }
         #endregion
 
         #region Finding
-        Type FindTypeWithVariable(IMemberString m, out Variable? variable)
+        Type FindTypeWithVariable(IMemberString member, out Variable? variable)
         {
-            if (m.DeclaringType == null)
-                throw new ArgumentException();
-            Type t;
-            if (Variables.TryGetValue(m.DeclaringType.String, out variable))
-                t = variable.ObjectType;
-            else
-                t = FindType(m.DeclaringType);
-            return t;
+            if (member.DeclaringType == null) throw new ArgumentException();
+            if (_variables.TryGetValue(member.DeclaringType.String, out variable)) return variable.ObjectType; else return FindType(member.DeclaringType);
         }
 
-        Type FindType(TypeString strng, bool cast = false)
+        Type FindType(TypeString typename, bool explicitCast = false)
         {
-            if (!cast)
+            if (!explicitCast)
             {
-                if (Variables.TryGetValue(strng.String, out Variable? variable))
-                    return variable.ObjectType;
-                if (strng.String == _key)
-                    return LoadedType ?? throw new InvalidOperationException();
-                if (strng.String == "this")
-                {
-                    if (Instance == null)
-                        throw new InvalidOperationException("Cannot pass this, instance is null.");
-                    return _instanceType!;
-                }
+                if (_variables.TryGetValue(typename.String, out Variable? variable)) return variable.ObjectType;
+                if (typename.String == _key) return LoadedType ?? throw new InvalidOperationException();
+                if (typename.String == "this") { if (Instance == null) throw new InvalidOperationException("Cannot pass this, instance is null."); else return _instanceType!; }
             }
-            if (strng.String == "base")
-            {
-                if (Instance == null)
-                    throw new InvalidOperationException("Cannot get instance base, instance is null.");
-                return _instanceType!.BaseType ?? throw new ArgumentException("Base type of instance is null.");
-            }
-            Type t = TypeCache.GetTypeOrThrow(strng.String, LocalCache);
+            if (typename.String == "base") { if (Instance == null) throw new InvalidOperationException("Cannot get instance base, instance is null."); else return _instanceType!.BaseType ?? throw new ArgumentException("Base type of instance is null."); }
+            Type t = TypeCache.GetTypeOrThrow(typename.String, LocalCache);
             if (t.IsGenericTypeDefinition)
-                t = strng.ConvertToGenericType(t, LocalCache);
+            {
+                if (Caching && GenericsCache.TryGetValue(typename.NameWithGenerics, out Type? generic)) return generic;
+                t = typename.ConvertToGeneric(t, LocalCache);
+                if (Caching) GenericsCache[typename.NameWithGenerics] = t;
+            }
             return t;
 
         }
 
-        MethodInfo FindMethod(Type t, Dictionary<string, MethodInfo> overloads, Dictionary<string, MethodInfo> methods, MethodString method)
+        MethodInfo FindMethod(Type fromType, Dictionary<string, MethodInfo> overloads, Dictionary<string, MethodInfo> methods, MethodString method)
         {
             methods.TryGetValue(method.String, out MethodInfo? realmethod);
-            if (realmethod == null)
-                overloads.TryGetValue(method.String, out realmethod);
-            if (realmethod == null)
-                throw new MissingMethodException($"No method named {method.String} found in {t}'s method or overload dictionary.");
-            if (realmethod.IsGenericMethodDefinition)
-                realmethod = method.ConvertToGenericMethod(realmethod, LocalCache);
+            if (realmethod == null) overloads.TryGetValue(method.String, out realmethod);
+            if (realmethod == null) throw new MissingMethodException($"No method named {method.String} found in {fromType}'s method or overload dictionary.");
+            if (realmethod.IsGenericMethodDefinition) realmethod = method.ConvertToGeneric(realmethod, LocalCache);
             return realmethod;
         }
 
-        T? CheckGlobalCache<T>(string key, Type t, out bool typeCached, out bool memberCached) where T : MemberInfo
+        T? CheckGlobalCache<T>(string key, Type fromType, out bool typeCached, out bool memberCached) where T : MemberInfo
         {
             typeCached = false;
             memberCached = false;
             if (Caching)
             {
-                typeCached = GlobalCache.TryGetValue(t, out var cachedMembers);
+                typeCached = MemberCache.TryGetValue(fromType, out var cachedMembers);
                 if (typeCached)
                 {
                     memberCached = cachedMembers!.TryGetValue(key, out MemberInfo? member);
@@ -648,20 +585,14 @@ namespace XQuinn.CodeAnalysis
             }
             return null;
         }
-        void CacheMember(bool typeCached, bool memberCached, Type t, MemberInfo member, string key)
+        void CacheMember(bool typeCached, bool memberCached, Type fromType, MemberInfo member, string key)
         {
             if (Caching)
             {
                 Dictionary<string, MemberInfo> cachedMembers;
-                if (!typeCached)
-                {
-                    cachedMembers = new(StringComparer.OrdinalIgnoreCase);
-                    GlobalCache[t] = cachedMembers;
-                }
-                else
-                    cachedMembers = GlobalCache[t];
-                if (!memberCached)
-                    cachedMembers[key] = member;
+                if (!typeCached) { cachedMembers = new(StringComparer.OrdinalIgnoreCase); MemberCache[fromType] = cachedMembers; }
+                else cachedMembers = MemberCache[fromType];
+                if (!memberCached) cachedMembers[key] = member;
             }
         }
 
@@ -671,74 +602,57 @@ namespace XQuinn.CodeAnalysis
         #region Mapping
 
 
-        static string? ResolveMemberAccess(string input, out string member, out bool field) //returns typename, outputs the accessed member
+        static string? ResolveMemberAccess(string invocation, out string member, out bool field) //returns typename, outputs the accessed member
         {
             int? lastAccessorIndex = null;
-            int paramStart = input.IndexOf('(');
+            int paramStart = invocation.IndexOf('(');
             field = paramStart == -1;
-            for (int i = 0; i < input.Length; i++) //this resolves typenames vs member names, lexer does something similar but not exactly the same - this one is pretty much universal
+            for (int i = 0; i < invocation.Length; i++) //this resolves typenames vs member names, lexer does something similar but not exactly the same - this one is pretty much universal
             {                                        //works with anything like field or method() (no type name) or namespace.typename.method(22, "hello", othertype.method()) //methods are broken off from the typename with all their parameters included
-                if (i == paramStart)
-                    break;
-                if (input[i] == '.')
-                    lastAccessorIndex = i;
+                if (i == paramStart) break;
+                if (invocation[i] == '.') lastAccessorIndex = i;
             }
             if (lastAccessorIndex != null)
             {
-                member = input.Substring(lastAccessorIndex.Value + 1);
-                string typename = input.Remove(lastAccessorIndex.Value);
+                member = invocation.Substring(lastAccessorIndex.Value + 1);
+                string typename = invocation.Remove(lastAccessorIndex.Value);
                 return typename;
             }
-            member = input;
+            else
+                member = invocation;
             return null; //no type name, just a member, this technically isnt allowed but i let you get away with it for instance loading 
         }
 
 
-        void MapMethods(Type type, ref Dictionary<string, MethodInfo>? overloads, ref Dictionary<string, MethodInfo>? methods, bool forceNew = false)
+        void MapMethods(Type fromType, ref Dictionary<string, MethodInfo>? overloads, ref Dictionary<string, MethodInfo>? methods, bool forceNew = false)
         {
-            if (!forceNew && type == LoadedType)//Prevents recreating the same map, but needs to check instance vs static first
-            {
-                methods = _methods;
-                overloads = _overloads;
-                return;
-            }
-            methods ??= new(StringComparer.OrdinalIgnoreCase);
-            overloads ??= new(StringComparer.OrdinalIgnoreCase);
-            overloads.Clear();
-            methods.Clear();
-            MapMethods(type, ref methods, ref overloads);
+            if (!forceNew && fromType == LoadedType) { methods = _methods; overloads = _overloads; return; }
+            if (methods == null) methods = new(StringComparer.OrdinalIgnoreCase); else methods.Clear();
+            if (overloads == null) overloads = new(StringComparer.OrdinalIgnoreCase); else overloads.Clear();
+            MapMethods(fromType, ref methods, ref overloads);
 
         }
 
         void MapFields()
         {
             _fields.Clear();
-            FieldInfo[] fieldsarray = LoadedType!.GetFields(Flag).Where(SupportedMember).ToArray();
-            AddBackwards(_fields, fieldsarray);
+            AddBackwards(_fields, LoadedType!.GetFields(Flag).Where(SupportedMember).ToArray());
         }
 
 
-        public static void MapMethods(Type t, ref Dictionary<string, MethodInfo> methods, ref Dictionary<string, MethodInfo> overloads)
+        public static void MapMethods(Type fromType, ref Dictionary<string, MethodInfo> methods, ref Dictionary<string, MethodInfo> overloads)
         {
-            MethodInfo[] methodsarray = t.GetMethods(Flag).Where(SupportedMember).ToArray();
-            string[] names = methodsarray.Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-            foreach (var name in names)
-            {
-                int count = 0;
-                CompareNames(ref count, methodsarray, name, overloads);
-            }
+            MethodInfo[] methodsarray = fromType.GetMethods(Flag).Where(SupportedMember).ToArray();
+            IEnumerable<string> names = methodsarray.Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase);
+            foreach (var name in names) CompareNames(methodsarray, name, overloads);
             AddBackwards(methods, methodsarray);
         }
 
-        static void AddBackwards<T>(Dictionary<string, T> dic, T[] memberArray) where T : MemberInfo
+        static void AddBackwards<T>(Dictionary<string, T> storage, T[] memberArray) where T : MemberInfo
         {
-            for (int i = memberArray.Length - 1; i >= 0; i--)
-            {
-                T member = memberArray[i];
-                dic[member.Name] = member;
-                //this is a 'new' resolution thing
-            }
+            for (int i = memberArray.Length - 1; i >= 0; i--) { T member = memberArray[i]; storage[member.Name] = member; }
         }
+        //this is a 'new' resolution thing
         //If you hide an inherited member with 'new', GetField/GetMethod will automatically get the newest member, but GetFields/GetMethods will also return hidden members as well
         //However, the newest member is closest to the 0 index in the info array relative to the older members
         //so functionally the 'older'members are overriden by doing a backwards for loop
@@ -748,18 +662,10 @@ namespace XQuinn.CodeAnalysis
         //to differentiate overloads and new methods across inheritance hierarchies.
 
         //AddBackwards also helps cover our overload resolution - the first-declared overload
-        static void CompareNames(ref int count, MethodInfo[] methods, string name, Dictionary<string, MethodInfo> overloads)
+        static void CompareNames(MethodInfo[] methods, string name, Dictionary<string, MethodInfo> overloads)
         {
-            foreach (var method in methods)
-            {
-                if (name.EqualsCaseless(method.Name))
-                {
-                    count++;
-                    if (count > 1)
-                        overloads[$"{name}{count - 1}"] = method;
-
-                }
-            }
+            int count = 0;
+            foreach (var method in methods) if (name.EqualsCaseless(method.Name)) { count++; if (count > 1) overloads[$"{name}{count - 1}"] = method; }
         }
 
         #endregion
@@ -768,82 +674,60 @@ namespace XQuinn.CodeAnalysis
 
 
         //Checks for method or field syntax. If it detects a method, it diverts to an isolated type load and method invocation.
-        object LoadInstance(string input)
+        object LoadInstance(string invocation)
         {
-            object instance = IsolatedInvoke(input) ?? throw new ArgumentException($"Failed to load new instance from {input}");
+            object instance = IsolatedInvoke(invocation) ?? throw new ArgumentException($"Failed to load new instance from {invocation}");
             LoadInstance(instance, instance.GetType());
             _variableKey = null;
             _key = "this";
             return instance;
         }
         //Isolated lexing, loading and invocation for "quick invocation" without resetting loaded instance, method or type.
-        object? IsolatedInvoke(string input)
+        object? IsolatedInvoke(string invocation)
         {
-            string? tname = ResolveMemberAccess(input, out string member, out bool field);
-            tname ??= _key;
-            object? instance;
-            if (!field)
-            {
-                instance = InvokeMethodWithVariable(Lexer.ParameterTemplate(member, tname!));
-            }
-            else
-            {
-                instance = GetFieldWithVariable(new(member, null, TypeString.New(tname!, null)));
-            }
-            return instance;
+            string typeName = ResolveMemberAccess(invocation, out string member, out bool field) ?? _key ?? throw new InvalidOperationException();
+            if (!field) return InvokeMethodWithVariable(Lexer.ParameterTemplate(member, typeName!));
+            else return GetFieldWithVariable(new(member, null, TypeString.New(typeName!, null)));
         }
 
 
-        object? CastInstance(string input)
+        object? CastInstance(string invocation)
         {
-            if (Instance == null)
-                throw new InvalidOperationException("Cannot cast, instance is null.");
-            TypeString tstring = TypeString.New(input, null);
+            if (Instance == null) throw new InvalidOperationException("Cannot cast, instance is null.");
+            TypeString tstring = TypeString.New(invocation, null);
             Type t = FindType(tstring, true);
             _key = tstring.String;
-            if (!t.IsAssignableFrom(_instanceType))
-                throw new InvalidCastException($"{_instanceType} cannot cast to {t}.");
+            if (!t.IsAssignableFrom(_instanceType)) throw new InvalidCastException($"{_instanceType} cannot cast to {t}.");
             LoadTypeMembers(t);
             return null;
         }
 
-        object? StandardInvokeOrAssign(string input)
+        object? StandardInvokeOrAssign(string invocation)
         {
-            if (Assignment(input, out object? assigned))
-                return assigned;
-            object?[]? parameters = LoadInvocation(input);
+            if (Assignment(invocation, out object? assigned)) return assigned;
             object? returned;
-            try
-            {
-                returned = LoadedMethod!.Invoke(Instance, parameters); ;
-            }
-            catch (TargetInvocationException ex) //memory leak prevention, though im not sure if this is fully necessary
-            {
-                var inner = ex.InnerException;
-                throw new CapturedException(LoadedMethod!, inner);
-            }
+            object?[]? parameters = LoadInvocation(invocation);
+            try { returned = LoadedMethod!.Invoke(Instance, parameters); }
+            catch (TargetInvocationException ex) { throw new CapturedException(LoadedMethod!, ex.InnerException); }
             return returned;
         }
 
-        bool Assignment(string input, out object? assigned)
+        bool Assignment(string invocation, out object? assignedValue)
         {
-            assigned = null;
-            string[] assignment = input.Split('=');
-            if (assignment.Length == 1)
-                return false;
-            if (assignment.Length != 2)
-                throw new ArgumentException($"Invalid assignment, can only contain left hand and right hand. Bad assignment: {input}");
+            assignedValue = null;
+            string[] assignment = invocation.Split('=');
+            if (assignment.Length == 1) return false;
+            if (assignment.Length != 2) throw new ArgumentException($"Invalid assignment, can only contain left hand and right hand. Bad assignment: {invocation}");
             string lefthand = assignment[0];
             string righthand = assignment[1];
             string? lefthandTypeName = ResolveMemberAccess(lefthand, out lefthand, out bool lefthandfield);
-            if (!lefthandfield)
-                throw new ArgumentException($"Can only assign to fields. Bad input: {lefthand}");
+            if (!lefthandfield) throw new ArgumentException($"Can only assign to fields. Bad input: {lefthand}");
             Type lefthandtype;
             object? instance;
             lefthand = lefthand.Trim();
             if (lefthandTypeName == null)
             {
-                lefthandtype = LoadedType ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {input}");
+                lefthandtype = LoadedType ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {invocation}");
                 instance = Instance;
             }
             else
@@ -856,55 +740,41 @@ namespace XQuinn.CodeAnalysis
             string? righthandTypeName = ResolveMemberAccess(righthand, out righthand, out bool righthandfield);
             if (righthandTypeName != null)
             {
-                if (righthandfield)
-                    assigned = GetFieldWithVariable(new(righthand.Trim(), null, TypeString.New(righthandTypeName, null)));
-                else
-                {
-                    MethodString main = Lexer.ParameterTemplate(righthand, righthandTypeName);
-                    assigned = InvokeMethodWithVariable(main);
-                }
+                if (righthandfield) assignedValue = GetFieldWithVariable(new(righthand.Trim(), null, TypeString.New(righthandTypeName, null)));
+                else assignedValue = InvokeMethodWithVariable(Lexer.ParameterTemplate(righthand, righthandTypeName));
+
             }
             else
-                assigned = ParseParameter(new(righthand.Trim(), null), assigningTo.FieldType);
-            instance = GetVariableInstance(lefthandtype, instance);
-            assigningTo.SetValue(instance, assigned);
+                assignedValue = ParseParameter(new(righthand.Trim(), null), assigningTo.FieldType);
+            //   instance = GetVariableInstance(lefthandtype, instance);
+            assigningTo.SetValue(instance, assignedValue);
             return true;
         }
 
-        object? RemoveInstanceFromVariables(string key)
+        object? RemoveVariable(string key)
         {
             _variables.Remove(key);
-            if (key.EqualsCaseless(_variableKey))
-                _variableKey = null;
+            if (key.EqualsCaseless(_variableKey)) _variableKey = null;
             return null;
         }
 
-        object? AddInstanceToVariables(string key)
+        object? AddViarable(string key)
         {
-            if (Instance == null)
-                throw new InvalidOperationException("No instance is loaded.");
+            if (Instance == null) throw new InvalidOperationException("No instance is loaded.");
             TypeCache.ThrowIfBadKey(key);
             Type? typeWithConflictingKey = TypeCache.GetTypeCached(key, LocalCache);
-            if (typeWithConflictingKey != null)
-                throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
-            if (_variables.TryGetValue(key, out Variable? variable))
-            {
-                if (!ReferenceEquals(Instance, variable.Object))
-                    throw new ArgumentException("Duplicate keyname detected.");
-            }
-            else
-                _variables[key] = new(_key ?? "this", key, Instance);
+            if (typeWithConflictingKey != null) throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
+            if (_variables.TryGetValue(key, out Variable? variable)) { if (!ReferenceEquals(Instance, variable.Object)) throw new ArgumentException("Duplicate keyname detected."); }
+            else _variables[key] = new(_key ?? "this", key, Instance);
             _variableKey = key;
             return null;
         }
 
 
-        Variable LoadInstanceFromVariables(string key)
+        Variable LoadVariable(string key)
         {
-            if (_variables == null)
-                throw new InvalidOperationException("No instances are currently stored.");
-            if (!_variables.TryGetValue(key, out Variable? variable))
-                throw new ArgumentException($"There is no stored instance with the key {key}.");
+            if (_variables == null) throw new InvalidOperationException("No instances are currently stored.");
+            if (!_variables.TryGetValue(key, out Variable? variable)) throw new ArgumentException($"There is no stored instance with the key {key}.");
             _variableKey = key;
             _key = variable.TypeCacheKey;
             LoadInstance(variable.Object, variable.ObjectType);

@@ -1,3 +1,4 @@
+#if DEBUG_BUILD
 using System.Reflection;
 using System.Text;
 using XQuinn.NetConsole;
@@ -30,20 +31,10 @@ namespace XQuinn.NetConsole
 
         public static void Test<T>(IEnumerable<string>? preload = null)
         {
-            try
-            {
-                _ = Console.WindowHeight;
-            }
-            catch (IOException)
-            {
-                throw new IOException("Cannot run testing types outside of console apps.");
-            }
-            if (Tests.TryGetValue(typeof(T), out TestingType? test))
-            {
-                test.WhileTrueTestLoop(preload);
-            }
-            else
-                throw new ArgumentException($"There is no test for type {typeof(T)}.");
+            try { _ = Console.WindowHeight; }
+            catch (IOException) { throw new IOException("Cannot run testing types outside of console apps."); }
+            if (Tests.TryGetValue(typeof(T), out TestingType? test)) test.WhileTrueTestLoop(preload);
+            else throw new ArgumentException($"There is no test for type {typeof(T)}.");
         }
         protected virtual string? PreLoad(IEnumerable<string>? preload)
         {
@@ -51,15 +42,12 @@ namespace XQuinn.NetConsole
         }
         protected virtual void Test(string obj)
         {
-            
+
         }
 
         protected virtual void TestAndCatchForDisplay(string obj)
         {
-            try
-            {
-                Test(obj);
-            }
+            try { Test(obj); }
             catch (Exception ex)
             {
                 sb.CatchException(ex);
@@ -74,15 +62,12 @@ namespace XQuinn.NetConsole
                 if (!preloadComplete)
                 {
                     string? pre = PreLoad(preload);
-                    if (pre != null)
-                        Console.WriteLine(pre);
+                    if (pre != null) Console.WriteLine(pre);
                     preloadComplete = true;
                 }
                 string? text = Console.ReadLine();
-                if (text == "exit")
-                    return;
-                if (text != null)
-                    TestAndCatchForDisplay(text);
+                if (text == "exit") return;
+                if (text != null) TestAndCatchForDisplay(text);
             }
         }
         static Dictionary<Type, TestingType> GetTests()
@@ -92,8 +77,7 @@ namespace XQuinn.NetConsole
             foreach (var testType in testTypes)
             {
                 TestingType test = (TestingType)Activator.CreateInstance(testType, true)!;
-                if (dic.TryGetValue(test.TestOf, out TestingType? value))
-                    throw new ArgumentException($"There is already a testing type for type {test.TestOf.Name}. Already Existing Testing Type: {value.GetType().Name}. Attempted Insert Testing Type: {testType.Name}");
+                if (dic.TryGetValue(test.TestOf, out TestingType? value)) throw new ArgumentException($"There is already a testing type for type {test.TestOf.Name}. Already Existing Testing Type: {value.GetType().Name}. Attempted Insert Testing Type: {testType.Name}");
                 dic[test.TestOf] = test;
             }
             return dic;
@@ -119,14 +103,8 @@ namespace XQuinn.NetConsole
         {
             Console.WriteLine($"{method.ToString()} {method.GetType()}");
             foreach (var param in method.Params)
-            {
-                if (param is MethodString mth)
-                    Read(mth);
-                else
-                    Console.WriteLine($"{param.ToString()} {param.GetType()}");
-
-
-            }
+                if (param is MethodString mth) Read(mth);
+                else Console.WriteLine($"{param.ToString()} {param.GetType()}");
         }
     }
     internal sealed class RuntimeCommandTest : TestingType
@@ -136,12 +114,14 @@ namespace XQuinn.NetConsole
 
         }
         protected override Type TestOf => typeof(RuntimeCommand);
+
+        readonly CallInterpreter interp = new();
         protected override void Test(string obj)
         {
-            RuntimeCommand.InvokeCommand(obj);
+            RuntimeCommand.InvokeCommand(obj, interp, out _);
         }
     }
-#if NET6_0_OR_GREATER
+
     internal sealed class RuntimeInvokerTest : TestingType
     {
         RuntimeInvokerTest()
@@ -152,13 +132,13 @@ namespace XQuinn.NetConsole
         protected override void Test(string obj)
         {
 
-            new InvokerInterface().Interface(obj, out _, false, out _);
+            new InvokerInterface().Interface(obj, out _, false, out _, out _, out _);
 
 
         }
 
     }
-#endif
+
     internal sealed class CallInterpTest : TestingType
     {
 
@@ -171,15 +151,7 @@ namespace XQuinn.NetConsole
             {
                 Interp.RunCommands(preloads);
                 Variable? variable = null;
-                try
-                {
-                    KeyValuePair<string, Variable> pair = Interp.Variables.First();
-                    variable = pair.Value;
-                }
-                catch
-                {
-
-                }
+                try { KeyValuePair<string, Variable> pair = Interp._variables.First(); variable = pair.Value; } catch { }
                 return variable == null ? null : $"{variable} loaded";
             }
             return null;
@@ -194,3 +166,4 @@ namespace XQuinn.NetConsole
 
     }
 }
+#endif

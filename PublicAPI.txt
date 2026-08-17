@@ -1,0 +1,2 @@
+All namespaces and their types except XQuinn.NetConsole are available for public use in the release version of XQuinn.
+NetStandard2.0 edition lacks multiple types from the public API, see NetStandard2.0Support.txt

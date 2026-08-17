@@ -12,10 +12,8 @@ namespace XQuinn
         }
         public void Patch(bool patch)
         {
-            if (patch)
-                Harmony.PatchAll();
-            else
-                Harmony.UnpatchAll();
+            if (patch) Harmony.PatchAll();
+            else Harmony.UnpatchAll();
         }
     }
 }
