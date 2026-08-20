@@ -84,14 +84,17 @@ namespace XQuinn.NetConsole
         }
     }
 
-    internal sealed class LexTest : TestingType
+    internal abstract class TestingType<T> : TestingType
+    {
+        protected sealed override Type TestOf => typeof(T);
+    }
+    internal sealed class LexTest : TestingType<InvocationLexer>
     {
 
         LexTest()
         {
 
         }
-        protected override Type TestOf => typeof(InvocationLexer);
         readonly InvocationLexer lex = new();
         protected override void Test(string obj)
         {
@@ -107,13 +110,12 @@ namespace XQuinn.NetConsole
                 else Console.WriteLine($"{param.ToString()} {param.GetType()}");
         }
     }
-    internal sealed class RuntimeCommandTest : TestingType
+    internal sealed class RuntimeCommandTest : TestingType<RuntimeCommand>
     {
         RuntimeCommandTest()
         {
 
         }
-        protected override Type TestOf => typeof(RuntimeCommand);
 
         readonly CallInterpreter interp = new();
         protected override void Test(string obj)
@@ -122,27 +124,25 @@ namespace XQuinn.NetConsole
         }
     }
 
-    internal sealed class RuntimeInvokerTest : TestingType
+    internal sealed class RuntimeInvokerTest : TestingType<RuntimeInvoker>
     {
         RuntimeInvokerTest()
         {
 
         }
-        protected override Type TestOf => typeof(InvokerInterface);
         protected override void Test(string obj)
         {
 
-            new InvokerInterface().Interface(obj, out _, false, out _, out _, out _);
+            new RuntimeInvoker().Interface(obj, out _, false, out _, out _, out _);
 
 
         }
 
     }
 
-    internal sealed class CallInterpTest : TestingType
+    internal sealed class CallInterpTest : TestingType<CallInterpreter>
     {
 
-        protected override Type TestOf => typeof(CallInterpreter);
         CallInterpreter Interp => monitor.Interp;
         readonly InterpMonitor monitor = new();
         protected override string? PreLoad(IEnumerable<string>? preloads)

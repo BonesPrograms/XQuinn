@@ -5,6 +5,7 @@ configurations let you make #if constants
 this project has configuration release and configuration iapp
 dotnet build -c release  // this builds the 'release' version, exlucding files that have #if IAPP_BUILD
 dotnet build -c iapp //this builds the release version + files that have #if IAPP_BUILD on the top
+dotnet build -c debug //debug is usually the default, our tasks are custom however but they always call the default, so F5 produces a debug build
 
 dotnet build still makes a full assembly with all types
 

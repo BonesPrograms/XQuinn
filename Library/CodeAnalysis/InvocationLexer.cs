@@ -172,7 +172,7 @@ namespace XQuinn.CodeAnalysis
             {
                 char? next = null;
                 try { next = invocation[i + 1]; } catch (IndexOutOfRangeException) { }
-                if (next != CharDeclr) { if (next == null) throw new LexicalException(error, invocation, sb); else throw new LexicalException(error, invocation, next.Value, sb, i); }
+                if (next != CharDeclr) throw next == null ? new LexicalException(error, invocation, sb) : new LexicalException(error, invocation, next.Value, sb, i);
                 else { FinishedReadChar = true; i++; return true; }
             }
             else if (Value == Whitespace) SkipWhitespaceTrail(ref i, invocation);
@@ -351,7 +351,7 @@ namespace XQuinn.CodeAnalysis
         {
             const string error = "Identifier names must start with a letter, @ or an underscore.";
             if (!ValidIdentifierFirstChar(next)) throw i == null ? new LexicalException(error, invocation, next, sb) : new LexicalException(error, invocation, next, sb, i.Value);
-            return true;
+            else return true;
         }
 
         void ValidIdentifier(char value, string invocation, int? i)
@@ -365,12 +365,16 @@ namespace XQuinn.CodeAnalysis
         public static bool Termination(char value) => value == ParamTerminate || value == MethodTerminate;
         public static bool ValidIdentifierFirstChar(char value) => value == VaidNonAlphaNumeric || value == ValidLeadingNonAlphaNumeric || IsLetter(value);
         public static bool IsLetter(char value) => value switch
-        {   >= 'a' and <= 'z' or >= 'A' and <= 'Z' => true,
-        _ => false  };
+        {
+            >= 'a' and <= 'z' or >= 'A' and <= 'Z' => true,
+            _ => false
+        };
 
         public static bool IsDigit(char value) => value switch
-        { >= '0' and <= '9' => true,
-         _ => false };
+        {
+            >= '0' and <= '9' => true,
+            _ => false
+        };
         void Clear()
         {
             Main = null;

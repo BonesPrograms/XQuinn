@@ -90,9 +90,9 @@ namespace XQuinn
         string SwitchQuestion(string input) => input switch
         {
             "vars" => GetCollection(Interp._variables, null),
-            "methods" => GetCollection(Interp._methods, x => $"[Key: {x.Key} :: {ReflectionReader.String(x.Value)}]"),
-            "fields" => GetCollection(Interp._fields, x => $"[Key: {x.Key} :: {ReflectionReader.String(x.Value)}]"),
-            "overloads" => GetCollection(Interp._overloads, x => $"[Key: {x.Key} :: {ReflectionReader.String(x.Value)}]"),
+            "methods" => GetCollection(Interp._methods, x => $"[Key: {x.Key} :: {ReflectionPrinter.String(x.Value)}]"),
+            "fields" => GetCollection(Interp._fields, x => $"[Key: {x.Key} :: {ReflectionPrinter.String(x.Value)}]"),
+            "overloads" => GetCollection(Interp._overloads, x => $"[Key: {x.Key} :: {ReflectionPrinter.String(x.Value)}]"),
             _ => string.Empty
         };
 

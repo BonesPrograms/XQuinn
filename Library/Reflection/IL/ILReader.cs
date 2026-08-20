@@ -92,7 +92,7 @@ namespace XQuinn.Reflection.IL
             XQuinn.IO.Logger.SafetyCheck(outputFilePath);
             using StreamWriter writer = new(outputFilePath);
             writer.WriteLine($"method");
-            writer.WriteLine("	" + MetadataReader.MethodToString(Method, true)); //,maybe should edit the stringbuilder to slip in parameter names
+            writer.WriteLine("	" + MetadataPrinter.MethodToString(Method, true)); //,maybe should edit the stringbuilder to slip in parameter names
             writer.WriteLine("");
             //  writer.WriteLine("	.maxstack 1");
             writer.WriteLine("Locals");

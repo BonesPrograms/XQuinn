@@ -14,6 +14,8 @@ using XQuinn.CodeAnalysis;
 using System.Text;
 using System.Diagnostics;
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
+using XQuinn.NetConsole;
 
 namespace XQuinn.CodeAnalysis
 {
@@ -35,6 +37,61 @@ namespace XQuinn.CodeAnalysis
         public override string ToString()
         {
             return $"VariableKey: {VariableKey} ObjectType: {ObjectType} TypeKey: {TypeCacheKey} Object: {Object}";
+        }
+    }
+
+    public readonly struct Overload : IEquatable<Overload>
+    {
+        public readonly int Index;
+        public readonly string Key; //the exact key input by the user - usually includes an index like method2()
+        public ReadOnlySpan<char> KeySpan => _memory.Span; //This slices off the index from the end of the string, so that we can use it later
+        readonly ReadOnlyMemory<char> _memory; //to compare to actual method names. Ex. key "method1" would fail to find an overload if its actual name was "method"
+        public Overload(string name, int index)
+        {
+            Key = name;
+            Index = index;
+            int last = name.Length - 1;
+            int range = InvocationLexer.IsDigit(name[last]) ? last : last + 1;
+            _memory = Key.AsMemory(0, range);
+        }
+
+        bool IEquatable<Overload>.Equals(Overload obj)
+        {
+            return Equals(obj);
+        }
+
+        public override int GetHashCode()
+        {
+            HashCode hash = new();
+            foreach (char c in KeySpan) hash.Add(Normalize(c));// hash.Add(char.ToUpperInvariant(c));
+            hash.Add(Index);
+            return hash.ToHashCode();
+            // return HashCode.Combine(hash.ToHashCode(), Index);
+        }
+
+        static char Normalize(char c) =>
+            c is >= 'a' and <= 'z'
+                ? (char)(c - ('a' - 'A'))
+                : c;
+        public override string ToString() => Key;
+        public bool Equals(Overload overload)
+        {
+            return overload.Index == Index && overload.KeySpan.Equals(KeySpan, StringComparison.OrdinalIgnoreCase);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is Overload overload && Equals(overload);
+        } //obj is Overload overload && ((IEquatable<Overload>)this).Equals(overload);
+
+        public static bool operator ==(Overload left, Overload right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(Overload left, Overload right)
+        {
+            return !(left == right);
         }
     }
 
@@ -215,12 +272,12 @@ namespace XQuinn.CodeAnalysis
         /// A dictionary of all stored instances.
         /// </summary>
        // public readonly IReadOnlyDictionary<string, Variable> _variables;
-        internal Dictionary<string, Variable> _variables = new(StringComparer.OrdinalIgnoreCase);
+        internal readonly Dictionary<string, Variable> _variables = new(StringComparer.OrdinalIgnoreCase);
 
         /// <summary>
         /// The currently loaded instance.
         /// </summary>
-        public object? Instance => _instance;
+        public object? LoadedInstance => _instance;
         object? _instance;
         public string? LoadedVariable => _variableKey;
         string? _variableKey;
@@ -235,14 +292,16 @@ namespace XQuinn.CodeAnalysis
         public string? LoadedTypeKey => _key;
         string? _key;
         internal Dictionary<string, MethodInfo> _methods = new(StringComparer.OrdinalIgnoreCase);
-        internal Dictionary<string, MethodInfo> _overloads = new(StringComparer.OrdinalIgnoreCase);
+        internal Dictionary<Overload, MethodInfo> _overloads = new();
         internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
+
+
 
         /// <summary>
         /// A dictionary of all overload methods found in the current loaded type, incase you are having trouble figuring out an overload's changed name. You can also use
         /// the MapOverloads method to see how it is resolved.
         /// </summary>
-    //    public readonly IReadOnlyDictionary<string, MethodInfo> Overloads;
+        //    public readonly IReadOnlyDictionary<string, MethodInfo> Overloads;
 
 
         /// <summary>
@@ -251,7 +310,7 @@ namespace XQuinn.CodeAnalysis
         public MethodInfo? LoadedMethod => _loadedMethod;
         MethodInfo? _loadedMethod;
         ParameterInfo[]? _loadedParams;
-        static readonly HashSet<string> AmbiguousMatches = new(StringComparer.OrdinalIgnoreCase);
+        static readonly Dictionary<Type, HashSet<string>> AmbiguousMatches = new();
         static readonly Dictionary<Type, Dictionary<string, MemberInfo>> MemberCache = new(); //all members ever accessed by callinterp 
         static readonly Dictionary<string, Type> GenericsCache = new(StringComparer.OrdinalIgnoreCase); //reified generics
 
@@ -328,57 +387,8 @@ namespace XQuinn.CodeAnalysis
             };
         }
         #endregion
-        /// <summary>
-        /// Convert a method AST object to actual parameters by matching it to a MethodInfo's parameter array.
-        /// </summary>
-        public object?[] GetParsedParameters(ParameterInfo[] actualParameters, MethodString invocation)
-        {
-            object?[] prms = new object[actualParameters.Length];
-            int inputAmount = invocation.Params.Count;
-            int reqAmount = actualParameters.Length;
-            int lastparam = reqAmount - 1;
-            if (invocation.Params.Count != reqAmount)
-            {
-                if (inputAmount < reqAmount)
-                {
-                    for (int i = inputAmount; i < reqAmount; i++)
-                    {
-                        ParameterInfo parameter = actualParameters[i];
-                        if (parameter.HasDefaultValue) prms[i] = parameter.DefaultValue;
-                        else throw new TargetParameterCountException($"Parameter {parameter} does not have a default value. Input param count {inputAmount} Required count {reqAmount}");
-                    }
-                    for (int i = 0; i < inputAmount; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
-                }
-                else if (lastparam >= 0 && actualParameters[lastparam].IsDefined(typeof(ParamArrayAttribute))) GetParamArray(lastparam, actualParameters, prms, invocation);
-                else throw new TargetParameterCountException($"input param count: {invocation.Params.Count} required count: {actualParameters.Length} method name {invocation.String}");
-            }
-            else if (lastparam >= 0 && actualParameters[lastparam].IsDefined(typeof(ParamArrayAttribute))) GetParamArray(lastparam, actualParameters, prms, invocation);
-            else for (int i = 0; i < actualParameters.Length; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
-            return prms;
-        }
-
-        void GetParamArray(int lastparam, ParameterInfo[] actualParameters, object?[] prms, MethodString invocation)
-        {
-            int lastBeforeThat = lastparam - 1;
-            if (lastBeforeThat >= 0) for (int i = 0; i < lastBeforeThat; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
-            Type elementType = actualParameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentException();
-            Array paramArray = Array.CreateInstance(elementType, invocation.Params.Count - lastparam); //assign array type via reflection becuase object[] wont work for params keyword
-            for (int i = lastparam; i < invocation.Params.Count; i++) paramArray.SetValue(ParameterToObject(invocation.Params[i], elementType), i - lastparam);
-            prms[lastparam] = paramArray;
-        }
 
 
-        /// <summary>
-        /// Checks if a member is supported by Call Interpreter.
-        /// </summary>
-        /// <param name="member"></param>
-        /// <returns></returns>
-        public static bool SupportedMember(MemberInfo member)
-        {
-            if (member is MethodInfo method) return !method.GetParameters().Any(x => x.IsOut || x.IsIn || x.ParameterType.IsByRef || typeof(Delegate).IsAssignableFrom(x.ParameterType));
-            else if (member is FieldInfo field) return !typeof(Delegate).IsAssignableFrom(field.FieldType);
-            else return false;
-        }
 
 
         #region Loading
@@ -407,7 +417,7 @@ namespace XQuinn.CodeAnalysis
         /// <exception cref="ArgumentException"></exception>
         public void LoadMethodDirectly(MethodInfo method)
         {
-            if (!SupportedMember(method) || !method.IsStatic) throw new NotSupportedException($"Method {method} has delegate, in/out/or ref params, or is nonstatic.");
+            if (!SupportedMember(method) || !method.IsStatic) throw new NotSupportedException($"Method {method} has delegate, in/out/or ref params, or is nonstatic, or has ref return type.");
             _loadedMethod = method;
             _loadedParams = method.GetParameters();
         }
@@ -424,7 +434,7 @@ namespace XQuinn.CodeAnalysis
             _loadedType = type;
             _loadedParams = null;
             _loadedMethod = null;
-            MapMethods(LoadedType!, ref _overloads!, ref _methods!, true);
+            MapMethods(LoadedType!, ref _overloads!, ref _methods!, null, true);
             MapFields();
         }
 
@@ -448,6 +458,47 @@ namespace XQuinn.CodeAnalysis
         //But currently I dont care, I may fix that later
 
         #region Parsing
+
+        /// <summary>
+        /// Convert a method AST object to actual parameters by matching it to a MethodInfo's parameter array.
+        /// </summary>
+        public object?[] GetParsedParameters(ParameterInfo[] actualParameters, MethodString invocation)
+        {
+            object?[] prms = new object[actualParameters.Length];
+            int inputAmount = invocation.Params.Count;
+            int reqAmount = actualParameters.Length;
+            int lastparam = reqAmount - 1;
+            if (invocation.Params.Count != reqAmount) ResolveUnequalParameters(inputAmount, reqAmount, actualParameters, prms, invocation, lastparam);
+            else if (lastparam >= 0 && actualParameters[lastparam].IsDefined(typeof(ParamArrayAttribute))) GetParamArray(lastparam, actualParameters, prms, invocation);
+            else for (int i = 0; i < actualParameters.Length; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
+            return prms;
+        }
+
+        void ResolveUnequalParameters(int inputAmount, int reqAmount, ParameterInfo[] actualParameters, object?[] prms, MethodString invocation, int lastparam)
+        {
+            if (inputAmount < reqAmount)
+            {
+                for (int i = inputAmount; i < reqAmount; i++)
+                {
+                    ParameterInfo parameter = actualParameters[i];
+                    if (parameter.HasDefaultValue) prms[i] = parameter.DefaultValue;
+                    else throw new TargetParameterCountException($"Parameter {parameter} does not have a default value. Input param count {inputAmount} Required count {reqAmount}");
+                }
+                for (int i = 0; i < inputAmount; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
+            }
+            else if (lastparam >= 0 && actualParameters[lastparam].IsDefined(typeof(ParamArrayAttribute))) GetParamArray(lastparam, actualParameters, prms, invocation);
+            else throw new TargetParameterCountException($"input param count: {invocation.Params.Count} required count: {actualParameters.Length} method name {invocation.String}");
+        }
+
+        void GetParamArray(int lastparam, ParameterInfo[] actualParameters, object?[] prms, MethodString invocation)
+        {
+            int lastBeforeThat = lastparam - 1;
+            if (lastBeforeThat >= 0) for (int i = 0; i < lastBeforeThat; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
+            Type elementType = actualParameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentException();
+            Array paramArray = Array.CreateInstance(elementType, invocation.Params.Count - lastparam); //assign array type via reflection becuase object[] wont work for params keyword
+            for (int i = lastparam; i < invocation.Params.Count; i++) paramArray.SetValue(ParameterToObject(invocation.Params[i], elementType), i - lastparam);
+            prms[lastparam] = paramArray;
+        }
         //This sorts between whether or not a parameter is a method invocation as a parameter, or an actual primitive/string value.
         object? ParameterToObject(ParameterString value, Type paramType)
         {
@@ -470,14 +521,14 @@ namespace XQuinn.CodeAnalysis
             string strng = value.String;
             if (strng == "this")
             {
-                if (Instance == null) throw new InvalidOperationException("Cannot pass this as parameter, instance is null.");
+                if (LoadedInstance == null) throw new InvalidOperationException("Cannot pass this as parameter, instance is null.");
                 if (!paramType.IsAssignableFrom(_instanceType)) throw new InvalidCastException($"Current instance is a {_instanceType} and does not cast to parameter type {paramType}");
-                return Instance;
+                return LoadedInstance;
             }
             if (_variables?.TryGetValue(strng, out Variable? variable) ?? false)
             {
                 if (!paramType.IsAssignableFrom(variable.ObjectType)) throw new InvalidCastException($"Instance index object with key {strng} is a {variable.ObjectType} and does not cast to parameter type {paramType}");
-                else return variable;
+                else return variable.Object;
             }
             return value.ParseValue(paramType);
         }
@@ -508,30 +559,41 @@ namespace XQuinn.CodeAnalysis
             MethodInfo? call = CheckGlobalCache<MethodInfo>(method.NameWithGenerics, fromType, out bool typeCached, out bool methodCached);
             if (call == null && fromType != LoadedType)
             {
-                string key = $"{fromType.FullName}.{method.String}";
-                if (!AmbiguousMatches.Contains(key))
+                AmbiguousMatches.TryGetValue(fromType, out HashSet<string>? methods);
+                bool val = !methods?.Contains(method.String) ?? true;
+                if (val)
                 {
                     try { call = fromType.GetMethod(method.String, Flag); }
                     catch (AmbiguousMatchException)
                     {
-                        AmbiguousMatches.Add(key);
+                        if (methods == null) { methods = new(StringComparer.OrdinalIgnoreCase); AmbiguousMatches[fromType] = methods; }
+                        methods.Add(method.String);
                         throw new AmbiguousMatchException($"Method named {method.String} in type {fromType} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
                     }
                 }
+                if (!val || call == null)
+                {
+                    Dictionary<Overload, MethodInfo>? overloads = null;
+                    Dictionary<string, MethodInfo>? _ = null;
+                    char last = method.String[method.String.Length - 1];
+                    Overload overload = InvocationLexer.IsDigit(last) ? new(method.String, last - '0') : new(method.String, 0);
+                    this.MapMethods(fromType, ref overloads, ref _, overload, true);
+                    call = FindMethod(fromType, overloads!, null, method) ?? throw new ArgumentNullException();
+                }
+
+
                 // else
                 //   throw new AmbiguousMatchException($"Method named {method.String} in type {t} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
             }
-            if (call == null)
+            if (call == null && fromType == LoadedType)
             {
-                Dictionary<string, MethodInfo>? overloads = null;
-                Dictionary<string, MethodInfo>? methods = null;
-                this.MapMethods(fromType, ref overloads, ref methods);
-                call = FindMethod(fromType, overloads!, methods!, method);
+                //Dictionary<Overload, MethodInfo>? overloads = null;
+                //Dictionary<string, MethodInfo>? methods = null;
+                // this.MapMethods(fromType, ref overloads, ref methods);
+                call = FindMethod(fromType, _overloads, _methods, method);
             }
-            else if (call.IsGenericMethodDefinition)
-                call = method.ConvertToGeneric(call, LocalCache);
-            if (!SupportedMember(call))
-                throw new ArgumentException($"Method {call} in type {call.DeclaringType} has invalid in out or ref params");
+            else if (call?.IsGenericMethodDefinition ?? throw new ArgumentNullException()) call = method.ConvertToGeneric(call, LocalCache);
+            if (!methodCached && !SupportedMember(call)) throw new ArgumentException($"Method {call} in type {call.DeclaringType} has invalid in out or ref params or ref returntype");
             CacheMember(typeCached, methodCached, fromType, call, method.NameWithGenerics);
             return call.Invoke(GetVariableInstance(fromType, variable), GetParsedParameters(call.GetParameters(), method));
             //if you are getting a type that you know will be in a metadata map, it doesnt need to have case //but if the map is null, then you need full casing  //namespace is ALWAYS required
@@ -539,7 +601,7 @@ namespace XQuinn.CodeAnalysis
 
         object? GetVariableInstance(Type paramType, object? variable)
         {
-            return variable ?? (paramType.IsAssignableFrom(_instanceType) ? Instance : null);
+            return variable ?? (paramType.IsAssignableFrom(_instanceType) ? LoadedInstance : null);
         }
         object? InvokeMethodWithVariable(MethodString method)
         {
@@ -554,6 +616,19 @@ namespace XQuinn.CodeAnalysis
         #endregion
 
         #region Finding
+
+        /// <summary>
+        /// Checks if a member is supported by Call Interpreter.
+        /// </summary>
+        /// <param name="member"></param>
+        /// <returns></returns>
+        public static bool SupportedMember(MemberInfo member)
+        {
+            if (member is MethodInfo method) return method.ReturnType.IsByRef || !method.GetParameters().Any(x => x.IsOut || x.IsIn || x.ParameterType.IsByRef || typeof(Delegate).IsAssignableFrom(x.ParameterType));
+            else if (member is FieldInfo field) return !typeof(Delegate).IsAssignableFrom(field.FieldType);
+            else return false;
+        }
+
         Type FindTypeWithVariable(IMemberString member, out Variable? variable)
         {
             if (member.DeclaringType == null) throw new ArgumentException();
@@ -565,14 +640,15 @@ namespace XQuinn.CodeAnalysis
             if (!explicitCast)
             {
                 if (_variables.TryGetValue(typename.String, out Variable? variable)) return variable.ObjectType;
+                if (typename.String == "this") return _instanceType ?? throw new InvalidOperationException("Cannot pass this, instance is null.");
                 if (typename.String == _key) return LoadedType ?? throw new InvalidOperationException();
-                if (typename.String == "this") { if (Instance == null) throw new InvalidOperationException("Cannot pass this, instance is null."); else return _instanceType!; }
+
             }
-            if (typename.String == "base") { if (Instance == null) throw new InvalidOperationException("Cannot get instance base, instance is null."); else return _instanceType!.BaseType ?? throw new ArgumentException("Base type of instance is null."); }
+            if (typename.String == "base") { if (_instanceType == null) throw new InvalidOperationException("Cannot get instance base, instance is null."); else return _instanceType.BaseType ?? throw new ArgumentException("Base type of instance is null."); }
             Type t = TypeCache.GetTypeOrThrow(typename.String, LocalCache);
             if (t.IsGenericTypeDefinition)
             {
-                if (Caching && GenericsCache.TryGetValue(typename.NameWithGenerics, out Type? generic)) return generic;
+                if (GenericsCache.TryGetValue(typename.NameWithGenerics, out Type? generic)) return generic;
                 t = typename.ConvertToGeneric(t, LocalCache);
                 if (Caching) GenericsCache[typename.NameWithGenerics] = t;
             }
@@ -580,10 +656,16 @@ namespace XQuinn.CodeAnalysis
 
         }
 
-        MethodInfo FindMethod(Type fromType, Dictionary<string, MethodInfo> overloads, Dictionary<string, MethodInfo> methods, MethodString method)
+        MethodInfo FindMethod(Type fromType, Dictionary<Overload, MethodInfo> overloads, Dictionary<string, MethodInfo>? methods, MethodString method, Overload? overloadQuery = null)
         {
-            methods.TryGetValue(method.String, out MethodInfo? realmethod);
-            if (realmethod == null) overloads.TryGetValue(method.String, out realmethod);
+            MethodInfo? realmethod = null;
+            methods?.TryGetValue(method.String, out realmethod);
+            if (realmethod == null)
+            {
+                char? last = overloadQuery == null ? method.String[method.String.Length - 1] : null;
+                Overload overload = last == null ? overloadQuery!.Value : InvocationLexer.IsDigit(last.Value) ? new(method.String, last.Value - '0') : new(method.String, 0);
+                overloads.TryGetValue(overload, out realmethod);
+            }
             if (realmethod == null) throw new MissingMethodException($"No method named {method.String} found in {fromType}'s method or overload dictionary.");
             if (realmethod.IsGenericMethodDefinition) realmethod = method.ConvertToGeneric(realmethod, LocalCache);
             return realmethod;
@@ -591,22 +673,20 @@ namespace XQuinn.CodeAnalysis
 
         T? CheckGlobalCache<T>(string key, Type fromType, out bool typeCached, out bool memberCached) where T : MemberInfo
         {
-            typeCached = false;
             memberCached = false;
-            if (Caching)
+            typeCached = false;
+            if (fromType == LoadedType) return null;
+            typeCached = MemberCache.TryGetValue(fromType, out var cachedMembers);
+            if (typeCached)
             {
-                typeCached = MemberCache.TryGetValue(fromType, out var cachedMembers);
-                if (typeCached)
-                {
-                    memberCached = cachedMembers!.TryGetValue(key, out MemberInfo? member);
-                    if (memberCached) return (T)member!;
-                }
+                memberCached = cachedMembers!.TryGetValue(key, out MemberInfo? member);
+                if (memberCached) return (T)member!;
             }
             return null;
         }
         void CacheMember(bool typeCached, bool memberCached, Type fromType, MemberInfo member, string key)
         {
-            if (Caching)
+            if (Caching && fromType != LoadedType)
             {
                 Dictionary<string, MemberInfo> cachedMembers;
                 if (!typeCached) { cachedMembers = new(StringComparer.OrdinalIgnoreCase); MemberCache[fromType] = cachedMembers; }
@@ -643,12 +723,12 @@ namespace XQuinn.CodeAnalysis
         }
 
 
-        void MapMethods(Type fromType, ref Dictionary<string, MethodInfo>? overloads, ref Dictionary<string, MethodInfo>? methods, bool forceNew = false)
+        void MapMethods(Type fromType, ref Dictionary<Overload, MethodInfo>? overloads, ref Dictionary<string, MethodInfo>? methods, Overload? overloadSingleSearch = null, bool forceNew = false)
         {
             if (!forceNew && fromType == LoadedType) { methods = _methods; overloads = _overloads; return; }
-            if (methods == null) methods = new(StringComparer.OrdinalIgnoreCase); else methods.Clear();
-            if (overloads == null) overloads = new(StringComparer.OrdinalIgnoreCase); else overloads.Clear();
-            MapMethods(fromType, ref methods, ref overloads);
+            if (overloadSingleSearch == null && methods == null) methods = new(StringComparer.OrdinalIgnoreCase); else methods?.Clear();
+            if (overloads == null) overloads = new(); else overloads.Clear();
+            MapMethods(fromType, ref methods, ref overloads, overloadSingleSearch);
 
         }
 
@@ -659,12 +739,18 @@ namespace XQuinn.CodeAnalysis
         }
 
 
-        public static void MapMethods(Type fromType, ref Dictionary<string, MethodInfo> methods, ref Dictionary<string, MethodInfo> overloads)
+        public static void MapMethods(Type fromType, ref Dictionary<string, MethodInfo>? methods, ref Dictionary<Overload, MethodInfo> overloads, Overload? overloadSingleSearch)
         {
             MethodInfo[] methodsarray = fromType.GetMethods(Flag).Where(SupportedMember).ToArray();
-            IEnumerable<string> names = methodsarray.Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase);
-            foreach (var name in names) CompareNames(methodsarray, name, overloads);
-            AddBackwards(methods, methodsarray);
+            if (overloadSingleSearch == null)
+            {
+                IEnumerable<string> names = methodsarray.Select(x => x.Name).Distinct(StringComparer.OrdinalIgnoreCase);
+                if (methods != null) AddBackwards(methods, methodsarray);
+                foreach (string name in names) CompareNames(methodsarray, name, methods, overloads);
+            }
+            else CompareNames(methodsarray, overloadSingleSearch.Value.KeySpan, methods, overloads, overloadSingleSearch.Value.Index);
+
+
         }
 
         static void AddBackwards<T>(Dictionary<string, T> storage, T[] memberArray) where T : MemberInfo
@@ -681,10 +767,40 @@ namespace XQuinn.CodeAnalysis
         //to differentiate overloads and new methods across inheritance hierarchies.
 
         //AddBackwards also helps cover our overload resolution - the first-declared overload
-        static void CompareNames(MethodInfo[] methods, string name, Dictionary<string, MethodInfo> overloads)
+        static void CompareNames(MethodInfo[] methods, ReadOnlySpan<char> name, Dictionary<string, MethodInfo>? methoddic, Dictionary<Overload, MethodInfo> overloads, int? limit = null)
         {
             int count = 0;
-            foreach (var method in methods) if (name.EqualsCaseless(method.Name)) { count++; if (count > 1) overloads[$"{name}{count - 1}"] = method; }
+            limit++;
+            MethodInfo? first = null;
+            foreach (MethodInfo method in methods)
+            {
+                if (name.Equals(method.Name.AsSpan(), StringComparison.OrdinalIgnoreCase))
+                {
+                    count++;
+                    if (count == 1) first = method;
+                    else
+                    {
+                        overloads[new(method.Name, count - 1)] = method;
+                        if (first != null)
+                        {
+                            overloads[new(first.Name, 0)] = first;
+                            //, methoddic.Remove(first.Name);
+                            first = null;
+                        }
+                    }
+                    if (count >= limit)
+                    {
+                        if (first != null)
+                        {
+                            overloads[new(first.Name, 0)] = first;
+                            //, methoddic.Remove(first.Name);
+                        }
+                        return;
+                    }
+                }
+
+            }
+            // foreach (MethodInfo method in methods) if (name.EqualsCaseless(method.Name)) { count++; if (count > 1) overloads[$"{name}{count - 1}"] = method; }
         }
 
         #endregion
@@ -712,7 +828,7 @@ namespace XQuinn.CodeAnalysis
 
         object? CastInstance(string invocation)
         {
-            if (Instance == null) throw new InvalidOperationException("Cannot cast, instance is null.");
+            if (LoadedInstance == null) throw new InvalidOperationException("Cannot cast, instance is null.");
             TypeString tstring = TypeString.New(invocation, null);
             Type t = FindType(tstring, true);
             _key = tstring.String;
@@ -726,7 +842,7 @@ namespace XQuinn.CodeAnalysis
             if (Assignment(invocation, out object? assigned)) return assigned;
             object? returned;
             object?[]? parameters = LoadInvocation(invocation);
-            try { returned = LoadedMethod!.Invoke(Instance, parameters); }
+            try { returned = LoadedMethod!.Invoke(LoadedInstance, parameters); }
             catch (TargetInvocationException ex) { throw new CapturedException(LoadedMethod!, ex.InnerException); }
             return returned;
         }
@@ -747,7 +863,7 @@ namespace XQuinn.CodeAnalysis
             if (lefthandTypeName == null)
             {
                 lefthandtype = LoadedType ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {invocation}");
-                instance = Instance;
+                instance = LoadedInstance;
             }
             else
             {
@@ -779,12 +895,12 @@ namespace XQuinn.CodeAnalysis
 
         object? AddViarable(string key)
         {
-            if (Instance == null) throw new InvalidOperationException("No instance is loaded.");
+            if (LoadedInstance == null) throw new InvalidOperationException("No instance is loaded.");
             TypeCache.ThrowIfBadKey(key);
             Type? typeWithConflictingKey = TypeCache.GetTypeCached(key, LocalCache);
             if (typeWithConflictingKey != null) throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
-            if (_variables.TryGetValue(key, out Variable? variable)) { if (!ReferenceEquals(Instance, variable.Object)) throw new ArgumentException("Duplicate keyname detected."); }
-            else _variables[key] = new(_key ?? "this", key, Instance);
+            if (_variables.TryGetValue(key, out Variable? variable)) { if (!ReferenceEquals(LoadedInstance, variable.Object)) throw new ArgumentException("Duplicate keyname detected."); }
+            else _variables[key] = new(_key ?? "this", key, LoadedInstance);
             _variableKey = key;
             return null;
         }

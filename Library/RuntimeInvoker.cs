@@ -28,18 +28,18 @@ namespace XQuinn
         //runtimecommand would probably take a CallInterpreter parameter in that case rather than having it as a static field
 
         //currently tho this aint like a multiplayer invoker it rly is intended for individuals to use it clientside generally speaking everything abt their runtime should be exclusive to them
-        public sealed class InvokerInterface
+        public sealed class RuntimeInvoker
         {
                 public CallInterpreter Interp => Monitor.Interp;
                 public readonly InterpMonitor Monitor = new();
 #if NET6_0_OR_GREATER
                 public readonly DynamicInvoker? Invoker;
-                public InvokerInterface(string? assemblyPath = null, Func<Type, string?>? bookDelegate = null)
+                public RuntimeInvoker(string? assemblyPath = null, Func<Type, string?>? bookDelegate = null)
                 {
                         if (assemblyPath != null && bookDelegate != null) Invoker = DynamicInvoker.New(assemblyPath, bookDelegate);
                 }
 #else
-                public InvokerInterface()
+                public RuntimeInvoker()
                 {
 
                 }

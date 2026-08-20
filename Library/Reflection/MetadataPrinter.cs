@@ -12,12 +12,12 @@ namespace XQuinn.Reflection
     /// Base wrapper class with robust ToString helpers for metadata objects.
     /// </summary>
 
-    public abstract class MetadataReader
+    public abstract class MetadataPrinter
     {
 
         //I may add an option later for displaying namespaces on type names. For now we do not to improve readability.
         protected readonly object? Object;
-        protected MetadataReader(object? obj)
+        protected MetadataPrinter(object? obj)
         {
             Object = obj;
         }

@@ -61,14 +61,14 @@ namespace XQuinn.CodeAnalysis.AST
             {
                 if (asType.IsEnum) { if (EnumNet20.TryParse(String, asType, true, out Enum? @enum)) return @enum; }
                 else if (asType.IsPrimitive) { if (ParsePrimitive(asType, out ValueType? primitive)) return primitive; }
-                else throw new NotSupportedException($"Cannot convert values to user defined struct instances. struct type: {asType}");
+                else throw new NotSupportedException($"Cannot convert values to user defined struct instances. struct type: {asType}. Value: {String}");
             }
             throw new FormatException($"Failed to parse {String} to {asType}.");
         }
 
         string? ParseClass(Type asType)
         {
-            if (String == "null") return null; else return asType == typeof(string) ? RegexString() : throw new NotSupportedException($"Cannot convert values to reference type instances. class type: {asType}");
+            if (String == "null") return null; else return asType == typeof(string) ? RegexString() : throw new NotSupportedException($"Cannot convert values to reference type instances. class type: {asType} Value: {String}");
         }
 
         string RegexString()
@@ -154,12 +154,12 @@ namespace XQuinn.CodeAnalysis.AST
                 int genericEnd = String.IndexOf('>');
                 for (int x = genericEnd + 1; x < String.Length; x++) if (String[x] != ' ') throw new LexicalException($"Detected trailing characters after generic input. ", String);
                 String = String.Remove(String.IndexOf('<'));
-                StringBuilder sb = new();
-                sb.Append(String);
-                sb.Append('<'); //we do it like this because of potential whitespace variations - method<string,  int> or method<string,int> would be treated differently if not
-                for (int z = 0; z < _generics.Count; z++) { sb.Append(_generics[z].String); if (For.Multiples(_generics.Count, z)) sb.Append(", "); }
-                sb.Append('>');
-                _fullname = sb.ToString();
+                // StringBuilder sb = new();
+                // sb.Append(String);
+                // sb.Append('<'); //we do it like this because of potential whitespace variations - method<string,  int> or method<string,int> would be treated differently if not
+                // for (int z = 0; z < _generics.Count; z++) { sb.Append(_generics[z].String); if (For.Multiples(_generics.Count, z)) sb.Append(", "); }
+                // sb.Append('>');
+               // _fullname = sb.ToString();
             }
 
         }
@@ -168,7 +168,7 @@ namespace XQuinn.CodeAnalysis.AST
     {
         protected GenericString(string name, string fullname, MethodString? paramOf) : base(name, fullname, paramOf)
         {
-            if (typeof(T) != typeof(Type) && typeof(T) != typeof(MethodInfo)) throw new NotSupportedException();
+            if (typeof(T) != typeof(Type) && typeof(T) != typeof(MethodInfo)) throw new NotSupportedException($"{typeof(T)}");
         }
 
         public abstract T ConvertToGeneric(T genericDef, IReadOnlyDictionary<string, Type>? types = null);

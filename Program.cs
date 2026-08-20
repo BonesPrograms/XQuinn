@@ -1,5 +1,4 @@
-﻿
-#if !RELEASE_BUILD
+﻿#if !RELEASE_BUILD
 using System.Collections.Concurrent;
 using System.Reflection;
 using XQuinn.Runtime;
@@ -35,16 +34,15 @@ namespace _xquinn_prgrm
             {
                 if (x.Name.StartsWith('_')) return null;
                 string z = x.SnipGenericShortName();
-                if (z == "GenericString") { if (x.IsGenericTypeDefinition) return $"{z}T"; else return z;}
-                else return z;
+                return z == "GenericString" || z == "TestingType" ? null : z;
             }, StringComparer.OrdinalIgnoreCase);
             //RuntimeCommand.Register(types, "XQuinn");
             TypeCache.CacheTypes(book);
             types = null;
             book = null;
             TypeCache.CacheType("Console", typeof(Console));
-            Console.Clear();
             TestingType.Test<CallInterpreter>();
+           
 #endif
 
 
@@ -52,15 +50,32 @@ namespace _xquinn_prgrm
 
     }
 
+
+
     public class Fun
     {
+        public static void OX()
+        {
+            
+        }
+
+        public static void OX(int i)
+        {
+            
+        }
+
+        public static void OX(string x)
+        {
+            
+        }
         public static string Params<T>(params T[] prms)
         {
+            
             StringBuilder sb = new();
             sb.AppendMany(prms);
             return sb.ToString();
         }
-        public static string Pa2rams(string f, bool y, params int[] prms)
+        public static string Params(string f, bool y, params int[] prms)
         {
             StringBuilder sb = new();
             sb.AppendMany(prms);

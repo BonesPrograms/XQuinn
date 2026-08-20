@@ -4,6 +4,9 @@ Ctrl + , and search analyze to change full project analysis or open file analysi
 
 Okay kinda confusing Ill just show you and explain the bug
 
+I noticed when implementing IEquatable<T>.Equals on a struct, a ... appeared under the struct name and
+it had quickfixes for implementing object.equals and == operator overrides so i can be lazy and dont need to write it myself!
+
 #if NET6_0_OR_GREATER
             if (type.IsEnum && Enum.TryParse(type, strng, out object? enumeration))
                 return enumeration;

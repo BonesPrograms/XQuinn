@@ -24,11 +24,11 @@ namespace XQuinn.Reflection
     /// </summary>
     public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
     {
-        readonly ConcurrentDictionary<string, Type> _book;
+        //readonly ConcurrentDictionary<string, Type> _book;
         public readonly IReadOnlyDictionary<string, Type> Book;
-        public int Count => _book.Count;
-        public ICollection<Type> Types => _book.Values;
-        public ICollection<string> Names => _book.Keys;
+        public int Count => Book.Count;
+        public IEnumerable<Type> Types => Book.Values;
+        public IEnumerable<string> Names => Book.Keys;
 
         /// <summary>
         /// True = fullname, false == short name, null == assortment of both
@@ -38,36 +38,36 @@ namespace XQuinn.Reflection
         /// </summary>   
         TypeBook(ConcurrentDictionary<string, Type> book)
         {
-            _book = book;
-            Book = new ReadOnlyDictionary<string, Type>(_book);
+            //_book = book;
+            Book = new ReadOnlyDictionary<string, Type>(book);
         }
 
         public Type this[string key]
         {
-            get => _book[key];
-            //  set => _book[key] = value;
+            get => Book[key];
+            // set => _book[key] = value;
         }
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => _book.GetEnumerator();
-        public IEnumerator<KeyValuePair<string, Type>> GetEnumerator() => _book.GetEnumerator();
-        public bool TryGetValue(string key, out Type? value) => _book.TryGetValue(key, out value);
+        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => Book.GetEnumerator();
+        public IEnumerator<KeyValuePair<string, Type>> GetEnumerator() => Book.GetEnumerator();
+        public bool TryGetValue(string key, out Type? value) => Book.TryGetValue(key, out value);
         // public bool TryAdd(string key, Type value) => _book.TryAdd(key, value);
-        public bool ContainsKey(string key) => _book.ContainsKey(key);
+        public bool ContainsKey(string key) => Book.ContainsKey(key);
 
         //ToString here is for custom filtering, ie. maybe one of your shortnames are already taken, you can have your filter pre-check if one of your types are already cached
         //and then return a different name, you can also return null and it will *skip* adding that type to the typebook. Using a ToString will also completely override
         //the default procedure for choosing keys.
 
-        public static TypeBook New(IEnumerable<Type> types, Func<Type, string?> toString, StringComparer? comp = null)
+        public static TypeBook New(IEnumerable<Type> types, Func<Type, string?> toString, StringComparer? comp = null, bool excludeFileScoped = true)
         {
             ConcurrentDictionary<string, Type> book = new(comp);
-            foreach (var type in types)
+            foreach (Type type in types)
             {
                 if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute)))
                 {
-                    if (IsFileType(type)) continue;
+                    if (excludeFileScoped && IsFileType(type)) continue;
                     string? key = toString(type);
                     if (key == null) continue;
-                    if (book.TryGetValue(key, out var val)) throw new DuplicateKeyException(val, type, key);
+                    if (book.TryGetValue(key, out Type? cached)) throw new DuplicateKeyException(cached, type, key);
                     book.TryAdd(key, type);
                 }
             }
@@ -90,22 +90,16 @@ namespace XQuinn.Reflection
         //         return attribute != null && attribute.FeatureName == "FileLocalTypes";
         //     }
         // }
-        public static TypeBook New(IEnumerable<Type> types, bool fullname, StringComparer? comp = null)
+        public static TypeBook New(IEnumerable<Type> types, bool fullname, StringComparer? comp = null, bool excludeFileScoped = true)
         {
             ConcurrentDictionary<string, Type> book = new(comp);
-            foreach (var type in types)
+            foreach (Type type in types)
             {
                 if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute)))
                 {
-                    if (IsFileType(type)) continue;
-                    string? key = null;
-                    if (fullname)
-                    {
-                        if (type.FullName == null) throw new InvalidOperationException($"Fullname for type {type.Name} does not exist.");
-                        key = type.FullName;
-                    }
-                    else key = type.Name;
-                    if (book.TryGetValue(key, out var val)) throw new DuplicateKeyException(val, type, key);
+                    if (excludeFileScoped && IsFileType(type)) continue;
+                    string key = fullname == false ? type.Name : type.FullName ?? throw new ArgumentException() ;
+                    if (book.TryGetValue(key, out Type? cached)) throw new DuplicateKeyException(cached, type, key);
                     book.TryAdd(key, type);
                 }
             }

@@ -50,18 +50,12 @@ namespace XQuinn.Reflection
         }
         public override string ToString()
         {
-            if (IsPublic)
-                return "public";
-            else if (IsFamily)
-                return "protected";
-            else if (IsPrivate)
-                return "private";
-            else if (IsAssembly)
-                return "internal";
-            else if (IsFamilyAndAssembly)
-                return "private protected";
-            else if (IsFamilyOrAssembly)
-                return "protected internal"; //this should literally never throw
+            if (IsPublic) return "public";
+            else if (IsFamily) return "protected";
+            else if (IsPrivate) return "private";
+            else if (IsAssembly) return "internal";
+            else if (IsFamilyAndAssembly) return "private protected";
+            else if (IsFamilyOrAssembly) return "protected internal"; //this should literally never throw
             throw new InvalidOperationException("FieldInfo or MethodBase object has invalid access modifiers.");
         }
     }
@@ -74,7 +68,7 @@ namespace XQuinn.Reflection
     /// viewing the type directly in code, it lacks deeper metadata information).
     /// </summary>
 
-    public sealed class ReflectionReader : MetadataReader
+    public sealed class ReflectionPrinter : MetadataPrinter
     {
 
         public bool ShowToken = false;
@@ -91,13 +85,13 @@ namespace XQuinn.Reflection
 #endif
         public readonly Type? Declared;
         public readonly Type? Base;
-        ReflectionReader(MemberInfo info) : base(info)
+        ReflectionPrinter(MemberInfo info) : base(info)
         {
             Declared = info.DeclaringType;
             if (info is Type type && type.BaseType != typeof(object)) Base = type.BaseType;
         }
 
-        public static ReflectionReader New(MemberInfo info)
+        public static ReflectionPrinter New(MemberInfo info)
         {
             return new(info)
             {
@@ -167,8 +161,8 @@ namespace XQuinn.Reflection
         {
             StringBuilder sb = new();
             sb.Append(new AccessModifiers(field).ToString() + ' ');
-            if (field.IsLiteral) sb.Append("const ");
-            else if (field.IsStatic) sb.Append("static ");
+            if (field.IsLiteral) return sb.Append("const ");
+            else if (field.IsStatic) return sb.Append("static ");
             return sb;
 
         }
@@ -177,23 +171,17 @@ namespace XQuinn.Reflection
         {
             StringBuilder sb = new();
             sb.Append(new AccessModifiers(mthd).ToString() + ' ');
-            if (mthd.IsStatic)
-            {
-                if (mthd is ConstructorInfo) sb.Append("static ");
-                return sb;
-            }
-            bool isoverride = false;
-            if (Declared != null && mthd is MethodInfo realmethod)
-            {
-                if (Declared != realmethod.GetBaseDefinition().DeclaringType)
-                {
-                    sb.Append("override ");
-                    isoverride = true;
-                }
-            }
-            if (mthd.IsFinal) sb.Append("sealed ");
-            else if (mthd.IsAbstract) sb.Append("abstract ");
-            else if (!isoverride && mthd.IsVirtual) sb.Append("virtual ");
+            if (mthd is ConstructorInfo) return mthd.IsStatic ? sb.Append("static ") : sb;
+            return MethodToString(sb, (MethodInfo)mthd);
+        }
+
+        StringBuilder MethodToString(StringBuilder sb, MethodInfo mthd)
+        {
+            bool overriden = false;
+            if (Declared != null) { overriden = Declared != mthd.GetBaseDefinition().DeclaringType; sb.Append("override "); }
+            if (mthd.IsFinal) return sb.Append("sealed ");
+            else if (mthd.IsAbstract) return sb.Append("abstract ");
+            else if (!overriden && mthd.IsVirtual) return sb.Append("virtual ");
             return sb;
         }
 
@@ -203,9 +191,9 @@ namespace XQuinn.Reflection
         static StringBuilder TypeToString(Type type) //need to add stuff for nested types i think
         {
             StringBuilder sb = new();
-            if (type.IsAbstract && type.IsSealed) sb.Append("static ");
-            else if (type.IsAbstract) sb.Append("abstract ");
-            else if (type.IsSealed) sb.Append("sealed ");
+            if (type.IsAbstract && type.IsSealed) return sb.Append("static ");
+            else if (type.IsAbstract) return sb.Append("abstract ");
+            else if (type.IsSealed) return sb.Append("sealed ");
             return sb;
         }
 

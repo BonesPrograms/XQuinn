@@ -32,6 +32,7 @@ namespace XQuinn.Reflection
         }
         static readonly ConcurrentDictionary<string, Type> _registry = new(StringComparer.OrdinalIgnoreCase)
         {
+            ["void"] = typeof(void),
             ["object"] = typeof(object),
             ["string"] = typeof(string),
             ["bool"] = typeof(bool),

@@ -36,7 +36,7 @@ namespace XQuinn.Reflection.IL
     /// <summary>
     /// Readable IL instruction.
     /// </summary>
-    public sealed class ByteCode : MetadataReader
+    public sealed class ByteCode : MetadataPrinter
     {
 #if NET6_0_OR_GREATER
 #pragma warning disable CA2211 // Non-constant fields should not be visible
