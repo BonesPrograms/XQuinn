@@ -1,0 +1,3 @@
+system.memory,system.hashcode,system.collections.immutable
+netstandard2.1
+C#11/net7

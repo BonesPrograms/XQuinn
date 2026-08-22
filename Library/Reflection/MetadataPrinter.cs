@@ -132,13 +132,13 @@ namespace XQuinn.Reflection
         }
         
 
-        static string FixGenericString(string strng)
+        internal static string FixGenericString(string strng)
         {
             if (strng.Length >= 2 && strng[strng.Length - 2] == '`') strng = strng.Substring(0, strng.Length - 2);
             return strng;
         }
 
-        static void AddGenericArguments(StringBuilder sb, Type[]? genericargs)
+        internal static void AddGenericArguments(StringBuilder sb, Type[]? genericargs)
         {
             if (genericargs?.Length > 0)
             {

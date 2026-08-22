@@ -1,0 +1,10 @@
+C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\release\netstandard2.0\XQuinn.csproj.AssemblyReference.cache
+C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\release\netstandard2.0\XQuinn.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\release\netstandard2.0\XQuinn.AssemblyInfoInputs.cache
+C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\release\netstandard2.0\XQuinn.AssemblyInfo.cs
+C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\release\netstandard2.0\XQuinn.csproj.CoreCompileInputs.cache
+C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Release\netstandard2.0\XQuinn.deps.json
+C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Release\netstandard2.0\XQuinn.dll
+C:\Users\user\Desktop\C#Lab\XQuinnLib\bin\Release\netstandard2.0\Mono.Reflection.dll
+C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\release\netstandard2.0\XQuinn.csproj.Up2Date
+C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\release\netstandard2.0\XQuinn.dll

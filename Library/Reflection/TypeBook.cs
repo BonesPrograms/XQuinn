@@ -7,6 +7,10 @@ using Mono.Reflection;
 using System.Collections.ObjectModel;
 using System;
 using System.Collections.Generic;
+using System.Collections;
+using System.Text.RegularExpressions;
+using System.CodeDom.Compiler;
+using System.Linq;
 namespace XQuinn.Reflection
 {
 
@@ -22,36 +26,28 @@ namespace XQuinn.Reflection
     /// /// A case-insensitive readonly wrapper for a dictionary of type names for quick string lookup and caching. This isnt much more special than a dictionary, the only 
     /// difference is it simplifies creation.
     /// </summary>
-    public sealed class TypeBook : IEnumerable<KeyValuePair<string, Type>>
+    public sealed class TypeBook : IReadOnlyDictionary<string, Type>
     {
         //readonly ConcurrentDictionary<string, Type> _book;
-        public readonly IReadOnlyDictionary<string, Type> Book;
-        public int Count => Book.Count;
-        public IEnumerable<Type> Types => Book.Values;
-        public IEnumerable<string> Names => Book.Keys;
+        readonly Dictionary<string, Type> _book;
+        public int Count => _book.Count;
+        public IEnumerable<string> Keys => _book.Keys;
+        public IEnumerable<Type> Values => _book.Values;
 
-        /// <summary>
-        /// True = fullname, false == short name, null == assortment of both
-        //
-        /// <summary>
-        /// It is recommended to use a string comparer if building on your own. I use OrdinalIgnoreCase.
-        /// </summary>   
-        TypeBook(ConcurrentDictionary<string, Type> book)
+        public Type this[string key] => _book[key];
+        TypeBook(Dictionary<string, Type> book)
         {
             //_book = book;
-            Book = new ReadOnlyDictionary<string, Type>(book);
+            _book = book;
         }
+        IEnumerator IEnumerable.GetEnumerator() => _book.GetEnumerator();
+        public IEnumerator<KeyValuePair<string, Type>> GetEnumerator() => _book.GetEnumerator();
 
-        public Type this[string key]
-        {
-            get => Book[key];
-            // set => _book[key] = value;
-        }
-        System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator() => Book.GetEnumerator();
-        public IEnumerator<KeyValuePair<string, Type>> GetEnumerator() => Book.GetEnumerator();
-        public bool TryGetValue(string key, out Type? value) => Book.TryGetValue(key, out value);
+#pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
+        public bool TryGetValue(string key, out Type? value) => _book.TryGetValue(key, out value);
+#pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
         // public bool TryAdd(string key, Type value) => _book.TryAdd(key, value);
-        public bool ContainsKey(string key) => Book.ContainsKey(key);
+        public bool ContainsKey(string key) => _book.ContainsKey(key);
 
         //ToString here is for custom filtering, ie. maybe one of your shortnames are already taken, you can have your filter pre-check if one of your types are already cached
         //and then return a different name, you can also return null and it will *skip* adding that type to the typebook. Using a ToString will also completely override
@@ -59,21 +55,50 @@ namespace XQuinn.Reflection
 
         public static TypeBook New(IEnumerable<Type> types, Func<Type, string?> toString, StringComparer? comp = null, bool excludeFileScoped = true)
         {
-            ConcurrentDictionary<string, Type> book = new(comp);
+            Dictionary<string, Type> book = new(comp);
             foreach (Type type in types)
             {
-                if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute)))
+                if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute))
+#if NET7_0_OR_GREATER
+                     && !IsGeneratedRegexType(type))
+#endif
                 {
                     if (excludeFileScoped && IsFileType(type)) continue;
                     string? key = toString(type);
                     if (key == null) continue;
                     if (book.TryGetValue(key, out Type? cached)) throw new DuplicateKeyException(cached, type, key);
-                    book.TryAdd(key, type);
+                    book[key] = type;
                 }
             }
             return new(book);
         }
 
+        // static bool CompilerGenerated(Type? type)
+        // {
+        //     while (type != typeof(object) && type != null)
+        //     {
+        //         if (type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute))) return true;
+        //         else return false;
+        //     }
+        //     return false;
+        // }
+#if NET7_0_OR_GREATER
+        static bool IsGeneratedRegexType(Type type)
+        {
+            for (var current = type; current != null; current = current.DeclaringType)
+            {
+                if (current.IsDefined(typeof(GeneratedCodeAttribute), inherit: false))
+                {
+                    var attribute = current.GetCustomAttribute<GeneratedCodeAttribute>();
+
+                    if (attribute?.Tool == "System.Text.RegularExpressions.Generator")
+                        return true;
+                }
+            }
+
+            return false;
+        }
+#endif
         static bool IsFileType(Type t)
         {
             if (!t.IsPublic && !t.IsNested) return t.Name.StartsWith("<");
@@ -92,15 +117,15 @@ namespace XQuinn.Reflection
         // }
         public static TypeBook New(IEnumerable<Type> types, bool fullname, StringComparer? comp = null, bool excludeFileScoped = true)
         {
-            ConcurrentDictionary<string, Type> book = new(comp);
+            Dictionary<string, Type> book = new(comp);
             foreach (Type type in types)
             {
                 if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute)))
                 {
                     if (excludeFileScoped && IsFileType(type)) continue;
-                    string key = fullname == false ? type.Name : type.FullName ?? throw new ArgumentException() ;
+                    string key = fullname == false ? type.Name : type.FullName ?? throw new ArgumentException();
                     if (book.TryGetValue(key, out Type? cached)) throw new DuplicateKeyException(cached, type, key);
-                    book.TryAdd(key, type);
+                    book[key] = type;
                 }
             }
             return new(book);

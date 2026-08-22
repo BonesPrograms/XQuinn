@@ -50,13 +50,13 @@ namespace XQuinn.CodeAnalysis.AST
         ///This does not work with FieldString,MethodString or TypeString. it is for true ParameterStrings
         public object? ParseValue(Type asType)
         {
-            if (String == "default") return asType.GetDefaultValue();
+            if (String.EqualsCaseless("default")) return asType.GetDefaultValue();
             if (asType.IsGenericType && asType.GetGenericTypeDefinition() == typeof(Nullable<>)) //ValueType of Nullable<T>
             {
-                if (String == "null") return null;
+                if (String.EqualsCaseless("null")) return null;
                 asType = Nullable.GetUnderlyingType(asType) ?? throw new ArgumentException($"Underlying type for Nullable<T> type {asType} is null.");
             }
-            if (asType.IsClass) return ParseClass(asType);
+            if (asType.IsClass) { if (String.EqualsCaseless("null")) return null; else return asType == typeof(string) ? RegexString() : throw new NotSupportedException($"Cannot convert values to reference type instances. class type: {asType} Value: {String}"); }
             if (asType.IsValueType)
             {
                 if (asType.IsEnum) { if (EnumNet20.TryParse(String, asType, true, out Enum? @enum)) return @enum; }
@@ -64,11 +64,6 @@ namespace XQuinn.CodeAnalysis.AST
                 else throw new NotSupportedException($"Cannot convert values to user defined struct instances. struct type: {asType}. Value: {String}");
             }
             throw new FormatException($"Failed to parse {String} to {asType}.");
-        }
-
-        string? ParseClass(Type asType)
-        {
-            if (String == "null") return null; else return asType == typeof(string) ? RegexString() : throw new NotSupportedException($"Cannot convert values to reference type instances. class type: {asType} Value: {String}");
         }
 
         string RegexString()
@@ -104,7 +99,7 @@ namespace XQuinn.CodeAnalysis.AST
     {
         public TypeString DeclaringType => _type;
         TypeString _type;
-        public FieldString(string name, MethodString? paramOf, TypeString declaredIn) : base(name, paramOf)
+        public FieldString(string name, MethodString? paramOf, TypeString declaredIn) : base(name.Trim(), paramOf)
         {
             _type = declaredIn;
         }
@@ -145,22 +140,42 @@ namespace XQuinn.CodeAnalysis.AST
 
         void SnipGenericsOff()
         {
-            const string regex = "<([^>]+)>";
+            const string regex = "^\\s*[^<]*<(?<inner>(?:[^<>]+|<(?<depth>)|>(?<-depth>))*)(?(depth)(?!))>\\s*$"; //"^[^<]*<(.+)>$";
             var matches = Regex.Match(String, regex);
             if (matches.Success)
             {
-                string[] args = matches.Groups[1].Value.Split(',');
+                string[] args = matches.Groups[1].Value.Split(','
+#if NET6_0_OR_GREATER
+                , StringSplitOptions.TrimEntries
+#endif
+                );
                 _generics = args.Select(x => TypeString.New(x, null)).ToList().AsReadOnly();
-                int genericEnd = String.IndexOf('>');
-                for (int x = genericEnd + 1; x < String.Length; x++) if (String[x] != ' ') throw new LexicalException($"Detected trailing characters after generic input. ", String);
+                // int genericEnd = String.IndexOf('>');
+                //for (int x = genericEnd + 1; x < String.Length; x++) if (String[x] != ' ') throw new LexicalException($"Detected trailing characters after generic input. ", String);
                 String = String.Remove(String.IndexOf('<'));
-                // StringBuilder sb = new();
-                // sb.Append(String);
-                // sb.Append('<'); //we do it like this because of potential whitespace variations - method<string,  int> or method<string,int> would be treated differently if not
-                // for (int z = 0; z < _generics.Count; z++) { sb.Append(_generics[z].String); if (For.Multiples(_generics.Count, z)) sb.Append(", "); }
-                // sb.Append('>');
-               // _fullname = sb.ToString();
+                if (_fullname.Any(x => x == ' '))
+                {
+                    StringBuilder sb = new();
+                    sb.Append(String);
+                    sb.Append('<'); //we do it like this because of potential whitespace variations - method<string,  int> or method<string,int> would be treated differently if not
+                    for (int z = 0; z < _generics.Count; z++) { sb.Append(_generics[z].String); if (For.Multiples(_generics.Count, z)) sb.Append(", "); }
+                    sb.Append('>');
+                    _fullname = sb.ToString();
+                }
             }
+            //             else
+            //             {
+            //                 string[] args = String.Split(','
+            // #if NET6_0_OR_GREATER
+            // , StringSplitOptions.TrimEntries
+            // #endif
+            // );
+            //                 _generics = args.Select(x => TypeString.New(x, null)).ToList().AsReadOnly();
+            //                 int end = String.IndexOf('<');
+            //                 if (end == -1)
+            //                     end = String.IndexOf('>');
+            //                 String = String.Remove(end);
+            //             }
 
         }
     }
@@ -211,8 +226,8 @@ namespace XQuinn.CodeAnalysis.AST
         {
             return genericMethodDef.MakeGenericMethod(ConvertGenericArguments(types));
         }
-        public void AddParameter(ParameterString param) =>  _params.Add(param);
-        
+        public void AddParameter(ParameterString param) => _params.Add(param);
+
         public override string ToString()
         {
             StringBuilder sb = new();

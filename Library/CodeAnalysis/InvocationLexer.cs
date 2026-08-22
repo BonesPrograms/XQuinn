@@ -2,6 +2,7 @@ using System.Text;
 using XQuinn.CodeAnalysis.AST;
 using System.Reflection;
 using System;
+using XQuinn.Extensions;
 
 namespace XQuinn.CodeAnalysis
 {
@@ -184,7 +185,7 @@ namespace XQuinn.CodeAnalysis
         {
             if (Value == CharDeclr) ReadingChar = true;
             else if (Value == StringDeclr) ReadingString = true;
-            else if (Value == '-' || IsDigit(Value)) ReadingDigit = true;
+            else if (Value == '-' || Value.IsDigit()) ReadingDigit = true;
             else if (ValidIdentifierFirstChar(Value)) ReadingArbitrary = true;
             if (ReadingDigit || ReadingString || ReadingArbitrary || ReadingChar) { Terminated = false; MethodBegan = false; }
         }
@@ -247,7 +248,7 @@ namespace XQuinn.CodeAnalysis
 
         bool ReadNum(ref int i, string invocation) //readnum doesnt influence jumps because numeric values are strict and can only contain digits/decimal pointer
         {
-            if (IsDigit(Value)) return true;
+            if (Value.IsDigit()) return true;
             else if (Value == Whitespace) //we skip leading and trailing whitespace
             {
                 SkipWhitespaceTrail(ref i, invocation);
@@ -357,24 +358,14 @@ namespace XQuinn.CodeAnalysis
         void ValidIdentifier(char value, string invocation, int? i)
         {
             const string error = "Detected illegal character in identifier.";
-            if (value != '<' && value != '>' && value != ',' && Illegal(value))
+            if (value != '<' && value != '>' && value != ',' && value != '[' && value != ']' && Illegal(value))
                 throw i == null ? new LexicalException(error, invocation, value, sb) : throw new LexicalException(error, invocation, value, sb, i.Value);
 
         }
-        public static bool Illegal(char val) => val != VaidNonAlphaNumeric && !IsLetter(val) && !IsDigit(val);
+        public static bool Illegal(char val) => val != VaidNonAlphaNumeric && !val.IsDigit() && !val.IsLetter();
         public static bool Termination(char value) => value == ParamTerminate || value == MethodTerminate;
-        public static bool ValidIdentifierFirstChar(char value) => value == VaidNonAlphaNumeric || value == ValidLeadingNonAlphaNumeric || IsLetter(value);
-        public static bool IsLetter(char value) => value switch
-        {
-            >= 'a' and <= 'z' or >= 'A' and <= 'Z' => true,
-            _ => false
-        };
+        public static bool ValidIdentifierFirstChar(char value) => value == VaidNonAlphaNumeric || value == ValidLeadingNonAlphaNumeric || value.IsLetter();
 
-        public static bool IsDigit(char value) => value switch
-        {
-            >= '0' and <= '9' => true,
-            _ => false
-        };
         void Clear()
         {
             Main = null;

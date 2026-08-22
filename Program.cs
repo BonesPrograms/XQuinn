@@ -17,6 +17,7 @@ using XQuinn.Extensions;
 using XQuinn.Parsing;
 using System.IO;
 using XQuinn.CodeAnalysis.AST;
+using System.Collections;
 
 namespace _xquinn_prgrm
 {
@@ -32,81 +33,69 @@ namespace _xquinn_prgrm
             IEnumerable<Type>? types = typeof(_xquinn_prgrm_Main).Module.GetTypes();
             TypeBook? book = TypeBook.New(types, x =>
             {
-                if (x.Name.StartsWith('_')) return null;
-                string z = x.SnipGenericShortName();
-                return z == "GenericString" || z == "TestingType" ? null : z;
+#if NET6_0_OR_GREATER
+                ReadOnlySpan<char> z = x.IsGenericType ? x.SnipGenericName(false) : x.Name.AsSpan();
+                if(z.SequenceEqual("GenericString") || z.SequenceEqual("TestingType")) return null;
+                return TypeCache.GetCompatibleName(x, false);
+#else
+                string z = TypeCache.GetCompatibleName(x,false);
+                if(z=="GenericString" || z=="TestingType")return null;
+                return TypeCache.GetCompatibleName(x,false);
+#endif
             }, StringComparer.OrdinalIgnoreCase);
-            //RuntimeCommand.Register(types, "XQuinn");
+            ConsoleTools.WriteMany(book, Environment.NewLine);
             TypeCache.CacheTypes(book);
-            types = null;
-            book = null;
             TypeCache.CacheType("Console", typeof(Console));
-            TestingType.Test<CallInterpreter>();
-           
+            TypeCache.CacheType("consoletools", typeof(ConsoleTools));
+            Console.WriteLine(typeof(int[]));
+            TestingType.Test<RuntimeNavigator>();
+
 #endif
 
 
         }
 
     }
-
-
-
-    public class Fun
-    {
-        public static void OX()
-        {
-            
-        }
-
-        public static void OX(int i)
-        {
-            
-        }
-
-        public static void OX(string x)
-        {
-            
-        }
-        public static string Params<T>(params T[] prms)
-        {
-            
-            StringBuilder sb = new();
-            sb.AppendMany(prms);
-            return sb.ToString();
-        }
-        public static string Params(string f, bool y, params int[] prms)
-        {
-            StringBuilder sb = new();
-            sb.AppendMany(prms);
-            return sb.ToString();
-        }
-        public static int Method(int i, char z, string? x = null) => i;
-    }
-    // public class Lex
-    // {
-
-    //     static string Num;
-
-    //     public static void Char(char i, char d)
-    //     {
-    //         Console.WriteLine(i);
-    //     }
-    //     public static void Call(string i, string x, bool value)
-    //     {
-    //         Console.WriteLine(x);
-    //     }
-
-    //     static char Oth(char x, char y)
-    //     {
-    //         Console.WriteLine($"Oth invoked with {x} and {y}");
-    //         return y;
-    //     }
-    //     static Char Get(char i) => 'c';
-
-    //     static char sex(char i, char x) => 'd';
-    // }
-
 }
+
+namespace XQ
+{
+    public static class Gen<T,X>
+    {
+
+        
+    }
+    public static class Test
+    {
+        public static (T1,T2) Get<T1,T2>() where T1: new() where T2: new() => new(new(),new());
+
+        public static string String(string txt) => txt;
+    }
+}
+// public class Lex
+// {
+
+//     static string Num;
+
+//     public static void Char(char i, char d)
+//     {
+//         Console.WriteLine(i);
+//     }
+//     public static void Call(string i, string x, bool value)
+//     {
+//         Console.WriteLine(x);
+//     }
+
+//     static char Oth(char x, char y)
+//     {
+//         Console.WriteLine($"Oth invoked with {x} and {y}");
+//         return y;
+//     }
+//     static Char Get(char i) => 'c';
+
+//     static char sex(char i, char x) => 'd';
+// }
+
+
 // //char(lex.get(lex.oth('x', lex.get('y'))), lex.get(lex.get(lex.get(lex.oth('x',lex.get('y')))))
 #endif

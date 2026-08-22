@@ -61,9 +61,6 @@ namespace XQuinn.Numerics
         public static byte[] AsBytes(char utf16) => utf16.AsBytesInternal();
 
         static byte[] AsBytesInternal<T>(this T num) 
-        #if NET10_0_OR_GREATER
-        where T : INumber<T>
-        #endif
         {
             byte[] bytes = Array.Empty<byte>();
 

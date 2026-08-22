@@ -12,7 +12,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using XQuinn.Extensions;
-using _xquinn_prgrm;
 
 namespace XQuinn.NetConsole
 {
@@ -110,52 +109,46 @@ namespace XQuinn.NetConsole
                 else Console.WriteLine($"{param.ToString()} {param.GetType()}");
         }
     }
-    internal sealed class RuntimeCommandTest : TestingType<RuntimeCommand>
+    internal sealed class RuntimeCommandTest : TestingType<Command>
     {
         RuntimeCommandTest()
         {
 
         }
 
-        readonly CallInterpreter interp = new();
+        readonly RuntimeNavigator interp = new();
         protected override void Test(string obj)
         {
-            RuntimeCommand.InvokeCommand(obj, interp, out _);
+            Command.InvokeCommand(obj, interp, out _);
         }
     }
 
-    internal sealed class RuntimeInvokerTest : TestingType<RuntimeInvoker>
+    internal sealed class RuntimeInvokerTest : TestingType<RuntimeGateway>
     {
+
+        RuntimeGateway Gateway = new();
         RuntimeInvokerTest()
         {
 
         }
         protected override void Test(string obj)
         {
-
-            new RuntimeInvoker().Interface(obj, out _, false, out _, out _, out _);
+            #if NET6_0_OR_GREATER
+            Gateway.Interface(obj, out _, false, out _, out _, out _);
+            #else
+            Gateway.Interface(obj, out _ , false, out _);
+            #endif
 
 
         }
 
     }
 
-    internal sealed class CallInterpTest : TestingType<CallInterpreter>
+    internal sealed class CallInterpTest : TestingType<RuntimeNavigator>
     {
 
-        CallInterpreter Interp => monitor.Interp;
-        readonly InterpMonitor monitor = new();
-        protected override string? PreLoad(IEnumerable<string>? preloads)
-        {
-            if (preloads != null)
-            {
-                Interp.RunCommands(preloads);
-                Variable? variable = null;
-                try { KeyValuePair<string, Variable> pair = Interp._variables.First(); variable = pair.Value; } catch { }
-                return variable == null ? null : $"{variable} loaded";
-            }
-            return null;
-        }
+        RuntimeNavigator Interp => monitor.Interp;
+        readonly NavigationMonitor monitor = new();
 
         protected override void TestAndCatchForDisplay(string obj)
         {

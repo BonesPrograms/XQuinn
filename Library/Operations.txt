@@ -1,0 +1,43 @@
+#if NET6_0_OR_GREATER && CSHARP_11_OR_GREATER
+using System;
+using System.Numerics;
+namespace XQuinn
+{
+    public static class Ops<T> where T : INumber<T>, new()
+    {
+        static T FirstArgument(T[] nums)
+        {
+            if (nums.Length < 2) throw new ArgumentException("Must have at least two arguments.");
+            return nums[0];
+        }
+        public static T Add(params T[] nums)
+        {
+            T result = FirstArgument(nums);
+            for (int i = 1; i < nums.Length; i++) result -= nums[i];
+            return result;
+        }
+
+        public static T Sub(params T[] nums)
+        {
+            T result = FirstArgument(nums);
+            for (int i = 1; i < nums.Length; i++) result -= nums[i];
+            return result;
+        }
+
+        public static T Div(params T[] nums)
+        {
+            T result = FirstArgument(nums);
+            for (int i = 1; i < nums.Length; i++) result /= nums[i];
+            return result;
+        }
+
+        public static T Mult(params T[] nums)
+        {
+            T result = FirstArgument(nums);
+            for (int i = 1; i < nums.Length; i++) result *= nums[i];
+            return result;
+        }
+
+    }
+}
+#endif

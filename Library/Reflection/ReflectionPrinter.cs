@@ -15,52 +15,51 @@ namespace XQuinn.Reflection
     /// </summary>
 
 
-    readonly struct AccessModifiers
-    {
-        public readonly bool IsPublic;
 
-        public readonly bool IsPrivate;
-
-        public readonly bool IsAssembly;
-
-        public readonly bool IsFamily;
-
-        public readonly bool IsFamilyAndAssembly;
-
-        public readonly bool IsFamilyOrAssembly;
-
-        public AccessModifiers(FieldInfo field)
+        public readonly struct AccessModifiers
         {
-            IsPublic = field.IsPublic;
-            IsPrivate = field.IsPrivate;
-            IsAssembly = field.IsAssembly;
-            IsFamily = field.IsFamily;
-            IsFamilyAndAssembly = field.IsFamilyAndAssembly;
-            IsFamilyOrAssembly = field.IsFamilyOrAssembly;
-        }
+            public readonly bool IsPublic;
 
-        public AccessModifiers(MethodBase mthd)
-        {
-            IsPublic = mthd.IsPublic;
-            IsPrivate = mthd.IsPrivate;
-            IsAssembly = mthd.IsAssembly;
-            IsFamily = mthd.IsFamily;
-            IsFamilyAndAssembly = mthd.IsFamilyAndAssembly;
-            IsFamilyOrAssembly = mthd.IsFamilyOrAssembly;
-        }
-        public override string ToString()
-        {
-            if (IsPublic) return "public";
-            else if (IsFamily) return "protected";
-            else if (IsPrivate) return "private";
-            else if (IsAssembly) return "internal";
-            else if (IsFamilyAndAssembly) return "private protected";
-            else if (IsFamilyOrAssembly) return "protected internal"; //this should literally never throw
-            throw new InvalidOperationException("FieldInfo or MethodBase object has invalid access modifiers.");
-        }
-    }
+            public readonly bool IsPrivate;
 
+            public readonly bool IsAssembly;
 
+            public readonly bool IsFamily;
+
+            public readonly bool IsFamilyAndAssembly;
+
+            public readonly bool IsFamilyOrAssembly;
+
+            public AccessModifiers(FieldInfo field)
+            {
+                IsPublic = field.IsPublic;
+                IsPrivate = field.IsPrivate;
+                IsAssembly = field.IsAssembly;
+                IsFamily = field.IsFamily;
+                IsFamilyAndAssembly = field.IsFamilyAndAssembly;
+                IsFamilyOrAssembly = field.IsFamilyOrAssembly;
+            }
+
+            public AccessModifiers(MethodBase mthd)
+            {
+                IsPublic = mthd.IsPublic;
+                IsPrivate = mthd.IsPrivate;
+                IsAssembly = mthd.IsAssembly;
+                IsFamily = mthd.IsFamily;
+                IsFamilyAndAssembly = mthd.IsFamilyAndAssembly;
+                IsFamilyOrAssembly = mthd.IsFamilyOrAssembly;
+            }
+            public override string ToString()
+            {
+                if (IsPublic) return "public";
+                else if (IsFamily) return "protected";
+                else if (IsPrivate) return "private";
+                else if (IsAssembly) return "internal";
+                else if (IsFamilyAndAssembly) return "private protected";
+                else if (IsFamilyOrAssembly) return "protected internal"; //this should literally never throw
+                throw new InvalidOperationException("FieldInfo or MethodBase object has invalid access modifiers.");
+            }
+        }
 
 
     /// <summary>
@@ -70,6 +69,7 @@ namespace XQuinn.Reflection
 
     public sealed class ReflectionPrinter : MetadataPrinter
     {
+
 
         public bool ShowToken = false;
 

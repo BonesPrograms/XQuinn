@@ -1,0 +1,5 @@
+C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\release\net48\win-x64\XQuinn.csproj.AssemblyReference.cache
+C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\release\net48\win-x64\XQuinn.GeneratedMSBuildEditorConfig.editorconfig
+C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\release\net48\win-x64\XQuinn.AssemblyInfoInputs.cache
+C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\release\net48\win-x64\XQuinn.AssemblyInfo.cs
+C:\Users\user\Desktop\C#Lab\XQuinnLib\obj\release\net48\win-x64\XQuinn.csproj.CoreCompileInputs.cache

@@ -12,7 +12,19 @@ namespace XQuinn.Reflection
 
 
 
+    //Must be power of 2 to work with flags... need to research why
 
+    [Flags] //flags are used for querying, so that you can get members of multiple different kinds from my reflection collections via enum input
+    public enum MemberGroup //each reflectioninfo object will only have one flag
+    {
+        _invalid = 0,
+        Field = 8,
+        Property = 16,
+        Method = 32,
+        Event = 64,
+        Constructor = 128, //why does it say all is already 127 if i make this 127.. .wait a minute... math... thats why...
+        All = Property | Field | Constructor | Method | Event
+    }
 
     /// //need to add property and event privacy support for basetypes. well the methods will still show up actually now that i think about it
 
