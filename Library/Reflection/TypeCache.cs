@@ -39,8 +39,8 @@ namespace XQuinn.Reflection
             ["string"] = typeof(string),
             ["bool"] = typeof(bool),
             ["byte"] = typeof(byte),
-            ["sbyte"] = typeof(sbyte),
-            ["char"] = typeof(char),
+            ["sbyte"] = typeof(sbyte), ///Array versions of all primitives, object and string are pre-cached
+            ["char"] = typeof(char),   ///All forms of value tuples are pre-cached for reification later
             ["int"] = typeof(int),
             ["uint"] = typeof(uint),
             ["short"] = typeof(short),
@@ -87,11 +87,11 @@ namespace XQuinn.Reflection
                     int args = t.GetGenericArguments().Length;
                     string name = args == 0 ? "tuple" : $"tuple{args}";
                     CacheType(name, t);
-                    if (args != 0)
-                    {
-                        name = $"{name}[]";
-                        CacheType(name, t.MakeArrayType());
-                    }
+                    // if (args != 0)
+                    // {
+                    //     name = $"{name}[]";
+                    //     CacheType(name, t.MakeArrayType());
+                    // }
                 }
             }
 

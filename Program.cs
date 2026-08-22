@@ -69,6 +69,8 @@ namespace XQ
     {
         public static (T1,T2) Get<T1,T2>() where T1: new() where T2: new() => new(new(),new());
 
+        public static string GetX<T>() => typeof(T).Name; 
+
         public static string String(string txt) => txt;
     }
 }
