@@ -60,8 +60,9 @@ namespace XQuinn.Reflection
             {
                 if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute))
 #if NET7_0_OR_GREATER
-                     && !IsGeneratedRegexType(type))
+                     && !IsGeneratedRegexType(type)
 #endif
+                )
                 {
                     if (excludeFileScoped && IsFileType(type)) continue;
                     string? key = toString(type);
