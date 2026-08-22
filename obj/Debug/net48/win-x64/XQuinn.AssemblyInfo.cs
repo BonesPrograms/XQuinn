@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("XQuinn")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+4030be5b430b007a88d7f2a41a54fe796ffba47e")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+18e4eec460bf21709b516a3753ecb5f465ce3f2d")]
 [assembly: System.Reflection.AssemblyProductAttribute("XQuinn")]
 [assembly: System.Reflection.AssemblyTitleAttribute("XQuinn")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

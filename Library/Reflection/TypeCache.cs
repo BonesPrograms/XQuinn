@@ -53,7 +53,6 @@ namespace XQuinn.Reflection
             ["nint"] = typeof(nint),
             ["nuint"] = typeof(nuint),
             ["enum"] = typeof(Enum),
-            ["tuple"] = typeof(ValueTuple),
             ["type"] = typeof(Type),
             ["typecache"] = typeof(TypeCache),
             ["environment"] = typeof(Environment),
@@ -80,6 +79,16 @@ namespace XQuinn.Reflection
             foreach (var pair in _registry) ///Generate array types for primitives, string and object
                 if (pair.Value.IsPrimitive || pair.Value == typeof(string) || pair.Value == typeof(object))
                     CacheType($"{pair.Key}[]", pair.Value.MakeArrayType());
+            foreach(Type t in Assembly.GetAssembly(typeof(ValueTuple)).GetTypes()) /// Generate cache types for all possible value tuples
+            {
+                if(t.Name.Contains("ValueTuple"))
+                {
+                    if(t.Name == "IValueTupleInternal" || t.Name == "ITuple") continue;
+                    int args = t.GetGenericArguments().Length;
+                    string name = args == 0 ? "tuple" : $"tuple{args}";
+                    CacheType(name, t);
+                }
+            }
 
         }
 
