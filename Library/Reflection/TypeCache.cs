@@ -77,16 +77,21 @@ namespace XQuinn.Reflection
         {
             GlobalCache = new ReadOnlyDictionary<string, Type>(_registry);
             foreach (var pair in _registry) ///Generate array types for primitives, string and object
-                if (pair.Value.IsPrimitive || pair.Value == typeof(string) || pair.Value == typeof(object))
-                    CacheType($"{pair.Key}[]", pair.Value.MakeArrayType());
-            foreach(Type t in Assembly.GetAssembly(typeof(ValueTuple)).GetTypes()) /// Generate cache types for all possible value tuples
+            if (pair.Value.IsPrimitive || pair.Value == typeof(string) || pair.Value == typeof(object))
+                CacheType($"{pair.Key}[]", pair.Value.MakeArrayType());
+            foreach (Type t in Assembly.GetAssembly(typeof(ValueTuple)).GetTypes()) /// Generate cache types for all possible value tuples
             {
-                if(t.Name.Contains("ValueTuple"))
+                if (t.Name.Contains("ValueTuple"))
                 {
-                    if(t.Name == "IValueTupleInternal" || t.Name == "ITuple") continue;
+                    if (t.Name == "IValueTupleInternal" || t.Name == "ITuple") continue;
                     int args = t.GetGenericArguments().Length;
                     string name = args == 0 ? "tuple" : $"tuple{args}";
                     CacheType(name, t);
+                    if (args != 0)
+                    {
+                        name = $"{name}[]";
+                        CacheType(name, t.MakeArrayType());
+                    }
                 }
             }
 
