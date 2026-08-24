@@ -1,6 +1,7 @@
 using XQuinn.Runtime;
 using XQuinn.CodeAnalysis;
 using System;
+using XQuinn.IO;
 
 namespace XQuinn.Runtime
 {
@@ -30,19 +31,24 @@ namespace XQuinn.Runtime
         //currently tho this aint like a multiplayer invoker it rly is intended for individuals to use it clientside generally speaking everything abt their runtime should be exclusive to them
         public sealed class RuntimeGateway
         {
+                public readonly Logger Logger;
                 public readonly NavigationMonitor Monitor = new();
 #if NET6_0_OR_GREATER
                 public readonly DynamicAssembly? Assembly;
-                public RuntimeGateway(string? assemblyPath = null, Func<Type, string?>? bookDelegate = null)
+                public RuntimeGateway(string logto, string? assemblyPath = null, Func<Type, string?>? bookDelegate = null) : this(logto)
                 {
                         if (assemblyPath != null && bookDelegate != null) Assembly = DynamicAssembly.New(assemblyPath, bookDelegate);
                 }
-#else
-                public RuntimeGateway()
-                {
-
-                }
 #endif
+                public RuntimeGateway(string path)
+                {
+                        Logger = Logger.New(path,true);
+                }
+
+public RuntimeGateway()
+                {
+                        
+                }
 
                 //DynamicInvoker will have its own op call, something like ?
                 //Path will be loaded at compiletime

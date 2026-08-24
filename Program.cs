@@ -25,34 +25,26 @@ namespace _xquinn_prgrm
 
     static class _xquinn_prgrm_Main
     {
+
+
         static void Main(string[] args)
         {
 #if IAPP_BUILD
             XQuinn.NetConsole.Apps.IApp.RunApp(args);
 #elif DEBUG_BUILD
             IEnumerable<Type>? types = typeof(_xquinn_prgrm_Main).Module.GetTypes();
-            TypeBook? book = TypeBook.New(types, x =>
-            {
-#if NET6_0_OR_GREATER
-                ReadOnlySpan<char> z = x.IsGenericType ? x.SnipGenericName(false) : x.Name.AsSpan();
-                if(z.SequenceEqual("GenericString") || z.SequenceEqual("TestingType")) return null;
-                return TypeCache.GetCompatibleName(x, false);
-#else
-                string z = TypeCache.GetCompatibleName(x,false);
-                if(z=="GenericString" || z=="TestingType")return null;
-                return TypeCache.GetCompatibleName(x,false);
-#endif
-            }, StringComparer.OrdinalIgnoreCase);
-            ConsoleTools.WriteMany(book, Environment.NewLine);
+            TypeBook book = TypeBook.New(types, x => x.Namespace == "XQ" ? TypeCache.GetCompatibleName(x, false) : null, StringComparer.OrdinalIgnoreCase);
             TypeCache.CacheTypes(book);
-            TypeCache.CacheType("Console", typeof(Console));
             TypeCache.CacheType("consoletools", typeof(ConsoleTools));
-            Console.WriteLine(typeof(int[]));
-            TestingType.Test<RuntimeNavigator>();
-
+            TypeCache.CacheType("console", typeof(Console));
+            TypeCache.CacheType<Harmony>("harmony");
+            NavigationMonitor monitor = new();
+            while (true)
+            {
+                string? msg = Console.ReadLine();
+                if (msg != null) if (msg.EqualsCaseless("exit")) return; else Console.WriteLine(monitor.TryCatchInterface(msg, out _, out _));
+            }
 #endif
-
-
         }
 
     }
@@ -60,19 +52,30 @@ namespace _xquinn_prgrm
 
 namespace XQ
 {
-    public static class Gen<T,X>
+    public class Class
     {
 
+        public static Class Method(Class c)
+        {
+            return c;
+        }
+        public Class()
+        {
+            
+        }
+        Class(int i)
+        {
+            
+        }
         
-    }
-    public static class Test
-    {
-        public static (T1,T2) Get<T1,T2>() where T1: new() where T2: new() => new(new(),new());
+        public static Class New()
+        {
+            return new();
+        }
 
-        public static string GetX<T>() => typeof(T).Name; 
-
-        public static string String(string txt) => txt;
     }
+
+
 }
 // public class Lex
 // {

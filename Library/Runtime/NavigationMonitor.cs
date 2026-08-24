@@ -7,6 +7,7 @@ using System.Reflection;
 using XQuinn.Reflection;
 using XQuinn.Runtime;
 using System.Linq;
+using System.Collections;
 
 namespace XQuinn.Runtime
 {
@@ -78,7 +79,7 @@ namespace XQuinn.Runtime
             }
             return output;
         }
-        public string Interface(string input, out object? interpreterReturned)
+        string Interface(string input, out object? interpreterReturned)
         {
             interpreterReturned = null;
             sb.AppendLine();
@@ -98,34 +99,36 @@ namespace XQuinn.Runtime
 
         string ProcessReturn(object? ret)
         {
-            return ret is RuntimeNavigator.InvocationChain chain ? AppendWithBreak($"Returned: {new StringBuilder().AppendMany(chain, Environment.NewLine)}") : AppendWithBreak($"Returned: {ret?.ToString()}");
+            return (ret is IEnumerable enumerable and not string) ? AppendWithBreak($"Returned: \n{new StringBuilder().AppendMany(enumerable, Environment.NewLine)}") : AppendWithBreak($"Returned: {ret?.ToString()}");
         }
 
-        
+
 
         string SwitchQuestion(string input)
         {
 
-            if (input.EqualsCaseless("vars")) return GetCollection(Interp._variables, x => $"[{x.Value}]", "variables");
+            if (input.EqualsCaseless("vars") || input.EqualsCaseless("variables")) return GetCollection(Interp._variables, x => $"[{x.Value}]", "variables");
             if (Interp.LoadedType == null) return "No type loaded.";
             if (input.EqualsCaseless("methods")) return GetCollection(Interp._methods, x => $"[Key: {x.Key} :: {ReflectionPrinter.String(x.Value)}]", "methods");
             if (input.EqualsCaseless("fields")) return GetCollection(Interp._fields, x => $"[Key: {x.Key} :: {ReflectionPrinter.String(x.Value)}]", "fields");
             string[] arr = input.Split(':');
             if (arr.Length > 1)
             {
-                if (arr[0].EqualsCaseless("overloads"))
+                if (arr.Length != 2) throw new ArgumentException($"Invalid query, only supports 2 args. {input}");
+                if (arr[0].EqualsCaseless("overloads") || arr[0].EqualsCaseless("overload"))
                 {
-                    IEnumerable<KeyValuePair<RuntimeNavigator.ResolvedOverload, MethodInfo>> enumerable = Interp._overloads.
-#if NET6_0_OR_GREATER
-                Where(x => x.Key.KeySpan.Equals(arr[1], StringComparison.OrdinalIgnoreCase));
-#else
-                Where(x=>x.Key.KeySpan.EqualsCaseless(arr[1]));
-#endif
-                    return GetCollection(enumerable, x => $"[Key: {x.Key} :: {ReflectionPrinter.String(x.Value)}]", "overloads");
+                    IEnumerable<KeyValuePair<RuntimeNavigator.ResolvedOverload, MethodBase>> extract = Interp._overloads.
+                     Where(x => x.Key.MethodKey.Contains(arr[1], StringComparison.OrdinalIgnoreCase));
+                    return GetCollection(extract, x => $"[Key: {x.Key} :: {ReflectionPrinter.String(x.Value)}]", "overloads");
+                }
+                else if (arr[0].EqualsCaseless("method") || arr[0].EqualsCaseless("methods"))
+                {
+                    IEnumerable<KeyValuePair<string,MethodBase>> extract = Interp._methods.Where(x=> x.Key.Contains(arr[1], StringComparison.OrdinalIgnoreCase));
+                    return GetCollection(extract, x => $"[Key: {x.Key} :: {ReflectionPrinter.String(x.Value)}]", $"method search: {arr[1]}");
                 }
             }
             else if (input.EqualsCaseless("overloads")) return GetCollection(Interp._overloads, x => $"[Key: {x.Key} :: {ReflectionPrinter.String(x.Value)}]", "overloads");
-            return string.Empty;
+            return "Invalid query.";
         }
 
 
@@ -169,6 +172,7 @@ namespace XQuinn.Runtime
         string GetCollection<T>(IEnumerable<T> collection, Func<T?, string>? toString, string kind)
         {
             if (!collection.Any()) return $"No {kind} found.";
+            sb.AppendLine();
             sb.AppendMany<T>(collection, Environment.NewLine, toString);
             string output = sb.ToString();
             sb.Length = 0;

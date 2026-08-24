@@ -8,6 +8,8 @@ using XQuinn.Reflection;
 using HarmonyLib;
 using XQuinn.Extensions;
 using XQuinn.Parsing;
+using System.Collections.ObjectModel;
+using XQ;
 
 namespace XQuinn.CodeAnalysis.AST
 {
@@ -28,7 +30,7 @@ namespace XQuinn.CodeAnalysis.AST
         public string String { get => _string; protected set => _string = value; }
         public readonly MethodString? ParamOf;
         string _string;
-        public ParameterString(string String, MethodString? paramof)
+        internal ParameterString(string String, MethodString? paramof)
         {
             _string = String;
             ParamOf = paramof;
@@ -43,55 +45,104 @@ namespace XQuinn.CodeAnalysis.AST
 
     public sealed class ValueString : ParameterString
     {
-        public ValueString(string String, MethodString? paramOf) : base(String, paramOf)
+        internal ValueString(string String, MethodString? paramOf) : base(String, paramOf)
         {
 
         }
         ///This does not work with FieldString,MethodString or TypeString. it is for true ParameterStrings
         public object? ParseValue(Type asType)
         {
+
             if (String.EqualsCaseless("default")) return asType.GetDefaultValue();
             if (asType.IsGenericType && asType.GetGenericTypeDefinition() == typeof(Nullable<>)) //ValueType of Nullable<T>
             {
                 if (String.EqualsCaseless("null")) return null;
                 asType = Nullable.GetUnderlyingType(asType) ?? throw new ArgumentException($"Underlying type for Nullable<T> type {asType} is null.");
             }
-            if (asType.IsClass) { if (String.EqualsCaseless("null")) return null; else return asType == typeof(string) ? RegexString() : throw new NotSupportedException($"Cannot convert values to reference type instances. class type: {asType} Value: {String}"); }
-            if (asType.IsValueType)
+            if (asType.IsClass)
             {
-                if (asType.IsEnum) { if (EnumNet20.TryParse(String, asType, true, out Enum? @enum)) return @enum; }
-                else if (asType.IsPrimitive) { if (ParsePrimitive(asType, out ValueType? primitive)) return primitive; }
+                if (String.EqualsCaseless("null"))
+                    return null;
+                if (asType == typeof(string))
+                {
+                    CheckForString(true, out string? extract);
+                    return extract;
+                }
+                else if (asType == typeof(object))
+                {
+                    if (CheckForString(false, out string? extract))
+                        return extract;
+                }
+                else throw new NotSupportedException($"Cannot convert values to reference type instances. class type: {asType} Value: {String}");
+            }
+            if (asType.IsValueType || asType == typeof(object))
+            {
+
+                if (asType.IsEnum) { if (EnumNet20.TryParse(String.Replace('|', ','), asType, true, out Enum? @enum)) return @enum; }
+                else if (asType.IsPrimitive || asType == typeof(object)) { if (ParsePrimitive(asType, out ValueType? primitive)) return primitive; }
                 else throw new NotSupportedException($"Cannot convert values to user defined struct instances. struct type: {asType}. Value: {String}");
             }
-            throw new FormatException($"Failed to parse {String} to {asType}.");
+            throw new FormatException($"Failed to convert {String} to {asType}.");
         }
 
-        string RegexString()
+        bool CheckForString(bool formatException, out string? extract)
         {
-            const string regex = "^\"(.*?)\"$";// "\"([^\"]*)\""; //this new one supports fuckery like this "hello "world"" so itll pop out as hello "world" :)
-            var matches = Regex.Match(String, regex);
-            return matches.Success ? matches.Groups[1].Value : throw new FormatException($"Non-null string values must be surrounded with quotations, even empty strings. Bad input: {String}");
+            extract = null;
+            if (String.Length < 2) return formatException ? throw new FormatException("Strings values must be at least 2 chars in size - one beginning and one ending quotation mark.") : false;
+            if (String.Length == 2)
+            {
+                if (String[0] == '"' && String[1] == '"')
+                {
+                    extract = string.Empty;
+                    return true;
+                }
+                else if (formatException) throw new FormatException("Strings values must be at least 2 chars in size - one beginning and one ending quotation mark.");
+            }
+            if (String.Length == 3)
+            {
+                if (String[0] == '"' && String[2] == '"')
+                {
+                    extract = String[1].ToString();
+                    return true;
+                }
+                else if (formatException) throw new FormatException("Strings values must be at least 2 chars in size - one beginning and one ending quotation mark.");
+            }
+            int end = String.Length - 1;
+            if (String[0] == '"' && String[end] == '"')
+            {
+                StringBuilder sb = new();
+                for (int i = 1; i < end; i++) sb.Append(String[i]);
+                extract = sb.ToString();
+                return true;
+            }
+            return formatException ? throw new FormatException($"Strings values must be at least 2 chars in size - one beginning and one ending quotation mark. Input {String}") : false;
         }
         bool ParsePrimitive(Type asType, out ValueType? primitive) //Almost looks like a switch!
         {
             primitive = null;
-            if (asType == typeof(bool)) { if (bool.TryParse(String, out bool boolean)) primitive = boolean; }
-            else if (asType == typeof(char)) { if (char.TryParse(String, out char utf16)) primitive = utf16; }
+            if (asType == typeof(object) || asType == typeof(bool)) { if (bool.TryParse(String, out bool boolean)) primitive = boolean; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(int))) { if (int.TryParse(String, out int sint32)) primitive = sint32; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(uint))) { if (uint.TryParse(String, out uint uint32)) primitive = uint32; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(long))) { if (long.TryParse(String, out long sint64)) primitive = sint64; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(ulong))) { if (ulong.TryParse(String, out ulong uint64)) primitive = uint64; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(float))) { if (float.TryParse(String, out float float32)) primitive = float32; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(double))) { if (double.TryParse(String, out double float64)) primitive = float64; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(decimal))) { if (decimal.TryParse(String, out decimal dec)) primitive = dec; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(char))) { if (char.TryParse(String, out char utf16)) primitive = utf16; } //for (object) we check char last because byte sized integers easily convert to char
+            else if (asType == typeof(nint)) { if (NIntNet20.TryParse(String, out nint nativesint)) primitive = nativesint; }
+            else if (asType == typeof(nuint)) { if (NUIntNet20.TryParse(String, out nuint nativeuint)) primitive = nativeuint; }
             else if (asType == typeof(byte)) { if (byte.TryParse(String, out byte uint8)) primitive = uint8; }
             else if (asType == typeof(sbyte)) { if (sbyte.TryParse(String, out sbyte sint8)) primitive = sint8; }
             else if (asType == typeof(short)) { if (short.TryParse(String, out short sint16)) primitive = sint16; }
             else if (asType == typeof(ushort)) { if (ushort.TryParse(String, out ushort uint16)) primitive = uint16; }
-            else if (asType == typeof(int)) { if (int.TryParse(String, out int sint32)) primitive = sint32; }
-            else if (asType == typeof(uint)) { if (uint.TryParse(String, out uint uint32)) primitive = uint32; }
-            else if (asType == typeof(long)) { if (long.TryParse(String, out long sint64)) primitive = sint64; }
-            else if (asType == typeof(ulong)) { if (ulong.TryParse(String, out ulong uint64)) primitive = uint64; }
-            else if (asType == typeof(float)) { if (float.TryParse(String, out float float32)) primitive = float32; }
-            else if (asType == typeof(double)) { if (double.TryParse(String, out double float64)) primitive = float64; }
-            else if (asType == typeof(decimal)) { if (decimal.TryParse(String, out decimal dec)) primitive = dec; }
-            else if (asType == typeof(nint)) { if (NIntNet20.TryParse(String, out nint nativesint)) primitive = nativesint; }
-            else if (asType == typeof(nuint)) { if (NUIntNet20.TryParse(String, out nuint nativeuint)) primitive = nativeuint; }
             return primitive != null;
         }
+
+       //// bool TryParseChar(out char utf16)
+       // {
+            //if (String.Length != 3) throw new FormatException($"Invalid char format. Input: {String}. Must be surrounzed by apostrophes, must be a single char.");
+          //  return char.TryParse(String[2].ToString(), out utf16);
+       //}
 
     }
 
@@ -99,7 +150,7 @@ namespace XQuinn.CodeAnalysis.AST
     {
         public TypeString DeclaringType => _type;
         TypeString _type;
-        public FieldString(string name, MethodString? paramOf, TypeString declaredIn) : base(name.Trim(), paramOf)
+        internal FieldString(string name, MethodString? paramOf, TypeString declaredIn) : base(name.Trim(), paramOf)
         {
             _type = declaredIn;
         }
@@ -110,20 +161,35 @@ namespace XQuinn.CodeAnalysis.AST
     {
         public string NameWithGenerics => _fullname;
         string _fullname;
-        public IReadOnlyList<TypeString>? Generics => _generics;
-        IReadOnlyList<TypeString>? _generics;
-        protected GenericString(string nameForSnipping, string fullNamePreserved, MethodString? paramOf) : base(nameForSnipping, paramOf)
+        internal List<TypeString> _generics = new();
+        private protected GenericString(string nameForSnipping, string fullNamePreserved, MethodString? paramOf) : base(nameForSnipping, paramOf)
         {
-            _fullname = fullNamePreserved;
+            _fullname = fullNamePreserved;//.Trim();
         }
-        protected static T New<T>(T genericString) where T : GenericString
+        private protected static T New<T>(T genericString, bool fromLex = false) where T : GenericString
         {
-            genericString.SnipGenericsOff();
+            if (!fromLex && CheckForGenericArguments(genericString.String))
+            {
+                genericString.LexGenerics();
+                genericString._fullname = genericString.PrintGenericArgs();
+            }
             return genericString;
+        }
+
+        static bool CheckForGenericArguments(string name)
+        {
+            bool genericStart = false;
+            for (int i = 0; i < name.Length; i++)
+            {
+                char c = name[i];
+                if (c == '<') genericStart = true;
+                else if (c == '>') return genericStart ? true : throw new FormatException($"Invalid generic argument format. {name}");
+            }
+            return genericStart ? throw new FormatException($"Invalid generic argument format. {name}") : false;
         }
         public Type[] ConvertGenericArguments(IReadOnlyDictionary<string, Type>? dic = null)
         {
-            if (_generics != null)
+            if (_generics.Count > 0)
             {
                 Type[] genericArgs = new Type[_generics.Count];
                 for (int i = 0; i < genericArgs.Length; i++)
@@ -137,51 +203,88 @@ namespace XQuinn.CodeAnalysis.AST
             }
             throw new ArgumentException($"No generic parameters were provided to {GetType().Name} with name value {String} ");
         }
-
-        void SnipGenericsOff()
+        void LexGenerics()
         {
-            const string regex = "^\\s*[^<]*<(?<inner>(?:[^<>]+|<(?<depth>)|>(?<-depth>))*)(?(depth)(?!))>\\s*$"; //"^[^<]*<(.+)>$";
-            var matches = Regex.Match(String, regex);
-            if (matches.Success)
-            {
-                string[] args = matches.Groups[1].Value.Split(','
-#if NET6_0_OR_GREATER
-                , StringSplitOptions.TrimEntries
-#endif
-                );
-                _generics = args.Select(x => TypeString.New(x, null)).ToList().AsReadOnly();
-                // int genericEnd = String.IndexOf('>');
-                //for (int x = genericEnd + 1; x < String.Length; x++) if (String[x] != ' ') throw new LexicalException($"Detected trailing characters after generic input. ", String);
-                String = String.Remove(String.IndexOf('<'));
-                if (_fullname.Any(x => x == ' '))
+            GenericString currentGeneric = this;
+            StringBuilder sb = new();
+            bool finishedReadingLeadName = false;
+            for (int i = 0; i < _fullname.Length; i++) //this ones a lot simpler doesnt have smart whitespace skipping and doesnt actually check for context like
+            {                                           //whether or not its reading a proper identifier and not 83528474
+                char c = _fullname[i];                  //kinda busted it out quickly so it will allow things that the invocationlexer would throw for
+                if (c == ' ') continue;                 //like collecting < s t r i n g> into string or allowing impossible names to lex
+                if (c == '<')
                 {
-                    StringBuilder sb = new();
-                    sb.Append(String);
-                    sb.Append('<'); //we do it like this because of potential whitespace variations - method<string,  int> or method<string,int> would be treated differently if not
-                    for (int z = 0; z < _generics.Count; z++) { sb.Append(_generics[z].String); if (For.Multiples(_generics.Count, z)) sb.Append(", "); }
-                    sb.Append('>');
-                    _fullname = sb.ToString();
+                    if (finishedReadingLeadName)
+                    {
+                        TypeString tstring = TypeString.New(sb.ToString(), null, true);
+                        sb.Length = 0;
+                        currentGeneric._generics.Add(tstring);
+                        tstring._typeArgOf = currentGeneric;
+                        currentGeneric = tstring;
+                    }
+                    else
+                    {
+                        currentGeneric.String = sb.ToString();
+                        sb.Length = 0;
+                        finishedReadingLeadName = true;
+                    }
                 }
+                else if (c == '>')
+                {
+                    if (sb.Length > 0)
+                    {
+                        string s = sb.ToString();
+                        sb.Length = 0;
+                        if (string.IsNullOrWhiteSpace(s)) continue;
+                        TypeString tstring = TypeString.New(s, null, true);
+                        tstring._typeArgOf = currentGeneric;
+                        currentGeneric._generics.Add(tstring);
+                        if (currentGeneric is MethodString) break;
+                        else
+                        {
+                            TypeString curr = (TypeString)currentGeneric;
+                            if (curr._typeArgOf == null) break;
+                            currentGeneric = curr._typeArgOf;
+                        }
+                    }
+                }
+                else if (c == ',')
+                {
+                    if (sb.Length > 0)
+                    {
+                        string s = sb.ToString();
+                        sb.Length = 0;
+                        if (string.IsNullOrWhiteSpace(s)) continue;
+                        TypeString tstring = TypeString.New(s, null, true);
+                        tstring._typeArgOf = currentGeneric;
+                        currentGeneric._generics.Add(tstring);
+                    }
+                }
+                else sb.Append(c);
             }
-            //             else
-            //             {
-            //                 string[] args = String.Split(','
-            // #if NET6_0_OR_GREATER
-            // , StringSplitOptions.TrimEntries
-            // #endif
-            // );
-            //                 _generics = args.Select(x => TypeString.New(x, null)).ToList().AsReadOnly();
-            //                 int end = String.IndexOf('<');
-            //                 if (end == -1)
-            //                     end = String.IndexOf('>');
-            //                 String = String.Remove(end);
-            //             }
-
         }
+        public override string ToString()
+        {
+            return _fullname;
+        }
+
+        string PrintGenericArgs()
+        {
+            StringBuilder sb = new();
+            sb.Append(String);
+            sb.Append('<');
+            sb.AppendMany(_generics, ", ");
+            sb.Append('>');
+            return sb.ToString();
+        }
+
+
+
+
     }
     public abstract class GenericString<T> : GenericString where T : MemberInfo
     {
-        protected GenericString(string name, string fullname, MethodString? paramOf) : base(name, fullname, paramOf)
+        private protected GenericString(string name, string fullname, MethodString? paramOf) : base(name, fullname, paramOf)
         {
             if (typeof(T) != typeof(Type) && typeof(T) != typeof(MethodInfo)) throw new NotSupportedException($"{typeof(T)}");
         }
@@ -190,18 +293,30 @@ namespace XQuinn.CodeAnalysis.AST
     }
     public sealed class TypeString : GenericString<Type>
     {
+
+        internal GenericString? _typeArgOf; //mostly used for generic lexing, not really necessary to be exposed right now
+        //(kind of like paramOf)
         TypeString(string nameForSnipping, string fullNamePreserved, MethodString? paramOf) : base(nameForSnipping, fullNamePreserved, paramOf)
         {
 
         }
         public override Type ConvertToGeneric(Type genericTypeDef, IReadOnlyDictionary<string, Type>? types = null)
         {
+            //Type t;
             return genericTypeDef.MakeGenericType(ConvertGenericArguments(types));
         }
+        // catch
+        // {
+        //     StringBuilder sb = new();
+        //     sb.AppendMany(_generics, ", ");
+        //     throw;
+        // }
+        // return t;
 
-        public static TypeString New(string name, MethodString? paramOf)
+
+        internal static TypeString New(string name, MethodString? paramOf, bool fromLex = false)
         {
-            return New<TypeString>(new(name.Trim(), name, paramOf));
+            return New<TypeString>(new(name, name, paramOf), fromLex);
         }
 
     }
@@ -212,7 +327,7 @@ namespace XQuinn.CodeAnalysis.AST
         TypeString? _type;
         public readonly IReadOnlyList<ParameterString> Params;
         List<ParameterString> _params = new();
-        public static MethodString New(string name, MethodString? paramOf, TypeString? declaredIn)
+        internal static MethodString New(string name, MethodString? paramOf, TypeString? declaredIn)
         {
             return New<MethodString>(new(name, name, paramOf, declaredIn));
         }
@@ -224,18 +339,57 @@ namespace XQuinn.CodeAnalysis.AST
 
         public override MethodInfo ConvertToGeneric(MethodInfo genericMethodDef, IReadOnlyDictionary<string, Type>? types = null)
         {
+            //MethodInfo m;
             return genericMethodDef.MakeGenericMethod(ConvertGenericArguments(types));
         }
+        //     catch
+        //     {
+        //         StringBuilder sb = new();
+        //         sb.AppendMany(_generics, ", ");
+        //         throw;
+        //     }
+        //     return m;
+        // }
         public void AddParameter(ParameterString param) => _params.Add(param);
+
+        void ParamStringShort(StringBuilder sb)
+        {
+            sb.Append(NameWithGenerics);
+            sb.Append("( ");
+            AppendParams(sb);
+            sb.Append(" )");
+
+        }
+
+        void AppendParams(StringBuilder sb)
+        {
+            StringBuilder sb2 = new();
+            sb.AppendMany(Params, ", ", x =>
+            {
+                if (x is MethodString ms)
+                {
+                    ms.ParamStringShort(sb2);
+                    string s = sb2.ToString();
+                    sb2.Length = 0;
+                    return s;
+                }
+                else return x!.String;
+            });
+
+
+        }
+
 
         public override string ToString()
         {
             StringBuilder sb = new();
-            sb.Append(String);
-            sb.Append($" :: Nested in {ParamOf} :: ");
-            sb.Append($"TypeName {DeclaringType?.String} :: ");
+            sb.Append(NameWithGenerics);
+            sb.Append($" :: Nested in ");
+            ParamOf?.ParamStringShort(sb);
+            sb.Append(" :: ");
+            sb.Append($"TypeName {DeclaringType?.NameWithGenerics} :: ");
             sb.Append("Params: ");
-            for (int i = 0; i < Params.Count; i++) { sb.Append(Params[i].String); if (For.Multiples(Params.Count, i)) sb.Append(", "); }
+            if (Params.Count > 0) AppendParams(sb);
             return sb.ToString();
 
         }

@@ -7,7 +7,6 @@ namespace XQuinn.IO
 
     public sealed class Logger : IDisposable
     {
-
         readonly StringBuilder sb = new();
         public readonly StreamWriter Writer;
 

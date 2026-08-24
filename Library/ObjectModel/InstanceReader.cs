@@ -50,7 +50,7 @@ namespace XQuinn.ObjectModel
 
             public readonly object? Instance;
 
-            public TokenizedObject(ObjectToken token, object? Object)
+            internal TokenizedObject(ObjectToken token, object? Object)
             {
                 this.Token = token;
                 this.Instance = Object;
@@ -91,7 +91,7 @@ namespace XQuinn.ObjectModel
 
         public sealed class ElementObject : TokenizedObject
         {
-            public ElementObject(ObjectToken token, object? Object) : base(token, Object)
+            internal  ElementObject(ObjectToken token, object? Object) : base(token, Object)
             {
             }
         }
@@ -102,7 +102,7 @@ namespace XQuinn.ObjectModel
 
             public readonly Type SourceType; //the type of the instance that the field's value "exists" in (debatable term if the field is private and was declared in a base class)
                                              //that being said SourceType obviously may be different from the field's actual declaring type 
-            public FieldObject(ObjectToken token, FieldInfo field, object Object, Type sourceType) : base(token, Object)
+            internal  FieldObject(ObjectToken token, FieldInfo field, object Object, Type sourceType) : base(token, Object)
             {
                 FieldInfo = field;
                 SourceType = sourceType;

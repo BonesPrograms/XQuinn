@@ -357,8 +357,8 @@ namespace XQuinn.CodeAnalysis
 
         void ValidIdentifier(char value, string invocation, int? i)
         {
-            const string error = "Detected illegal character in identifier.";
-            if (value != '<' && value != '>' && value != ',' && value != '[' && value != ']' && Illegal(value))
+            const string error = "Detected illegal character in identifier.";//&&value!='('
+            if (value != '<' && value != '>' && value != ',' && value != '[' && value != ']' && value != ':' && value != '|' && Illegal(value))
                 throw i == null ? new LexicalException(error, invocation, value, sb) : throw new LexicalException(error, invocation, value, sb, i.Value);
 
         }

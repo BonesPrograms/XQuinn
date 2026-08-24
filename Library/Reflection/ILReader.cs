@@ -17,7 +17,7 @@ using XQuinn.Reflection;
 using XQuinn.Numerics;
 using System.Linq;
 
-namespace XQuinn.Reflection.IL
+namespace XQuinn.Reflection
 {
 
     //Todo: Reading delegates, reading delegate bodies?
@@ -33,7 +33,7 @@ namespace XQuinn.Reflection.IL
     /// </summary>
     public sealed class ILReader
     {
-        public static class OpCodeMap
+        static class OpCodeMap
         {
 
             /// <summary>
@@ -105,7 +105,7 @@ namespace XQuinn.Reflection.IL
             {
 
             }
-            public static ByteCode New(OpCode opcode, object? operand, int offset, object token)
+            internal static ByteCode New(OpCode opcode, object? operand, int offset, object token)
             {
                 ByteCode code = new(operand)
                 {

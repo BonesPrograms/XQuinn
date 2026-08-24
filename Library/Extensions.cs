@@ -3,9 +3,12 @@ using System.Collections.Generic;
 using System;
 using System.Linq;
 using System.Collections;
+using XQuinn.Reflection;
 
 namespace XQuinn.Extensions
 {
+
+
 
     public static class CharExtensions
     {
@@ -43,7 +46,7 @@ namespace XQuinn.Extensions
         {
             string? text = toString?.Invoke(element);
             if (toString == null) text = element?.ToString();
-            if (text != null) sb.Append(text);
+            if (text != null) sb.Append(text); // ?? "null" 
             if (divider != null && For.Multiples(length, i)) sb.Append(divider);
             i++;
         }
@@ -60,45 +63,24 @@ namespace XQuinn.Extensions
 
     public static class TypeExtensions
     {
-#if NET6_0_OR_GREATER
-        public static ReadOnlySpan<char> SnipGenericName(this Type type, bool fullname)
-        {
-            string name = fullname ? type.FullName! : type.Name;
-            return name.AsSpan().Slice(0, name.IndexOf('`'));
-        }
 
-#else
         public static StringBuilder SnipGenericName(this Type type, bool fullname)
         {
             StringBuilder sb = new();
-            string name = fullname? type.FullName : type.Name;
-            foreach(char c in name)
-            {
-                if(c== '`') break;
-                sb.Append(c);
-            }
+            string name = fullname ? type.FullName ?? throw new ArgumentNullException(nameof(fullname), $"Type {type} returned null for fullname.") : type.Name;
+            foreach (char c in name) if (c == '`') break; else sb.Append(c);
             return sb;
         }
-#endif
-
 
     }
 
-    public static class CollectionExtensions
-    {
-        public static void ForEach<T>(this IEnumerable<T> objs, Action<T> action)
-        {
-            foreach (var obj in objs) action(obj);
-        }
-
-    }
-    // #if NET6_0_OR_GREATER
-
-    // public static class ReadOnlySpanCharExtensions
+    // public static class CollectionExtensions
     // {
-    //     public static bool EqualsCaseless(this ReadOnlySpan<char> span, ReadOnlySpan<char> txt) => span.Equals(txt, StringComparison.OrdinalIgnoreCase);
-    // }
-    // #endif
+    //     public static void ForEach<T>(this IEnumerable<T> objs, Action<T> action)
+    //     {
+    //         foreach (var obj in objs) action(obj);
+    //     }
+
     public static class StringExtensions
     {
 

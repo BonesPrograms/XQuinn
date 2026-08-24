@@ -75,7 +75,7 @@ namespace XQuinn.Reflection
             return sb;
         }
 
-        public static StringBuilder MethodToString(MethodInfo mthd, bool parameterNames = false)
+        public static StringBuilder MethodToString(MethodInfo mthd, bool parameterNames = true)
         {
             StringBuilder sb = new();
             sb.Append(mthd.IsStatic ? "static " : "instance ");

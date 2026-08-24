@@ -1,8 +1,8 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-<!-- <TargetFramework>net10.0-windows</TargetFramework>-->
-  <TargetFrameworks>net10.0-windows;net6.0-windows;netstandard2.0</TargetFrameworks>
+<!--  <TargetFramework>net10.0-windows</TargetFramework>-->
+<TargetFrameworks>net10.0-windows;net6.0-windows;netstandard2.0</TargetFrameworks>
  <!--Qud support requires netstandard2.0, bep6 requires net6. net48 is for testing the netstandard2.0 version.-->
  <!--<ImplicitUsings>enable</ImplicitUsings>-->
     <AppendRuntimeIdentifierToOutputPath>true</AppendRuntimeIdentifierToOutputPath>
@@ -12,7 +12,8 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies> 
     <Configurations>Release;IApp;Debug</Configurations>
-        <LangVersion>9.0</LangVersion> 
+    <LangVersion>9.0</LangVersion> 
+   <!--  <LangVersion>11.0</LangVersion> -->
   <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> 
       <NoWarn>$(NoWarn);1591</NoWarn>--> 
   <!--  <TreatWarningsAsErrors>true</TreatWarningsAsErrors>-->
@@ -37,6 +38,7 @@
   <Optimize>true</Optimize>
   <DebugSymbols>false</DebugSymbols>
   <DebugType>none</DebugType>
+ 
 </PropertyGroup>
 
 <PropertyGroup Condition="'$(Configuration)' != 'Release'">
@@ -46,18 +48,21 @@
 
   <PropertyGroup Condition="'$(Configuration)' == 'IApp'">
     <OutputPath>bin\IApp\</OutputPath>
+     <LangVersion>14.0</LangVersion> 
     <DefineConstants>$(DefineConstants);IAPP_BUILD</DefineConstants>
   </PropertyGroup>
 
     <PropertyGroup Condition="'$(Configuration)' == 'Release'">
       <OutputPath>bin\Release\</OutputPath>
       <OutputType>Library</OutputType>
+       <LangVersion>14.0</LangVersion> 
       <DefineConstants>$(DefineConstants);RELEASE_BUILD</DefineConstants>
   </PropertyGroup>
 
 
     <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
       <OutputPath>bin\Debug\</OutputPath>
+       <LangVersion>9.0</LangVersion> 
       <DefineConstants>$(DefineConstants);DEBUG_BUILD</DefineConstants>
   </PropertyGroup>
 
