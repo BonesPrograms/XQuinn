@@ -99,7 +99,7 @@ namespace XQuinn.Runtime
 
         string ProcessReturn(object? ret)
         {
-            return (ret is IEnumerable enumerable and not string) ? AppendWithBreak($"Returned: \n{new StringBuilder().AppendMany(enumerable, Environment.NewLine)}") : AppendWithBreak($"Returned: {ret?.ToString()}");
+            return (ret is IEnumerable enumerable and not string) ? AppendWithBreak($"Returned: \n{new StringBuilder().AppendMany(enumerable, Environment.NewLine)}") : AppendWithBreak($"Returned: {ret?.ToString() ?? "null"}");
         }
 
 

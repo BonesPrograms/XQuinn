@@ -2,6 +2,8 @@ Ctrl Shift P and Developer: Reload Window to reload framework after changing tar
 
 Ctrl + , and search analyze to change full project analysis or open file analysis
 
+After deleting bin and obj, you can bring them back using 'dotnet restore'
+
 Okay kinda confusing Ill just show you and explain the bug
 
 I noticed when implementing IEquatable<T>.Equals on a struct, a ... appeared under the struct name and

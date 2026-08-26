@@ -192,7 +192,7 @@ namespace XQuinn.CodeAnalysis
         bool ReadArbitrary(ref int i, string invocation)
         {
             if (Value == Whitespace) SkipWhitespaceTrail(ref i, invocation);
-            else if (Value == MemberAccess)
+            else if (Value == MemberAccess || Value == '<')
             {
                 ReadingIdentifierLead = true;
                 ReadingIdentifier = true;

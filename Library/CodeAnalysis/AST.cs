@@ -120,15 +120,15 @@ namespace XQuinn.CodeAnalysis.AST
         bool ParsePrimitive(Type asType, out ValueType? primitive) //Almost looks like a switch!
         {
             primitive = null;
-            if (asType == typeof(object) || asType == typeof(bool)) { if (bool.TryParse(String, out bool boolean)) primitive = boolean; }
-            if (primitive == null && (asType == typeof(object) || asType == typeof(int))) { if (int.TryParse(String, out int sint32)) primitive = sint32; }
-            if (primitive == null && (asType == typeof(object) || asType == typeof(uint))) { if (uint.TryParse(String, out uint uint32)) primitive = uint32; }
-            if (primitive == null && (asType == typeof(object) || asType == typeof(long))) { if (long.TryParse(String, out long sint64)) primitive = sint64; }
-            if (primitive == null && (asType == typeof(object) || asType == typeof(ulong))) { if (ulong.TryParse(String, out ulong uint64)) primitive = uint64; }
-            if (primitive == null && (asType == typeof(object) || asType == typeof(float))) { if (float.TryParse(String, out float float32)) primitive = float32; }
-            if (primitive == null && (asType == typeof(object) || asType == typeof(double))) { if (double.TryParse(String, out double float64)) primitive = float64; }
-            if (primitive == null && (asType == typeof(object) || asType == typeof(decimal))) { if (decimal.TryParse(String, out decimal dec)) primitive = dec; }
-            if (primitive == null && (asType == typeof(object) || asType == typeof(char))) { if (char.TryParse(String, out char utf16)) primitive = utf16; } //for (object) we check char last because byte sized integers easily convert to char
+            if (asType == typeof(object) || asType == typeof(bool)) { if (bool.TryParse(String, out bool boolean)) primitive = boolean; return true; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(int))) { if (int.TryParse(String, out int sint32)) primitive = sint32; return true; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(uint))) { if (uint.TryParse(String, out uint uint32)) primitive = uint32; return true; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(long))) { if (long.TryParse(String, out long sint64)) primitive = sint64; return true; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(ulong))) { if (ulong.TryParse(String, out ulong uint64)) primitive = uint64; return true; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(float))) { if (float.TryParse(String, out float float32)) primitive = float32; return true; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(double))) { if (double.TryParse(String, out double float64)) primitive = float64; return true; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(decimal))) { if (decimal.TryParse(String, out decimal dec)) primitive = dec; return true; }
+            if (primitive == null && (asType == typeof(object) || asType == typeof(char))) { if (char.TryParse(String, out char utf16)) primitive = utf16; return true; } //for (object) we check char last because byte sized integers easily convert to char
             else if (asType == typeof(nint)) { if (NIntNet20.TryParse(String, out nint nativesint)) primitive = nativesint; }
             else if (asType == typeof(nuint)) { if (NUIntNet20.TryParse(String, out nuint nativeuint)) primitive = nativeuint; }
             else if (asType == typeof(byte)) { if (byte.TryParse(String, out byte uint8)) primitive = uint8; }
@@ -138,11 +138,11 @@ namespace XQuinn.CodeAnalysis.AST
             return primitive != null;
         }
 
-       //// bool TryParseChar(out char utf16)
-       // {
-            //if (String.Length != 3) throw new FormatException($"Invalid char format. Input: {String}. Must be surrounzed by apostrophes, must be a single char.");
-          //  return char.TryParse(String[2].ToString(), out utf16);
-       //}
+        //// bool TryParseChar(out char utf16)
+        // {
+        //if (String.Length != 3) throw new FormatException($"Invalid char format. Input: {String}. Must be surrounzed by apostrophes, must be a single char.");
+        //  return char.TryParse(String[2].ToString(), out utf16);
+        //}
 
     }
 
@@ -168,10 +168,13 @@ namespace XQuinn.CodeAnalysis.AST
         }
         private protected static T New<T>(T genericString, bool fromLex = false) where T : GenericString
         {
-            if (!fromLex && CheckForGenericArguments(genericString.String))
+            if (!fromLex)
             {
-                genericString.LexGenerics();
-                genericString._fullname = genericString.PrintGenericArgs();
+                if (CheckForGenericArguments(genericString.String))
+                {
+                    genericString.LexGenerics();
+                    genericString._fullname = genericString.PrintGenericArgs();
+                }
             }
             return genericString;
         }

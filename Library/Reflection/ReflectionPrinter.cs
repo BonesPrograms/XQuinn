@@ -67,7 +67,7 @@ namespace XQuinn.Reflection
     /// viewing the type directly in code, it lacks deeper metadata information).
     /// </summary>
 
-    public sealed class ReflectionPrinter : MetadataPrinter
+    public struct ReflectionPrinter : MetadataPrinter
     {
 
 

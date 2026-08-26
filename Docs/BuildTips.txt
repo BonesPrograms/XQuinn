@@ -16,7 +16,7 @@ self contained false for framework dependent, self contained true for totally se
 
 
 
-
+After deleting bin and obj, you can bring them back using 'dotnet restore'
 
 
 Conditional Referencing for Packages:

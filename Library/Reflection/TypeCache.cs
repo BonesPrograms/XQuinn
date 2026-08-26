@@ -28,45 +28,6 @@ namespace XQuinn.Reflection
     }
     public static class TypeCache
     {
-        /// <summary>
-        /// Helper class for RuntimeNavigator. Allows you to generate cached array types, or create new arrays generically without needing to use Array or Activator methods.
-        /// Not really intended or necessary for use at compile
-        /// </summary>
-        static class ArrayGen
-        {
-            public static T[] New<T>(params T[] arr) => arr;
-
-            public static T[] New<T>(uint i) => new T[i];
-
-            // public static string GenerateCachedArray<T>(bool fullname)
-            // {
-            //     return GenerateCachedArray(typeof(T[]), fullname);
-            // }
-            //Just put your own name for now
-            // public static string GenerateCachedArray(Type t, bool fullname)
-            // {
-            //     Type array = t.IsArray ? t : t.MakeArrayType();
-            //     string name;
-            //     if (t.IsArray)
-            //     {
-            //         Type underlying = t.GetElementType()!;
-            //         name = $"{TypeCache.GetCompatibleName(underlying, fullname)}[]";
-            //     }
-            //     else name = $"{TypeCache.GetCompatibleName(t, fullname)}[]";
-            //     TypeCache.CacheType(name, array);
-            //     return name;
-            // }
-            public static bool GenerateCachedArray<T>(string name)
-            {
-                return GenerateCachedArray(typeof(T[]), name);
-            }
-            public static bool GenerateCachedArray(Type t, string name)
-            {
-                Type array = t.IsArray ? t : t.MakeArrayType();
-                return TypeCache.CacheType(name, array);
-
-            }
-        }
 
         public static readonly IReadOnlyDictionary<string, Type> GlobalCache;
         public static ICollection<string> Keys => _registry.Keys;
@@ -117,10 +78,10 @@ namespace XQuinn.Reflection
 
             ["typecache"] = typeof(TypeCache),
             ["runtimenavigator"] = typeof(RuntimeNavigator),
-            ["reflectionprinter"] = typeof(ReflectionPrinter), ///XQuinn types that I consider useful for navigation
+            //   ["reflectionprinter"] = typeof(ReflectionPrinter), ///XQuinn types that I consider useful for navigation
             ["arraygen"] = typeof(ArrayGen),
             ["instancereader"] = typeof(InstanceReader),
-            ["logger"] = typeof(Logger),
+            //   ["logger"] = typeof(Logger),
             ["typebook"] = typeof(TypeBook),
             ["sbE"] = typeof(StringBuilderExtensions), ///AppendMany is particular useful in tandem with RuntimeNavigator's stringbuilder variable for printing collections at runtime
 #if NET6_0_OR_GREATER                                   ///Assuming the elements themselves have a decent ToString() overload...
@@ -158,29 +119,20 @@ namespace XQuinn.Reflection
             ["keyvaluepair"] = typeof(KeyValuePair<,>),
 
 
-            ["math"] = typeof(Math), ///Extras
             ["enumnet20"] = typeof(EnumNet20),
             ["nuintnet20"] = typeof(NUIntNet20),
             ["nintnet20"] = typeof(NIntNet20)
 
         };
 
-        static readonly string[] _badKeys = new string[] { "this", "null", "base", "default", "sb" }; ///sb is a reserved variable name for RuntimeNavigator's local stringbuilder variable
 
         static TypeCache()
         {
             GlobalCache = new ReadOnlyDictionary<string, Type>(_registry);
-            string[] keywordTypes = new[] { "object", "string", "bool", "byte", "sbyte", "char", "int", "uint", "short", "ushort", "ulong", "long", "float", "decimal", "double", "nint", "nuint" };
-            foreach (string keyword in keywordTypes) _registry[$"{keyword}[]"] = _registry[keyword].MakeArrayType();
-            // Assembly assembly = Assembly.GetAssembly(typeof(ValueTuple)) ?? throw new InvalidOperationException();
-            // foreach (Type type in assembly.GetTypes()) /// Generate cache types for all possible value tuples
-            // {
-            //     if (type.Name.StartsWith("ValueTuple"))
-            //     {
-            //         int args = type.GetGenericArguments().Length;
-            //         _registry[args == 0 ? "tuple" : $"tuple{args}"] = type;
-            //     }
-            // }
+            string[] keywordTypes = new[]
+             { "object", "string", "bool", "byte", "sbyte", "char", "int", "uint", "short", "ushort", "ulong", "long", "float", "decimal", "double", "nint", "nuint" };
+            foreach (string keyword in keywordTypes)
+                _registry[$"{keyword}[]"] = _registry[keyword].MakeArrayType();
         }
 
         public static bool Contains(string name) => _registry.ContainsKey(name);
@@ -220,7 +172,8 @@ namespace XQuinn.Reflection
         //its a quicker way for you to use the typecache with your keys, but it is otherwise not a valid way to interact at compile time
         static Type Of(string x) => GetTypeOrThrow(x);
 
-        static T New<T>() where T : new() => new();
+        static T New<T>() where T : new() => new(); //This is useful for instantiating certain kinds of structs, who's constructors are not accessible due
+        //to not being defined at all.
 
         //These methods allow you to cache new types at runtime using the navigator with ease.
         static bool LateCache<T>(string targetTypeName, string keyForCaching)
@@ -244,27 +197,37 @@ namespace XQuinn.Reflection
         //Not sure if this should be a thing... its mostly so that keys can work with invocationlexer and callinterp. typecache was pretty much made *for* callinterp so not a problem imo
         public static void ThrowIfBadKey(string key)
         {
-            if (string.IsNullOrWhiteSpace(key)) throw new ArgumentException("Empty key.");
-            if (key[0].IsDigit()) throw new ArgumentException($"Keys cannot begin with a digit. Bad Key: {key}");
-            if (key[0] == '.') throw new ArgumentException($"Keys cannot begin with a period. Bad Key{key}");
-            for (int i = 0; i < _badKeys.Length; i++) if (key.EqualsCaseless(_badKeys[i])) throw new ArgumentException($"This key is restricted and cannot be registered. Bad Key {key}.");
+            if (string.IsNullOrWhiteSpace(key))
+                throw new ArgumentException("Empty key.");
+            if (key[0].IsDigit())
+                throw new ArgumentException($"Keys cannot begin with a digit. Bad Key: {key}");
+            if (key[0] == '.')
+                throw new ArgumentException($"Keys cannot begin with a period. Bad Key{key}");
             bool accessor = false;
             int? skip = null;
-            if (key.Length > 2)
+            if (key.Length >= 2)
             {
-                int beforeFinalIndex = key.Length - 2;
-                int finalIndex = key.Length - 1;
-                (char beforeFinal, char final) last = (key[beforeFinalIndex], key[finalIndex]);
-                skip = last == ('[', ']') ? beforeFinalIndex : null;
+                if (key == "[]" || key.EqualsCaseless("base") || key.EqualsCaseless("this"))
+                    throw new ArgumentException($"This key is restricted and cannot be registered. Bad Key {key}.");
+                if (key.Length >= 3)
+                {
+                    int beforeFinalIndex = key.Length - 2;
+                    int finalIndex = key.Length - 1;
+                    (char beforeFinal, char final) last = (key[beforeFinalIndex], key[finalIndex]);
+                    skip = last == ('[', ']') ? beforeFinalIndex : null;
+                }
             }
             for (int i = 0; i < key.Length; i++)
             {
-                if (skip == i) break;
+                if (skip == i)
+                    break;
                 char value = key[i];
                 if (!value.IsDigit() && !value.IsLetter() && value != '_')
                 {
-                    if (!accessor && value == '.') accessor = true;
-                    else throw new ArgumentException($"Keys can only consist of digits, letters, underscores, [] array brackets at the end, or single periods between names. Bad Key {key}. If you are having trouble caching generics, use TypeExtensions.SnipGenericName.");
+                    if (!accessor && value == '.')
+                        accessor = true;
+                    else
+                        throw new ArgumentException($"Keys can only consist of digits, letters, underscores, [] array brackets at the end, or single periods between names. Bad Key {key}. If you are having trouble caching generics, use TypeExtensions.SnipGenericName.");
                 }
                 else if (accessor) accessor = false;
 
@@ -274,13 +237,15 @@ namespace XQuinn.Reflection
 
         public static void CacheTypes(IEnumerable<KeyValuePair<string, Type>> book)
         {
-            foreach (var pair in book) CacheType(pair.Key, pair.Value);
+            foreach (var pair in book)
+                CacheType(pair.Key, pair.Value);
         }
 
         static bool CheckDuplicateOrCached(string Key, Type Value)
         {
-            if (TryGetType(Key, out Type? cachedtype)) return Value == cachedtype ? true : throw new DuplicateKeyException(cachedtype!, Value, Key);
-            else return false;
+            if (TryGetType(Key, out Type? cachedtype))
+                return Value == cachedtype ? true : throw new DuplicateKeyException(cachedtype!, Value, Key);
+            return false;
         }
         /// <summary>
         /// Make a nested or generic name compatible with the cache. 
@@ -291,24 +256,89 @@ namespace XQuinn.Reflection
         /// <returns></returns>
         public static string GetCompatibleName(Type type, bool fullname)
         {
-            if (type.IsNested)
-            {
-                if (type.IsGenericType)
-                {
-                    StringBuilder ret = type.SnipGenericName(fullname).Replace('+', '.');
-                    if (type.IsGenericTypeDefinition)
-                    {
-                        ret.Append('T');
-                        int i = type.GetGenericArguments().Length;
-                        if (i > 0) ret.Append(i);
-                    }
-                    return ret.ToString();
-                }
-                else return fullname ? type.FullName?.Replace('+', '.') ?? throw new ArgumentNullException(nameof(fullname), $"Type {type} returned null for fullname.") : type.Name.Replace('+', '.');
-            }
-            else if (type.IsGenericType) return type.SnipGenericName(fullname).ToString();
-            else return fullname ? type.FullName ?? throw new ArgumentNullException(nameof(fullname), $"Type {type} returned null for fullname.") : type.Name;
+            return type.IsNested ? CheckForGenerics(type, fullname, true) : CheckForGenerics(type, fullname, false);
         }
+
+        static string CheckForGenerics(Type type, bool fullname, bool nest)
+        {
+            return type.IsGenericType ? GenericToString(type, fullname, nest) : ReplaceIfNested(type, fullname, nest);
+        }
+
+        static string ReplaceIfNested(Type type, bool fullname, bool nest)
+        {
+            string name = fullname ? type.FullName ?? throw new ArgumentNullException(nameof(fullname), $"Type {type} returned null for fullname.") : type.Name;
+            if (nest)
+                name = name.Replace('+', '.');
+            return name;
+        }
+
+        static string GenericToString(Type type, bool fullname, bool nest)
+        {
+            StringBuilder ret = SnipGenericName(type, fullname);
+            if (nest)
+                ret.Replace('+', '.');
+            if (type.IsGenericTypeDefinition)
+            {
+                ret.Append('T');
+                int i = type.GetGenericArguments().Length;
+                if (i > 0)
+                    ret.Append(i);
+            }
+            return ret.ToString();
+        }
+        static StringBuilder SnipGenericName(Type type, bool fullname)
+        {
+            StringBuilder sb = new();
+            string name = fullname ? type.FullName ?? throw new ArgumentNullException(nameof(fullname), $"Type {type} returned null for fullname.") : type.Name;
+            foreach (char c in name)
+                if (c == '`')
+                    break;
+                else sb.Append(c);
+            return sb;
+        }
+
+        /// <summary>
+        /// Helper class for RuntimeNavigator. Allows you to generate cached array types, or create new arrays generically without needing to use Array or Activator methods.
+        /// Not really intended or necessary for use at compile
+        /// </summary>
+        static class ArrayGen
+        {
+            public static T[] New<T>(params T[] arr) => arr;
+
+            public static T[] New<T>(uint i) => new T[i];
+
+            // public static string GenerateCachedArray<T>(bool fullname)
+            // {
+            //     return GenerateCachedArray(typeof(T[]), fullname);
+            // }
+            //Just put your own name for now
+            // public static string GenerateCachedArray(Type t, bool fullname)
+            // {
+            //     Type array = t.IsArray ? t : t.MakeArrayType();
+            //     string name;
+            //     if (t.IsArray)
+            //     {
+            //         Type underlying = t.GetElementType()!;
+            //         name = $"{TypeCache.GetCompatibleName(underlying, fullname)}[]";
+            //     }
+            //     else name = $"{TypeCache.GetCompatibleName(t, fullname)}[]";
+            //     TypeCache.CacheType(name, array);
+            //     return name;
+            // }
+            public static bool GenerateCachedArray<T>(string name)
+            {
+                return GenerateCachedArray(typeof(T[]), name);
+            }
+            public static bool GenerateCachedArray(Type t, string name)
+            {
+                Type array = t.IsArray ? t : t.MakeArrayType();
+                return TypeCache.CacheType(name, array);
+
+            }
+        }
+
+
+
 
     }
 }

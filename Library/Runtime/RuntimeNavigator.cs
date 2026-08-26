@@ -38,10 +38,8 @@ namespace XQuinn.Runtime
         /// A dictionary of all stored instances.
         /// </summary>
        // public readonly IReadOnlyDictionary<string, Variable> _variables;
-        internal readonly Dictionary<string, VariableBinding> _variables = new(StringComparer.OrdinalIgnoreCase)
-        {
-            ["sb"] = new("sb", new StringBuilder())
-        };
+        internal readonly Dictionary<string, VariableBinding> _variables = new(StringComparer.OrdinalIgnoreCase);
+
 
         /// <summary>
         /// The currently loaded instance.
@@ -121,7 +119,7 @@ namespace XQuinn.Runtime
                 if (!string.IsNullOrWhiteSpace(command))
                 {
                     string cmd = command.Trim();
-                    invocations.Add($"[Invocation: {cmd} :: Returned: {Interface(cmd)}]");
+                    invocations.Add($"[Invocation: {cmd} :: Returned: {Interface(cmd) ?? "null"}]");
                 }
             }
             return invocations;
@@ -130,7 +128,7 @@ namespace XQuinn.Runtime
 
         public void Clear()
         {
-            VariableBinding sb = _variables["sb"];
+
             _variables.Clear();
             _overloads.Clear();
             _methods.Clear();
@@ -141,7 +139,7 @@ namespace XQuinn.Runtime
             _loadedType = null;
             _loadedMethod = null;
             _loadedParams = null;
-            _variables["sb"] = sb;
+
         }
         #region Interface
         /// <summary>
@@ -476,7 +474,7 @@ namespace XQuinn.Runtime
             return realmethod;
         }
 
-        T? CheckGlobalCache<T>(string key, Type fromType, out bool typeCached, out bool memberCached) where T : MemberInfo
+        static T? CheckGlobalCache<T>(string key, Type fromType, out bool typeCached, out bool memberCached) where T : MemberInfo
         {
             memberCached = false;
             typeCached = false;
@@ -651,7 +649,6 @@ namespace XQuinn.Runtime
             object?[]? parameters = LoadInvocation(invocation);
             try
             {
-
                 if (LoadedMethod is MethodInfo) returned = LoadedMethod!.Invoke(LoadedInstance, parameters);
                 else if (LoadedMethod is ConstructorInfo inf) returned = inf.Invoke(parameters);
             }
@@ -699,13 +696,19 @@ namespace XQuinn.Runtime
 
         string AddViarable(string key)
         {
-            if (key.EqualsCaseless("sb")) throw new ArgumentException("SB variable cannot be removed.");
-            if (LoadedInstance == null) throw new InvalidOperationException("No instance is loaded.");
+            if (LoadedInstance == null)
+                throw new InvalidOperationException("No instance is loaded.");
             TypeCache.ThrowIfBadKey(key);
             Type? typeWithConflictingKey = TypeCache.GetTypeCached(key, LocalCache);
-            if (typeWithConflictingKey != null) throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
-            if (_variables.TryGetValue(key, out VariableBinding? variable)) { if (!ReferenceEquals(LoadedInstance, variable.Object)) throw new ArgumentException("Duplicate keyname detected."); }
-            else _variables[key] = new(key, LoadedInstance);
+            if (typeWithConflictingKey != null)
+                throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
+            if (_variables.TryGetValue(key, out VariableBinding? variable))
+            {
+                if (!ReferenceEquals(LoadedInstance, variable.Object))
+                    throw new ArgumentException("Duplicate keyname detected.");
+                return key;
+            }
+            _variables[key] = new(key, LoadedInstance);
             _variableKey = key;
             return key;
         }

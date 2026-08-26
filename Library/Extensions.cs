@@ -46,7 +46,7 @@ namespace XQuinn.Extensions
         {
             string? text = toString?.Invoke(element);
             if (toString == null) text = element?.ToString();
-            if (text != null) sb.Append(text); // ?? "null" 
+             sb.Append(text ?? "null");
             if (divider != null && For.Multiples(length, i)) sb.Append(divider);
             i++;
         }
@@ -61,18 +61,7 @@ namespace XQuinn.Extensions
         }
     }
 
-    public static class TypeExtensions
-    {
 
-        public static StringBuilder SnipGenericName(this Type type, bool fullname)
-        {
-            StringBuilder sb = new();
-            string name = fullname ? type.FullName ?? throw new ArgumentNullException(nameof(fullname), $"Type {type} returned null for fullname.") : type.Name;
-            foreach (char c in name) if (c == '`') break; else sb.Append(c);
-            return sb;
-        }
-
-    }
 
     // public static class CollectionExtensions
     // {

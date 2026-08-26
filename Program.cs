@@ -52,25 +52,32 @@ namespace _xquinn_prgrm
 
 namespace XQ
 {
+
+    public class Generic<T>
+    {
+        
+    }
     public class Class
     {
 
-        public static Class Method(Class c)
+
+        public static string str(string s) => s;
+        public static void Method(Class c)
         {
-            return c;
+            
         }
         public Class()
         {
             
         }
-        Class(int i)
+        public Class(int i)
         {
             
         }
         
-        public static Class New()
+        public static void New()
         {
-            return new();
+            
         }
 
     }
