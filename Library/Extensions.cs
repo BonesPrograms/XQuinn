@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System;
 using System.Linq;
 using System.Collections;
-using XQuinn.Reflection;
+using XQ.Reflection;
 
-namespace XQuinn.Extensions
+namespace XQ.Extensions
 {
 
 
@@ -29,16 +29,27 @@ namespace XQuinn.Extensions
 
         public static StringBuilder AppendMany(this StringBuilder sb, IEnumerable many, string? divider = null, Func<object?, string?>? toString = null)
         {
-            int length = 0; checked { foreach (object? element in many) length++; }
+            int length;
+            if (many is ICollection col)
+                length = col.Count;
+            else
+                checked
+                {
+                    length = 0;
+                    foreach (object? element in many)
+                        length++;
+                }
             int i = 0;
-            foreach (object? element in many) AppendMany<object>(length, ref i, sb, element, divider, toString);
+            foreach (object? element in many)
+                AppendMany<object>(length, ref i, sb, element, divider, toString);
             return sb;
         }
         public static StringBuilder AppendMany<T>(this StringBuilder sb, IEnumerable<T?> many, string? divider = null, Func<T?, string?>? toString = null)
         {
             int length = many.Count();
             int i = 0;
-            foreach (T? element in many) AppendMany<T>(length, ref i, sb, element, divider, toString);
+            foreach (T? element in many)
+                AppendMany<T>(length, ref i, sb, element, divider, toString);
             return sb;
         }
 
@@ -46,18 +57,19 @@ namespace XQuinn.Extensions
         {
             string? text = toString?.Invoke(element);
             if (toString == null) text = element?.ToString();
-             sb.Append(text ?? "null");
+            sb.Append(text ?? "null");
             if (divider != null && For.Multiples(length, i)) sb.Append(divider);
             i++;
         }
         public static void CatchException(this StringBuilder sb, Exception ex)
         {
-            sb.AppendLine(ex.GetType().ToString());
-            sb.AppendLine(ex.Message);
-            sb.AppendLine(ex.StackTrace);
-            sb.AppendLine(ex.Data.ToString());
-            sb.AppendLine(ex.TargetSite?.ToString());
-            sb.AppendLine(ex.Source);
+            sb.AppendLine($"Exception Type: {ex.GetType()}");
+            sb.AppendLine($"Message: {ex.Message}");
+            sb.AppendLine($"Inner Exception: {ex.InnerException?.ToString() ?? "<none>"}");
+            sb.AppendLine($"Stack Trace: {ex.StackTrace}");
+            sb.AppendLine($"Data: {ex.Data}");
+            sb.AppendLine($"Target Site: {ex.TargetSite?.ToString() ?? "<none>"}");
+            sb.AppendLine($"Source: {ex.Source ?? "<none>"}");
         }
     }
 

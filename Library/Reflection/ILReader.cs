@@ -2,8 +2,8 @@
 using System.Reflection.Emit;
 using System.Reflection;
 using System.Buffers.Binary;
-using static XQuinn.Numerics.ByteSizes;
-using XQuinn.IO;
+using static XQ.Numerics.ByteSizes;
+using XQ.IO;
 using System.Collections.ObjectModel;
 using System;
 using System.Collections.Generic;
@@ -11,13 +11,13 @@ using System.IO;
 using HarmonyLib;
 using System.Text;
 using System.Numerics;
-using XQuinn.Extensions;
+using XQ.Extensions;
 using System.ComponentModel;
-using XQuinn.Reflection;
-using XQuinn.Numerics;
+using XQ.Reflection;
+using XQ.Numerics;
 using System.Linq;
 
-namespace XQuinn.Reflection
+namespace XQ.Reflection
 {
 
     //Todo: Reading delegates, reading delegate bodies?
@@ -33,163 +33,10 @@ namespace XQuinn.Reflection
     /// </summary>
     public sealed class ILReader
     {
-        static class OpCodeMap
-        {
 
-            /// <summary>
-            /// A dictionary of opcodes that can be indexed by their short value (OpCode.Value).
-            /// </summary>
-            public static readonly IReadOnlyDictionary<short, OpCode> OpCodes = Map();
-
-            static ReadOnlyDictionary<short, OpCode> Map()
-            {
-                Dictionary<short, OpCode> dic = typeof(OpCodes)
-                .GetFields(BindingFlags.Static | BindingFlags.Public)
-                .Where(x => x.FieldType == typeof(OpCode))
-                .Select(x => (OpCode)x.GetValue(null)!).ToDictionary(x => x.Value, v => v);
-                return new ReadOnlyDictionary<short, OpCode>(dic);
-            }
-
-        }
-        /// <summary>
-        /// Readable IL instruction.
-        /// </summary>
-        public sealed class ByteCode : MetadataPrinter
-        {
-#if NET6_0_OR_GREATER
-#pragma warning disable CA2211 // Non-constant fields should not be visible
-            public static bool ShowOpCodeBytes = false;
-            public static bool ShowOperandBytes = false;
-#endif
-            public static bool ShowOperandType = false;
-
-#pragma warning restore CA2211 // Non-constant fields should not be visible
-
-            int Offset; //this is kind of fucking useless to end users right now, since this isnt really part of some sort of reflection.emit system. emit.label?
-            public OpCode OpCode => _opcode;
-            public object? Operand => Object;
-            public int? Token => _token;
-#if NET6_0_OR_GREATER
-            public IReadOnlyList<byte>? OperandBytes => _bytesreadonly;
-#endif
-            public bool HasOperand => _hasoperand; //this does not mean that OperandBytes is not null, it just means this opcode has an operand - if bytes are null, this implies a single byte operand                                                                         //or a local variable / paramete
-            public ByteCode? LastInstruction
-            {
-                get => _lastInstruction;
-                internal set
-                {
-                    _lastInstruction ??= value;
-                }
-            }
-
-            public ByteCode? NextInstruction
-            {
-                get => _nextInstruction;
-                internal set
-                {
-                    _nextInstruction ??= value;
-                }
-            }
-            bool _hasoperand;
-            OpCode _opcode;
-            int? _token; //MetadataToken
-#if NET6_0_OR_GREATER
-            IReadOnlyList<byte>? _bytesreadonly;
-            byte[]? _bytes;
-#endif
-
-            ByteCode? _lastInstruction;
-            ByteCode? _nextInstruction;
-
-            ByteCode(object? operand) : base(operand)
-            {
-
-            }
-            internal static ByteCode New(OpCode opcode, object? operand, int offset, object token)
-            {
-                ByteCode code = new(operand)
-                {
-                    _opcode = opcode,
-                    Offset = offset,
-                    _hasoperand = operand is not null
-                };
-                if (operand is not null and not LocalVariableInfo and not ParameterInfo)
-                {
-                    if (token is int integer && operand is not ValueType) code._token = integer;
-#if NET6_0_OR_GREATER
-                    if (operand is not sbyte)
-                    {
-                        byte[]? bytes = TokenToBytes(token);
-                        if (bytes != null) { code._bytes = bytes.ToArray(); code._bytesreadonly = Array.AsReadOnly(code._bytes); }
-                    }
-#endif
-                }
-                return code;
-            }
-#if NET6_0_OR_GREATER
-            static byte[]? TokenToBytes(object token) => token switch
-            {
-                short int16 => BytesLittleEndian.AsBytes(int16),
-                int int32 => BytesLittleEndian.AsBytes(int32),
-                float float32 => BytesLittleEndian.AsBytes(float32),
-                long int64 => BytesLittleEndian.AsBytes(int64),
-                double float64 => BytesLittleEndian.AsBytes(float64),
-                _ => null
-            };
-#endif
-            protected override StringBuilder ToStringBuilder()
-            {
-                StringBuilder sb = new();
-                sb.Append($"IL_{Offset:x4}: ");
-                sb.Append(OpCode.ToString());
-                if (ShowOperandType) sb.Append($" {OpCode.OperandType}");
-                if (Object is ConstructorInfo) sb.Append(" instance void");
-                sb.Append(' ');
-                OperandToString(sb);
-#if NET6_0_OR_GREATER
-                if (ShowOpCodeBytes || (ShowOperandBytes && (Token != null || _bytesreadonly != null)))
-                    sb.Append(" :: ");
-                if (ShowOpCodeBytes)
-                {
-                    sb.Append("OpCodeBytes: ");
-                    BytesToString(sb, BytesLittleEndian.AsBytes(OpCode.Value));
-                }
-                if (_bytesreadonly != null && ShowOperandBytes)
-                {
-                    if (Token != null) sb.Append($"Token {Token} ");
-                    sb.Append("Bytes ");
-                    BytesToString(sb, _bytes!);
-                }
-#endif
-                return sb;
-            }
-#if NET6_0_OR_GREATER
-            static void BytesToString(StringBuilder sb, byte[] bytes)
-            {
-                for (int i = 0; i < bytes.Length; i++) sb.Append($"{bytes[i]} ");
-            }
-#endif
-            void OperandToString(StringBuilder sb)
-            {
-                if (Operand is LocalVariableInfo lvar) { GenericTypeToString(sb, lvar.LocalType); sb.Append($" {lvar.LocalIndex}"); }
-                else if (Operand is ParameterInfo info) { GenericTypeToString(sb, info.ParameterType); sb.Append($" {info.Name}"); }
-                else if (OpCode.OperandType == OperandType.InlineBrTarget || OpCode.OperandType == OperandType.ShortInlineBrTarget)
-                {
-                    if (Operand == null) throw new InvalidOperationException();
-                    int num = (int)Operand;
-                    sb.Append($"IL_{num:x4}");
-                }
-                else if (Object is string) sb.Append($"\"{Object}\"");
-                else sb.Append(base.ToStringBuilder());
-            }
-        }
-        public IReadOnlyList<byte> MSIL => _msil;
-        public IReadOnlyList<LocalVariableInfo> Locals => _locals;
-        public IReadOnlyList<ParameterInfo> Params => _params;
-        IReadOnlyList<byte> _msil = null!;
-        IReadOnlyList<LocalVariableInfo> _locals = null!;
-        IReadOnlyList<ParameterInfo> _params = null!;
-        byte[] _il = null!;
+        readonly IList<LocalVariableInfo> Locals;
+        readonly ParameterInfo[] Params;
+        readonly byte[] IL;
         readonly Module Module;
         readonly MethodInfo Method;
 
@@ -197,40 +44,26 @@ namespace XQuinn.Reflection
         /// Some opcodes are 2 bytes long, they will always start with a "prefix" byte.
         /// </summary>
         const byte PrefixBit = 0xFE;
-        Type[]? GenericMethodArgs;
-        Type[]? GenericTypeArgs;
-        ByteCode? LastInstruction;
+        readonly Type[]? GenericMethodArgs;
+        readonly Type[]? GenericTypeArgs;
         ILReader(MethodInfo method)
-        {
-            Method = method;
-            Module = method.Module;
-        }
-
-        public static List<ByteCode> GetIL(MethodInfo method)
-        {
-            return New(method).GetIL();
-        }
-        public static void PrintIL(MethodInfo method, string outputFilePath, bool makeFileIfNotFound)
-        {
-            New(method).PrintIL(outputFilePath, makeFileIfNotFound);
-        }
-
-        public static ILReader New(MethodInfo method)
         {
             if (Harmony.GetPatchInfo(method) != null)
                 throw new NotSupportedException($"{method} in {method.DeclaringType} has been patched by harmony and it's actual behavior cannot properly be represented by ILReader.");
             MethodBody body = method.GetMethodBody() ?? throw new ArgumentException("Method body is null.");
-            byte[] il = body.GetILAsByteArray() ?? throw new ArgumentException("Byte array is null.");
-            return new(method)
-            {
-                _il = il,
-                _msil = Array.AsReadOnly(il),
-                _locals = new ReadOnlyCollection<LocalVariableInfo>(body.LocalVariables),
-                _params = Array.AsReadOnly(method.GetParameters()),
-                GenericMethodArgs = method.GetGenericArguments(),
-                GenericTypeArgs = method.DeclaringType?.GetGenericArguments()
-            };
+            IL = body.GetILAsByteArray() ?? throw new ArgumentException("Byte array is null.");
+            Method = method;
+            Module = method.Module;
+            Locals = body.LocalVariables;
+            Params = method.GetParameters();
+            GenericMethodArgs = method.GetGenericArguments();
+            GenericTypeArgs = method.DeclaringType?.GetGenericArguments();
         }
+        public static void PrintIL(MethodInfo method, string outputFilePath, bool makeFileIfNotFound)
+        {
+            new ILReader(method).PrintIL(outputFilePath, makeFileIfNotFound);
+        }
+
 
         // public string ReadIL()
         // {
@@ -245,10 +78,11 @@ namespace XQuinn.Reflection
         {
             List<ByteCode> codes = GetIL();
             if (makeFileIfNotFound)
-                XQuinn.IO.Logger.SafetyCheck(outputFilePath);
+                XQ.IO.Logger.SafetyCheck(outputFilePath);
             using StreamWriter writer = new(outputFilePath);
-            writer.WriteLine($"method");
-            writer.WriteLine("	" + MetadataPrinter.MethodToString(Method, true)); //,maybe should edit the stringbuilder to slip in parameter names
+            writer.WriteLine("method");
+            StringBuilder sb = new();
+            writer.WriteLine("	" + MetadataPrinter.MethodToString(sb, Method, true)); //,maybe should edit the stringbuilder to slip in parameter names
             writer.WriteLine("");
             //  writer.WriteLine("	.maxstack 1");
             writer.WriteLine("Locals");
@@ -267,11 +101,12 @@ namespace XQuinn.Reflection
         /// Returns a list of readable IL.
         /// </summary>
         /// <returns></returns>
-        public List<ByteCode> GetIL()
+        internal List<ByteCode> GetIL()
         {
             int i = 0;
             List<ByteCode> codes = new();
-            while (i < _il.Length) BytesToIL(codes, ref i);
+            while (i < IL.Length) 
+            BytesToIL(codes, ref i);
             return codes;
         }
 
@@ -281,21 +116,18 @@ namespace XQuinn.Reflection
             int size = OperandSize(code.OperandType);
             object token = GetToken(i, ref size, code.OperandType);
             object? operand = size == x0bit ? null : GetOperand(code, token, i);
-            ByteCode instruction = ByteCode.New(code, operand, i - 1, token);
+            ByteCode instruction = new(code, operand, i - 1, token);
             codes.Add(instruction); //for some reason it is off by 1, you want to shift the offset back by 1 or every label will be off by 1 individually and cumulatively so all labels will be off
             i += size;
-            instruction.LastInstruction = LastInstruction;
-            if (LastInstruction != null) LastInstruction.NextInstruction = instruction;
-            LastInstruction = instruction;
         }
 
         OpCode GetOpCode(ref int i)
         {
             OpCode code;
-            byte indexedbyte = _il[i];
+            byte indexedbyte = IL[i];
             if (indexedbyte == PrefixBit)
             {
-                byte nextbyte = _il[i + 1];
+                byte nextbyte = IL[i + 1];
                 short key = (short)((PrefixBit << 0x08) | nextbyte);
                 code = OpCodeMap.OpCodes[key];
                 i += 2;
@@ -314,16 +146,16 @@ namespace XQuinn.Reflection
             if (size == x0bit)
                 return x0bit; //no operand
             else if (size == x8bit)
-                return _il[i];
+                return IL[i];
             else if (size == x16bit)
-                return BinaryPrimitives.ReadInt16LittleEndian(_il.AsSpan(i, x16bit));
+                return BinaryPrimitives.ReadInt16LittleEndian(IL.AsSpan(i, x16bit));
             else if (size == x32bit)
             {
                 int token;
                 if (type == OperandType.ShortInlineR)
-                    return BinaryPrimitives.ReadSingleLittleEndian(_il.AsSpan(i, x32bit));
+                    return BinaryPrimitives.ReadSingleLittleEndian(IL.AsSpan(i, x32bit));
                 else
-                    token = BinaryPrimitives.ReadInt32LittleEndian(_il.AsSpan(i, x32bit)); ;
+                    token = BinaryPrimitives.ReadInt32LittleEndian(IL.AsSpan(i, x32bit)); ;
                 if (type == OperandType.InlineSwitch)
                     size += token * 4;
                 return token;
@@ -331,8 +163,8 @@ namespace XQuinn.Reflection
             else if (size == x64bit)
             {
                 if (type == OperandType.InlineR)
-                    return BinaryPrimitives.ReadDoubleLittleEndian(_il.AsSpan(i, x64bit));
-                return BinaryPrimitives.ReadInt64LittleEndian(_il.AsSpan(i, x64bit));
+                    return BinaryPrimitives.ReadDoubleLittleEndian(IL.AsSpan(i, x64bit));
+                return BinaryPrimitives.ReadInt64LittleEndian(IL.AsSpan(i, x64bit));
             }
             throw new InvalidOperationException("OperandSize(OperandType) returned an out-of-range value.");
         }
@@ -390,5 +222,91 @@ namespace XQuinn.Reflection
         };
 #pragma warning restore CS8509
     }
+
+        static class OpCodeMap
+        {
+
+            /// <summary>
+            /// A dictionary of opcodes that can be indexed by their short value (OpCode.Value).
+            /// </summary>
+            public static readonly IReadOnlyDictionary<short, OpCode> OpCodes = Map();
+
+            static ReadOnlyDictionary<short, OpCode> Map()
+            {
+                Dictionary<short, OpCode> dic = typeof(OpCodes)
+                .GetFields(BindingFlags.Static | BindingFlags.Public)
+                .Where(x => x.FieldType == typeof(OpCode))
+                .Select(x => (OpCode)x.GetValue(null)!).ToDictionary(x => x.Value, v => v);
+                return new ReadOnlyDictionary<short, OpCode>(dic);
+            }
+
+        }
+        /// <summary>
+        /// Readable IL instruction.
+        /// </summary>
+        internal readonly struct ByteCode
+        {
+
+            public static bool ShowOperandType = false;
+
+            readonly int Offset; //this is kind of fucking useless to end users right now, since this isnt really part of some sort of reflection.emit system. emit.label?
+            public readonly OpCode OpCode;
+            public readonly object? Operand;
+            public readonly int? Token;
+            internal ByteCode(OpCode opcode, object? operand, int offset, object token)
+            {
+                Operand = operand;
+                OpCode = opcode;
+                Offset = offset;
+                Token = null;
+                if (operand is not null and not LocalVariableInfo and not ParameterInfo and not ValueType)
+                {
+                    if (token is int integer)
+                        Token = integer;
+                }
+
+            }
+
+            public readonly override string ToString()
+            {
+                StringBuilder sb = new();
+                sb.Append($"IL_{Offset:x4}: ");
+                sb.Append(OpCode.ToString());
+                if (ShowOperandType)
+                    sb.Append($" {OpCode.OperandType}");
+                if (Operand is ConstructorInfo)
+                    sb.Append(" instance void");
+                sb.Append(' ');
+                if (Operand != null)
+                    OperandToString(sb);
+                return sb.ToString();
+            }
+            readonly void OperandToString(StringBuilder sb)
+            {
+                if (Operand is LocalVariableInfo lvar)
+                {
+                    MetadataPrinter.GenericTypeToString(sb, lvar.LocalType);
+                    sb.Append($" {lvar.LocalIndex}");
+                }
+                else if (Operand is ParameterInfo info)
+                {
+                    MetadataPrinter.GenericTypeToString(sb, info.ParameterType);
+                    sb.Append($" {info.Name}");
+                }
+                else if (OpCode.OperandType == OperandType.InlineBrTarget || OpCode.OperandType == OperandType.ShortInlineBrTarget)
+                {
+                    if (Operand == null)
+                        throw new InvalidOperationException();
+                    int num = (int)Operand;
+                    sb.Append($"IL_{num:x4}");
+                }
+                else if (Operand is string)
+                    sb.Append($"\"{Operand}\"");
+                else if (Operand is MemberInfo inf)
+                    MetadataPrinter.BuildPrint(sb, inf!);
+                else
+                    sb.Append($"{Operand?.ToString()}");
+            }
+        }
 }
 #endif

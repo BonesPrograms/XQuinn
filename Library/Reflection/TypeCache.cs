@@ -4,18 +4,18 @@ using System.Reflection;
 using System;
 using System.Collections.Generic;
 using HarmonyLib;
-using XQuinn.Parsing;
-using XQuinn.CodeAnalysis;
-using XQuinn.Extensions;
+using XQ.Parsing;
+using XQ.CodeAnalysis;
+using XQ.Extensions;
 using System.Text;
 using System.Collections;
-using XQuinn.Runtime;
+using XQ.Runtime;
 using System.Runtime.InteropServices;
-using XQuinn.ObjectModel;
-using XQuinn.IO;
+using XQ.ObjectModel;
+using XQ.IO;
 
 
-namespace XQuinn.Reflection
+namespace XQ.Reflection
 {
 
     public class DuplicateKeyException : Exception
@@ -73,16 +73,20 @@ namespace XQuinn.Reflection
             ["nuint"] = typeof(nuint),
 
             ["enum"] = typeof(Enum),
-            ["tuple"] = typeof(ValueTuple),//for instantiating value tuples
+            ["tuple"] = typeof(ValueTuple),
+            ["bindingflags"] = typeof(BindingFlags),
+
+            ["stringbuilder"] = typeof(StringBuilder),
 
 
             ["typecache"] = typeof(TypeCache),
-            ["runtimenavigator"] = typeof(RuntimeNavigator),
+            ["rtnavig"] = typeof(Navigator),
             //   ["reflectionprinter"] = typeof(ReflectionPrinter), ///XQuinn types that I consider useful for navigation
             ["arraygen"] = typeof(ArrayGen),
             ["instancereader"] = typeof(InstanceReader),
+            ["tchelpers"] = typeof(CacheHelpers),
             //   ["logger"] = typeof(Logger),
-            ["typebook"] = typeof(TypeBook),
+            //["typebook"] = typeof(TypeBook),
             ["sbE"] = typeof(StringBuilderExtensions), ///AppendMany is particular useful in tandem with RuntimeNavigator's stringbuilder variable for printing collections at runtime
 #if NET6_0_OR_GREATER                                   ///Assuming the elements themselves have a decent ToString() overload...
             ["ilreader"] = typeof(ILReader),
@@ -91,9 +95,10 @@ namespace XQuinn.Reflection
             ["type"] = typeof(Type),
             ["assembly"] = typeof(Assembly),
             ["activator"] = typeof(Activator),
-            ["acesstoolsE"] = typeof(AccessToolsExtensions), ///Reflection based types that are useful for navigation
-            ["accesstools"] = typeof(AccessTools), //Activator is particularly useful due to the lack of constructor support at this time
-                                                   //   ["harmony"] = typeof(Harmony), //Rather not have a dependency rely on a single element
+            ["convert"] = typeof(Convert),
+            // ["acesstoolsE"] = typeof(AccessToolsExtensions), ///Reflection based types that are useful for navigation
+            // ["accesstools"] = typeof(AccessTools), 
+            //   ["harmony"] = typeof(Harmony), //Rather not have a dependency rely on a single element
 
 
             ["environment"] = typeof(Environment),
@@ -118,11 +123,6 @@ namespace XQuinn.Reflection
             ["icollectionT"] = typeof(ICollection<>),
             ["keyvaluepair"] = typeof(KeyValuePair<,>),
 
-
-            ["enumnet20"] = typeof(EnumNet20),
-            ["nuintnet20"] = typeof(NUIntNet20),
-            ["nintnet20"] = typeof(NIntNet20)
-
         };
 
 
@@ -138,15 +138,17 @@ namespace XQuinn.Reflection
         public static bool Contains(string name) => _registry.ContainsKey(name);
         public static bool TryGetType(string name, out Type? cachedtype) => _registry.TryGetValue(name, out cachedtype);
 
-        public static Type? GetTypeCached(string name, IReadOnlyDictionary<string, Type>? book = null)
+        public static Type? GetType(string name, IReadOnlyDictionary<string, Type>? book = null)
         {
-            if (book?.TryGetValue(name, out Type? booktype) ?? false) return booktype;
-            else if (TryGetType(name, out Type? cachedtype)) return cachedtype;
+            if (book?.TryGetValue(name, out Type? booktype) ?? false)
+                return booktype;
+            else if (TryGetType(name, out Type? cachedtype))
+                return cachedtype;
             else return null;
         }
         public static Type GetTypeOrThrow(string name, IReadOnlyDictionary<string, Type>? book = null)
         {
-            return GetTypeCached(name, book) ?? throw new ArgumentException($"Could not find cached type with key {name ?? "key is null"}.");
+            return GetType(name, book) ?? throw new ArgumentException($"Could not find cached type with key {name ?? "key is null"}.");
         }
         /// <summary>
         /// returns false if type is already cached with the same key, true if caching was performed
@@ -156,46 +158,16 @@ namespace XQuinn.Reflection
         /// <returns></returns>
         public static bool CacheType(string key, Type type)
         {
-
             ThrowIfBadKey(key);
-            if (CheckDuplicateOrCached(key, type)) return false;
-            else _registry.TryAdd(key, type);
+            if (CheckDuplicateOrCached(key, type))
+                return false;
+            else
+                _registry.TryAdd(key, type);
             return true;
         }
 
-        public static bool CacheType<T>(string key)
-        {
-            return CacheType(key, typeof(T));
-        }
-        #region Navigator Helpers
-        static Type Of<T>() => typeof(T); //this is specifically for use with navigator, generic args are searched in the typecache so
-        //its a quicker way for you to use the typecache with your keys, but it is otherwise not a valid way to interact at compile time
-        static Type Of(string x) => GetTypeOrThrow(x);
-
-        static T New<T>() where T : new() => new(); //This is useful for instantiating certain kinds of structs, who's constructors are not accessible due
-        //to not being defined at all.
-
-        //These methods allow you to cache new types at runtime using the navigator with ease.
-        static bool LateCache<T>(string targetTypeName, string keyForCaching)
-        {
-            return LateCache(typeof(T).Assembly, targetTypeName, keyForCaching);
-        }
-
-        static bool LateCache(string assemblyName, string targettypeName, string keyForCaching)
-        {
-            Assembly assembly = Assembly.Load(assemblyName);
-            return LateCache(assembly, targettypeName, keyForCaching);
-
-        }
-        static bool LateCache(Assembly assembly, string targetTypeName, string keyForCaching)
-        {
-            Type targetType = assembly.GetType(targetTypeName, false, true) ?? throw new ArgumentException($"No type found in assembly {assembly.FullName} named {targetTypeName}. Requires full name.");
-            return CacheType(keyForCaching, targetType);
-        }
-
-        #endregion
         //Not sure if this should be a thing... its mostly so that keys can work with invocationlexer and callinterp. typecache was pretty much made *for* callinterp so not a problem imo
-        public static void ThrowIfBadKey(string key)
+        internal static void ThrowIfBadKey(string key)
         {
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Empty key.");
@@ -256,40 +228,28 @@ namespace XQuinn.Reflection
         /// <returns></returns>
         public static string GetCompatibleName(Type type, bool fullname)
         {
-            return type.IsNested ? CheckForGenerics(type, fullname, true) : CheckForGenerics(type, fullname, false);
-        }
-
-        static string CheckForGenerics(Type type, bool fullname, bool nest)
-        {
-            return type.IsGenericType ? GenericToString(type, fullname, nest) : ReplaceIfNested(type, fullname, nest);
-        }
-
-        static string ReplaceIfNested(Type type, bool fullname, bool nest)
-        {
             string name = fullname ? type.FullName ?? throw new ArgumentNullException(nameof(fullname), $"Type {type} returned null for fullname.") : type.Name;
-            if (nest)
-                name = name.Replace('+', '.');
-            return name;
+            if (type.IsGenericType)
+                return GenericToString(name, type.GetGenericArguments().Length, type.IsNested);
+            else if (type.IsNested)
+                return name.Replace('+', '.');
+            else
+                return name;
         }
 
-        static string GenericToString(Type type, bool fullname, bool nest)
+        static string GenericToString(string name, int length, bool nested)
         {
-            StringBuilder ret = SnipGenericName(type, fullname);
-            if (nest)
-                ret.Replace('+', '.');
-            if (type.IsGenericTypeDefinition)
-            {
-                ret.Append('T');
-                int i = type.GetGenericArguments().Length;
-                if (i > 0)
-                    ret.Append(i);
-            }
-            return ret.ToString();
+            StringBuilder snippedname = SnipGenericName(name);
+            if (nested)
+                snippedname.Replace('+', '.');
+            snippedname.Append('T');
+            if (length > 0)
+                snippedname.Append(length);
+            return snippedname.ToString();
         }
-        static StringBuilder SnipGenericName(Type type, bool fullname)
+        static StringBuilder SnipGenericName(string name)
         {
             StringBuilder sb = new();
-            string name = fullname ? type.FullName ?? throw new ArgumentNullException(nameof(fullname), $"Type {type} returned null for fullname.") : type.Name;
             foreach (char c in name)
                 if (c == '`')
                     break;
@@ -301,11 +261,40 @@ namespace XQuinn.Reflection
         /// Helper class for RuntimeNavigator. Allows you to generate cached array types, or create new arrays generically without needing to use Array or Activator methods.
         /// Not really intended or necessary for use at compile
         /// </summary>
+        /// 
+        static class CacheHelpers
+        {
+
+            static string NewString(string x )=> x;
+            static Type Of(string x) => GetTypeOrThrow(x);
+        
+            static T New<T>() where T : new() => new(); //This is useful for instantiating certain kinds of structs, who's constructors are not accessible due
+                                                        //to not being defined at all.
+
+            //These methods allow you to cache new types at runtime using the navigator with ease.
+            static bool LateCacheByType(string cachedTypeName, string targetTypeName, string keyForCaching)
+            {
+                return LateCache(TypeCache.GetTypeOrThrow(cachedTypeName).Assembly, targetTypeName, keyForCaching);
+            }
+
+            static bool LateCacheByAssembly(string assemblyName, string targettypeName, string keyForCaching)
+            {
+                Assembly assembly = Assembly.Load(assemblyName);
+                return LateCache(assembly, targettypeName, keyForCaching);
+
+            }
+            static bool LateCache(Assembly assembly, string targetTypeName, string keyForCaching)
+            {
+                Type targetType = assembly.GetType(targetTypeName, false, true) ?? throw new ArgumentException($"No type found in assembly {assembly.FullName} named {targetTypeName}. Requires full name.");
+                return CacheType(keyForCaching, targetType);
+            }
+        }
         static class ArrayGen
         {
+
             public static T[] New<T>(params T[] arr) => arr;
 
-            public static T[] New<T>(uint i) => new T[i];
+            public static T[] New<T>(int i) => new T[i];
 
             // public static string GenerateCachedArray<T>(bool fullname)
             // {

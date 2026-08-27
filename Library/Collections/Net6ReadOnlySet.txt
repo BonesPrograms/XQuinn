@@ -2,7 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System;
 #if NET6_0_OR_GREATER
-namespace XQuinn.Collections
+namespace XQ.Collections
 {
 
     //Because Net6 has an IReadOnlySet interface, and not a concrete class to actually wrap with.

@@ -3,7 +3,7 @@ using System.Text;
 using HarmonyLib;
 using System;
 
-namespace XQuinn.Reflection
+namespace XQ.Reflection
 {
 
 
@@ -12,50 +12,36 @@ namespace XQuinn.Reflection
     /// Base wrapper class with robust ToString helpers for metadata objects.
     /// </summary>
 
-    public abstract class MetadataPrinter
+    internal static class MetadataPrinter
     {
 
-        //I may add an option later for displaying namespaces on type names. For now we do not to improve readability.
-        protected readonly object? Object;
-        protected MetadataPrinter(object? obj)
+        public static StringBuilder BuildPrint(StringBuilder sb, MemberInfo Object)
         {
-            Object = obj;
+            if (Object is MethodInfo mthd)
+                MethodToString(sb, mthd);
+            else if (Object is ConstructorInfo ctor)
+                ConstructorToString(sb, ctor);
+            else if (Object is Type t)
+                TypeToString(sb, t);
+            else
+                MemberToString(sb, Object);
+            return sb;
         }
 
-        /// <summary>
-        /// Virtual tostring stringbuilder for inheritors.
-        /// </summary>
-        /// <returns></returns>
-        protected virtual StringBuilder ToStringBuilder() => Object switch
+        static StringBuilder MemberToString(StringBuilder sb, MemberInfo member)
         {
-            MethodInfo => MethodToString((MethodInfo)Object),
-            ConstructorInfo => ConstructorToString((ConstructorInfo)Object),
-            FieldInfo or PropertyInfo or EventInfo => MemberToString((MemberInfo)Object),
-            Type => TypeToString((Type)Object),
-            _ => new StringBuilder(Object?.ToString() ?? "")
-        };
-
-
-        public override sealed string ToString() //inheritors should not invoke tostring in their tostringbuilder override otherwise it will obviously create duplicate stringbuilders
-        {
-            return ToStringBuilder().ToString();
-        }
-        static StringBuilder MemberToString(MemberInfo member)
-        {
-            StringBuilder sb = new();
             sb.Append(member.MemberType.ToString());
             sb.Append(' ');
             GenericTypeToString(sb, member.DeclaringType);
             sb.Append("::");
             GenericTypeToString(sb, member.GetUnderlyingType());
             sb.Append(' ');
-            sb.Append(FixGenericString(member.Name));
+            FixGenericString(sb, member.Name);
             return sb;
         }
 
-        static StringBuilder TypeToString(Type type)
+        public static StringBuilder TypeToString(StringBuilder sb, Type type)
         {
-            StringBuilder sb = new();
             if (typeof(Delegate).IsAssignableFrom(type)) sb.Append("delegate");
             else if (type.IsEnum) sb.Append("enum");
             else if (type.IsArray) sb.Append("array");
@@ -67,17 +53,15 @@ namespace XQuinn.Reflection
             GenericTypeToString(sb, type);
             return sb;
         }
-        static StringBuilder ConstructorToString(ConstructorInfo ctor)
+        static StringBuilder ConstructorToString(StringBuilder sb, ConstructorInfo ctor)
         {
-            StringBuilder sb = new();
             if (ctor.DeclaringType != null) GenericTypeToString(sb, ctor.DeclaringType);
             sb.Append($"::.ctor{ParamsToString(ctor.GetParameters())}");
             return sb;
         }
 
-        public static StringBuilder MethodToString(MethodInfo mthd, bool parameterNames = true)
+        public static StringBuilder MethodToString(StringBuilder sb, MethodInfo mthd, bool parameterNames = true)
         {
-            StringBuilder sb = new();
             sb.Append(mthd.IsStatic ? "static " : "instance ");
             GetReturnString(sb, mthd);
             sb.Append(' ');
@@ -127,15 +111,18 @@ namespace XQuinn.Reflection
         public static void GenericTypeToString(StringBuilder sb, Type? type)
         {
             if (type == null) return;
-            sb.Append(FixGenericString(type.Name)); //adds name string here
+            FixGenericString(sb, type.Name);
             AddGenericArguments(sb, type.GetGenericArguments());
         }
-        
 
-        internal static string FixGenericString(string strng)
+
+        internal static void FixGenericString(StringBuilder sb, string strng)
         {
-            if (strng.Length >= 2 && strng[strng.Length - 2] == '`') strng = strng.Substring(0, strng.Length - 2);
-            return strng;
+            foreach (char c in strng)
+                if (c == '`')
+                    break;
+                else
+                    sb.Append(c);
         }
 
         internal static void AddGenericArguments(StringBuilder sb, Type[]? genericargs)
@@ -145,7 +132,7 @@ namespace XQuinn.Reflection
                 sb.Append('<');
                 for (int i = 0; i < genericargs.Length; i++)
                 {
-                    sb.Append(FixGenericString(genericargs[i].Name));
+                    FixGenericString(sb, genericargs[i].Name);
                     if (For.Multiples(genericargs.Length, i)) sb.Append(", ");
                 }
                 sb.Append('>');

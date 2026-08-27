@@ -1,7 +1,7 @@
 using System.Reflection;
-using XQuinn.Reflection;
-using XQuinn.Extensions;
-using static XQuinn.Reflection.MemberGroup;
+using XQ.Reflection;
+using XQ.Extensions;
+using static XQ.Reflection.MemberGroup;
 using System.Collections.Concurrent;
 using Mono.Reflection;
 using System.Collections.ObjectModel;
@@ -11,7 +11,7 @@ using System.Collections;
 using System.Text.RegularExpressions;
 using System.CodeDom.Compiler;
 using System.Linq;
-namespace XQuinn.Reflection
+namespace XQ.Reflection
 {
 
 
@@ -64,10 +64,13 @@ namespace XQuinn.Reflection
 #endif
                 )
                 {
-                    if (excludeFileScoped && IsFileType(type)) continue;
+                    if (excludeFileScoped && IsFileType(type))
+                        continue;
                     string? key = toString(type);
-                    if (key == null) continue;
-                    if (book.TryGetValue(key, out Type? cached)) throw new DuplicateKeyException(cached, type, key);
+                    if (key == null)
+                        continue;
+                    if (book.TryGetValue(key, out Type? cached))
+                        throw new DuplicateKeyException(cached, type, key);
                     book[key] = type;
                 }
             }
@@ -102,7 +105,8 @@ namespace XQuinn.Reflection
 #endif
         static bool IsFileType(Type t)
         {
-            if (!t.IsPublic && !t.IsNested) return t.Name.StartsWith("<");
+            if (!t.IsPublic && !t.IsNested)
+                return t.Name.StartsWith("<");
             else return false;
         }
 
@@ -123,9 +127,11 @@ namespace XQuinn.Reflection
             {
                 if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute)))
                 {
-                    if (excludeFileScoped && IsFileType(type)) continue;
-                    string key = fullname == false ? type.Name : type.FullName ?? throw new ArgumentException();
-                    if (book.TryGetValue(key, out Type? cached)) throw new DuplicateKeyException(cached, type, key);
+                    if (excludeFileScoped && IsFileType(type))
+                        continue;
+                    string key = fullname == false ? type.Name : type.FullName ?? throw new ArgumentNullException();
+                    if (book.TryGetValue(key, out Type? cached))
+                        throw new DuplicateKeyException(cached, type, key);
                     book[key] = type;
                 }
             }

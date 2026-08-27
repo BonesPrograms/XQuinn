@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
-namespace XQuinn.Parsing
+namespace XQ.Parsing
 {
 
     //To allow Nint/NUint tryparse on older net versions
@@ -20,8 +20,19 @@ namespace XQuinn.Parsing
         public static bool TryParse(string value, out nint num)
         {
             num = default;
-            if (Is64Bit) { if (long.TryParse(value, out long int64)) { num = (nint)int64; return true; } }
-            else if (int.TryParse(value, out int int32)) { num = int32; return true; }
+            if (Is64Bit)
+            {
+                if (long.TryParse(value, out long int64))
+                {
+                    num = (nint)int64;
+                    return true;
+                }
+            }
+            else if (int.TryParse(value, out int int32))
+            {
+                num = int32;
+                return true;
+            }
             return false;
         }
     }
@@ -32,8 +43,19 @@ namespace XQuinn.Parsing
         public static bool TryParse(string value, out nuint num)
         {
             num = default;
-            if (Is64Bit) { if (ulong.TryParse(value, out ulong uint64)) { num = (nuint)uint64; return true; } }
-            else if (uint.TryParse(value, out uint uint32)) { num = uint32; return true; }
+            if (Is64Bit)
+            {
+                if (ulong.TryParse(value, out ulong uint64))
+                {
+                    num = (nuint)uint64;
+                    return true;
+                }
+            }
+            else if (uint.TryParse(value, out uint uint32))
+            {
+                num = uint32;
+                return true;
+            }
             return false;
         }
 

@@ -1,13 +1,13 @@
 using System;
 using System.Reflection;
-using XQuinn.Reflection;
-using XQuinn.Extensions;
-using static XQuinn.Reflection.MemberGroup;
+using XQ.Reflection;
+using XQ.Extensions;
+using static XQ.Reflection.MemberGroup;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-namespace XQuinn.Reflection
+namespace XQ.Reflection
 {
 
 
@@ -54,11 +54,15 @@ namespace XQuinn.Reflection
         {
             BindingFlags flag = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static;
             flag |= declaredOnly ? BindingFlags.DeclaredOnly : BindingFlags.FlattenHierarchy;
-            if (!staticOnly) flag |= BindingFlags.Instance;
+            if (!staticOnly)
+                flag |= BindingFlags.Instance;
             Dictionary<MemberGroup, List<MemberInfo>> allMembers = new();
             AddMembers(type, flag, memberType, allMembers, filter);
-            if (getBasePrivateMembers) BaseTypeTraversal(type, staticOnly, memberType, allMembers, filter);
-            if (removeSystemObject) foreach (List<MemberInfo> membersOfKind in allMembers.Values) membersOfKind.RemoveAll(x => x.DeclaringType == typeof(object));
+            if (getBasePrivateMembers)
+                BaseTypeTraversal(type, staticOnly, memberType, allMembers, filter);
+            if (removeSystemObject)
+                foreach (List<MemberInfo> membersOfKind in allMembers.Values)
+                    membersOfKind.RemoveAll(x => x.DeclaringType == typeof(object));
             return new(type, allMembers, staticOnly);
         }
 
@@ -72,11 +76,15 @@ namespace XQuinn.Reflection
 
         public int? MemberCount(MemberGroup key)
         {
-            if (TryGetValue(key, out List<MemberInfo>? list)) return list.Count; else return null;
+            if (TryGetValue(key, out List<MemberInfo>? list))
+                return list.Count;
+            else return null;
         }
         public IEnumerator<MemberInfo> GetEnumerator()
         {
-            foreach (var pair in Map) foreach (var obj in pair.Value) yield return obj;
+            foreach (var pair in Map)
+                foreach (var obj in pair.Value)
+                    yield return obj;
         }
 
         System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator()
@@ -103,10 +111,13 @@ namespace XQuinn.Reflection
                 if (filter != null)
                 {
                     IEnumerable<MemberInfo> filtered = pair.Value.Where(filter);
-                    if (filtered.Any()) transfer = filtered.ToList();
+                    if (filtered.Any())
+                        transfer = filtered.ToList();
                 }
-                else transfer = new(pair.Value);
-                if (transfer?.Count > 0) dic[pair.Key] = transfer;
+                else
+                    transfer = new(pair.Value);
+                if (transfer?.Count > 0)
+                    dic[pair.Key] = transfer;
             }
             return new(Type, dic, StaticOnly);
         }
@@ -115,7 +126,8 @@ namespace XQuinn.Reflection
         static List<MemberInfo>? GetMembers<T>(T[] members, Func<MemberInfo, bool>? filter, bool priv) where T : MemberInfo
         {
             IEnumerable<MemberInfo> filteredMembers = filter != null ? members.Where(filter) : members;
-            if (priv) filteredMembers = EnumeratePrivateMembers(filteredMembers);
+            if (priv)
+                filteredMembers = EnumeratePrivateMembers(filteredMembers);
             return filteredMembers.Any() ? filteredMembers.ToList() : null;
         }
 
@@ -124,7 +136,8 @@ namespace XQuinn.Reflection
             foreach (var member in filteredMembers)
             {
                 AccessModifiers modifiers = member is FieldInfo field ? new(field) : new((MethodBase)member);
-                if (modifiers.IsPrivate) yield return member;
+                if (modifiers.IsPrivate)
+                    yield return member;
             }
         }
         static void AddBasePrivates<T>(MemberGroup flagcheck, MemberGroup memberType, Dictionary<MemberGroup, List<MemberInfo>> allTypeMembers, Func<MemberInfo, bool>? filter, T[] arr) where T : MemberInfo
@@ -134,12 +147,14 @@ namespace XQuinn.Reflection
                 if (allTypeMembers.TryGetValue(flagcheck, out List<MemberInfo>? list))
                 {
                     List<MemberInfo>? retrievedMembers = GetMembers(arr, filter, true);
-                    if (retrievedMembers != null) list.AddRange(retrievedMembers);
+                    if (retrievedMembers != null)
+                        list.AddRange(retrievedMembers);
                 }
                 else
                 {
                     List<MemberInfo>? retrievedMembers = GetMembers(arr, filter, true);
-                    if (retrievedMembers != null) allTypeMembers[memberType] = retrievedMembers;
+                    if (retrievedMembers != null)
+                        allTypeMembers[memberType] = retrievedMembers;
                 }
             }
         }
@@ -148,7 +163,8 @@ namespace XQuinn.Reflection
         {
             Type? baseType = type.BaseType;
             BindingFlags flag = BindingFlags.NonPublic | BindingFlags.DeclaredOnly | BindingFlags.Static;
-            if (!staticOnly) flag |= BindingFlags.Instance;
+            if (!staticOnly)
+                flag |= BindingFlags.Instance;
             while (baseType != null && baseType != typeof(object))
             {
                 AddBasePrivates(Field, memberType, allTypeMembers, filter, baseType.GetFields(flag));
@@ -166,27 +182,32 @@ namespace XQuinn.Reflection
             if (memberType.HasFlag(Field))
             {
                 List<MemberInfo>? fields = GetMembers(type.GetFields(flag), filter, false);
-                if (fields != null) allTypeMembers[Field] = fields;
+                if (fields != null)
+                    allTypeMembers[Field] = fields;
             }
             else if (memberType.HasFlag(Method))
             {
                 List<MemberInfo>? methods = GetMembers(type.GetMethods(flag), filter, false);
-                if (methods != null) allTypeMembers[Method] = methods;
+                if (methods != null)
+                    allTypeMembers[Method] = methods;
             }
             else if (memberType.HasFlag(Property))
             {
                 List<MemberInfo>? props = GetMembers(type.GetProperties(flag), filter, false);
-                if (props != null) allTypeMembers[Property] = props;
+                if (props != null)
+                    allTypeMembers[Property] = props;
             }
             else if (memberType.HasFlag(Event))
             {
                 List<MemberInfo>? events = GetMembers(type.GetEvents(flag), filter, false);
-                if (events != null) allTypeMembers[Event] = events;
+                if (events != null)
+                    allTypeMembers[Event] = events;
             }
             else if (memberType.HasFlag(Constructor))
             {
                 List<MemberInfo>? ctors = GetMembers(type.GetConstructors(flag), filter, false);
-                if (ctors != null) allTypeMembers[Constructor] = ctors;
+                if (ctors != null)
+                    allTypeMembers[Constructor] = ctors;
             }
 
         }

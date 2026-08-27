@@ -35,9 +35,9 @@
   </PropertyGroup>
 
 <PropertyGroup Condition="'$(Configuration)' != 'Debug'">
-  <Optimize>true</Optimize>
-  <DebugSymbols>false</DebugSymbols>
-  <DebugType>none</DebugType>
+  <Optimize>false</Optimize>
+  <DebugSymbols>true</DebugSymbols>
+  <DebugType>portable</DebugType> <!--true or portable or none-->
  
 </PropertyGroup>
 

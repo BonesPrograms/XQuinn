@@ -1,18 +1,18 @@
 #if NET6_0_OR_GREATER
 using System.Reflection;
-using XQuinn.Reflection;
-using XQuinn.Extensions;
+using XQ.Reflection;
+using XQ.Extensions;
 using System.Text;
 using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
-using XQuinn.Parsing;
+using XQ.Parsing;
 using System.Runtime.Loader;
 using System;
 using System.IO;
-using XQuinn.CodeAnalysis;
+using XQ.CodeAnalysis;
 
 
-namespace XQuinn.Runtime
+namespace XQ.Runtime
 {
 
     // public interface IDynamicCleanup
@@ -58,11 +58,7 @@ namespace XQuinn.Runtime
         {
             BookDelegate = bookDelegate;
             DLLPath = path;
-            RuntimeNavigator interp = new()
-            {
-                Caching = false
-            };
-            Monitor = new(interp);
+            Monitor = new(false);
         }
 
         public static DynamicAssembly New(string dllpath, Func<Type, string?> bookDelegate)
@@ -81,8 +77,8 @@ namespace XQuinn.Runtime
             Load();
          //   Module[] modules = LoadedAssembly!.GetModules();
           //  if (modules.Length > 1) throw new NotSupportedException("Only single file assemblies are supported.");
-            Monitor.Interp.LocalCache = TypeBook.New(LoadedAssembly!.ManifestModule.GetTypes(), BookDelegate, StringComparer.OrdinalIgnoreCase);
-            if (DefaultLoadedTypeName != null) Monitor.Interp.LoadTypeStatics(DefaultLoadedTypeName);
+            Monitor.Navig.LocalCache = TypeBook.New(LoadedAssembly!.ManifestModule.GetTypes(), BookDelegate, StringComparer.OrdinalIgnoreCase);
+            if (DefaultLoadedTypeName != null) Monitor.Navig.LoadTypeStatics(DefaultLoadedTypeName);
             LastWrite = File.GetLastWriteTime(DLLPath);
         }
 
@@ -105,7 +101,7 @@ namespace XQuinn.Runtime
         WeakReference? Unload()
         {
             if (Box == null) return null;
-            Monitor.Interp.Clear();
+            Monitor.Navig.Clear();
             LoadedAssembly = null;
             WeakReference monitor = new(Box, trackResurrection: true);
             Box?.Unload();

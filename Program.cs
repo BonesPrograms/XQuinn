@@ -1,89 +1,90 @@
 ﻿#if !RELEASE_BUILD
 using System.Collections.Concurrent;
 using System.Reflection;
-using XQuinn.Runtime;
-using XQuinn.Reflection;
-using XQuinn;
-using XQuinn.NetConsole;
+using XQ.Runtime;
+using XQ.Reflection;
+using XQ;
+using XQ.NetConsole;
 using HarmonyLib;
-using XQuinn.IO;
+using XQ.IO;
 using System.Text;
 using System;
 using System.Runtime.Versioning;
-using XQuinn.CodeAnalysis;
+using XQ.CodeAnalysis;
 using System.Linq;
 using System.Collections.Generic;
-using XQuinn.Extensions;
-using XQuinn.Parsing;
+using XQ.Extensions;
+using XQ.Parsing;
 using System.IO;
-using XQuinn.CodeAnalysis.AST;
+using XQ.CodeAnalysis.AST;
 using System.Collections;
 
-namespace _xquinn_prgrm
+namespace XQ
 {
 
 
-    static class _xquinn_prgrm_Main
+    static class Program
     {
 
+        static readonly NavigationMonitor Monitor = new(true);
+
+        static Span<char> span(string x)
+        {
+            Span<char> span = new Span<char>(x.ToArray());
+            return span;
+        }
 
         static void Main(string[] args)
         {
 #if IAPP_BUILD
             XQuinn.NetConsole.Apps.IApp.RunApp(args);
 #elif DEBUG_BUILD
-            IEnumerable<Type>? types = typeof(_xquinn_prgrm_Main).Module.GetTypes();
-            TypeBook book = TypeBook.New(types, x => x.Namespace == "XQ" ? TypeCache.GetCompatibleName(x, false) : null, StringComparer.OrdinalIgnoreCase);
+            IEnumerable<Type>? types = typeof(Program).Module.GetTypes();
+            TypeBook book = TypeBook.New(types, x => TypeCache.GetCompatibleName(x, false), StringComparer.OrdinalIgnoreCase);
             TypeCache.CacheTypes(book);
             TypeCache.CacheType("consoletools", typeof(ConsoleTools));
             TypeCache.CacheType("console", typeof(Console));
-            TypeCache.CacheType<Harmony>("harmony");
-            NavigationMonitor monitor = new();
+            TypeCache.CacheType("harmony", typeof(Harmony));
+            TypeCache.CacheType("span", typeof(MemoryExtensions));
             while (true)
             {
                 string? msg = Console.ReadLine();
-                if (msg != null) if (msg.EqualsCaseless("exit")) return; else Console.WriteLine(monitor.TryCatchInterface(msg, out _, out _));
+                if (msg != null)
+                    if (msg.EqualsCaseless("exit"))
+                        return;
+                    else
+                        Console.WriteLine(Monitor.TryCatchInterface(msg, out _, out _));
             }
 #endif
         }
 
     }
-}
-
-namespace XQ
-{
-
-    public class Generic<T>
+    public class Basado
+    {
+        int F;
+    }
+    public class Ex : Basado
     {
         
+        public static string Field = null;
+
+        public static string flag(BindingFlags flag) => flag.ToString();
+        public static string Str()=>string.Empty;
+        public static void Int(object i)
+        {
+            inner((int)i);
+        }
+
+        public static string Str(object obj) => obj.ToString();
+
+        static void inner(int i, int x = 2)
+        {
+            
+        }
     }
-    public class Class
-    {
-
-
-        public static string str(string s) => s;
-        public static void Method(Class c)
-        {
-            
-        }
-        public Class()
-        {
-            
-        }
-        public Class(int i)
-        {
-            
-        }
-        
-        public static void New()
-        {
-            
-        }
-
-    }
-
-
 }
+
+
 // public class Lex
 // {
 

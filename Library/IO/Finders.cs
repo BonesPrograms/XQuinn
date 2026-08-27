@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 #if NET6_0_OR_GREATER
-namespace XQuinn.IO.Finders
+namespace XQ.IO.Finders
 {
 
 
@@ -25,14 +25,19 @@ namespace XQuinn.IO.Finders
         /// </summary>
         public static string? Find(string exeName, EnumerationOptions? options = null)
         {
-            if (string.IsNullOrWhiteSpace(exeName)) throw new ArgumentException("exeName cannot be whitespace or null.");
+            if (string.IsNullOrWhiteSpace(exeName))
+                throw new ArgumentException("exeName cannot be whitespace or null.");
             return Directory.EnumerateFiles(SteamCommonPath, $"{exeName}*.exe", options ?? DefaultOption).FirstOrDefault();
         }
         public static string FindOrThrow(string exeName, EnumerationOptions? options = null) => Find(exeName, options) ?? throw new FileNotFoundException(null, $"{exeName}.exe");
 
         static string GetSteamPath()
         {//if 32 bit, must change this string
-            using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Wow6432Node\Valve\Steam")) { if (key?.GetValue("InstallPath") is string path) return path; }
+            using (var key = Registry.LocalMachine.OpenSubKey(@"SOFTWARE\Wow6432Node\Valve\Steam"))
+            {
+                if (key?.GetValue("InstallPath") is string path)
+                    return path;
+            }
             throw new DirectoryNotFoundException("Steam directory not found!");
         }
     }

@@ -1,14 +1,14 @@
 using System.Text;
-using XQuinn.CodeAnalysis.AST;
+using XQ.CodeAnalysis.AST;
 using System.Reflection;
 using System;
-using XQuinn.Extensions;
+using XQ.Extensions;
 
-namespace XQuinn.CodeAnalysis
+namespace XQ.CodeAnalysis
 {
 
 
-    public class LexicalException : Exception
+    internal class LexicalException : Exception
     {
         public LexicalException(string msg, string invocation, char next, StringBuilder sb, int i) : base(msg + $"Input: {invocation} Bad character: {next} Current string value: {sb} Index: {i + 1}")
         {
@@ -30,7 +30,7 @@ namespace XQuinn.CodeAnalysis
 
         }
     }
-    public sealed class InvocationLexer
+    internal sealed class InvocationLexer
     {
         // static readonly HashSet<char> Alphabet = new()
         // {
@@ -86,6 +86,8 @@ namespace XQuinn.CodeAnalysis
         bool ReadingDigit;
         bool ReadingString;
 
+        bool ReadingGeneric;
+
         //These are supporting flags for rulesets, some rulesets have specific rules for specific characters, or need to be read around declaration characters
         bool ReadingIdentifierLead;
         bool ReadFloat;
@@ -134,16 +136,55 @@ namespace XQuinn.CodeAnalysis
             while (i < invocation.Length)
             {
                 Value = invocation[i];
-                if (Start) { if (ReadMainMethod(ref i, invocation, declaringType)) goto Append; else goto Increment; }
-                else if (ReadingDigit) { if (ReadNum(ref i, invocation)) goto Append; }
-                else if (ReadingString) { if (ReadString(ref i, invocation)) goto Append; }
-                else if (ReadingChar) { if (ReadChar(ref i, invocation)) goto Append; }
-                else if (ReadingArbitrary) { if (ReadArbitrary(ref i, invocation)) goto Append; }
-                else if (ReadingIdentifier) { if (ReadIdentifier(ref i, invocation)) goto Append; else goto Increment; }
-                else if (Value == Whitespace) goto Increment;
-                else if (Terminated || MethodBegan) { GetContext(); if (ReadingChar) goto Increment; }
-                if (LastReadingValue > ReadingSubparamsOf) { CurrentMethod = CurrentMethod!.ParamOf; LastReadingValue--; }
-                if (Value == MethodTerminate) { if (ReadingSubparamsOf > 0) ReadingSubparamsOf--; }
+                if (Start)
+                {
+                    if (ReadMainMethod(ref i, invocation, declaringType))
+                        goto Append;
+                    goto Increment;
+                }
+                else if (ReadingDigit)
+                {
+                    if (ReadNum(ref i, invocation))
+                        goto Append;
+                }
+                else if (ReadingString)
+                {
+                    if (ReadString(ref i, invocation))
+                        goto Append;
+                }
+                else if (ReadingChar)
+                {
+                    if (ReadChar(ref i, invocation))
+                        goto Append;
+                }
+                else if (ReadingArbitrary)
+                {
+                    if (ReadArbitrary(ref i, invocation))
+                        goto Append;
+                }
+                else if (ReadingIdentifier)
+                {
+                    if (ReadIdentifier(ref i, invocation))
+                        goto Append;
+                    goto Increment;
+                }
+                else if (Value == Whitespace)
+                    goto Increment;
+                else if (Terminated || MethodBegan)
+                {
+                    GetContext();
+                    if (ReadingChar)
+                        goto Increment;
+                }
+                if (LastReadingValue > ReadingSubparamsOf)
+                {
+                    CurrentMethod = CurrentMethod!.ParamOf; LastReadingValue--;
+                }
+                if (Value == MethodTerminate)
+                {
+                    if (ReadingSubparamsOf > 0)
+                        ReadingSubparamsOf--;
+                }
                 if (Termination(Value))
                 {
                     if (sb.Length != 0)
@@ -191,25 +232,57 @@ namespace XQuinn.CodeAnalysis
         }
         bool ReadArbitrary(ref int i, string invocation)
         {
-            if (Value == Whitespace) SkipWhitespaceTrail(ref i, invocation);
-            else if (Value == MemberAccess || Value == '<')
+            if (Value == Whitespace)
+                SkipWhitespaceTrail(ref i, invocation);
+            if (Value == '<')
             {
+                ReadingGeneric = true;
+            }
+            else if (Value == MemberAccess)
+            {
+                ReadingGeneric = false;
                 ReadingIdentifierLead = true;
                 ReadingIdentifier = true;
                 ReadingArbitrary = false;
                 return true;
             }
-            else if (!Termination(Value)) ValidIdentifier(Value, invocation, i);
+            else if (!Termination(Value))
+                ValidIdentifier(Value, invocation, i);
+            else if (ReadingGeneric)
+                return true;
             return false;
         }
 
         bool ReadIdentifier(ref int i, string invocation) //once an arbitrary is determined to be an identifier, it is read with stricter rules
         {
-            if (Value == Whitespace) SkipWhitespaceTrail(ref i, invocation);
-            if (Value == MemberAccess && !ReadingIdentifierLead) { ReadingIdentifierLead = true; return true; }
-            if (Termination(Value)) { Terminated = true; ReadField(); return false; }
-            if (Value == MethodStart) { MethodBegan = true; ReadMethod(); return false; }
-            if (ReadingIdentifierLead) { ReadingIdentifierLead = false; ValidIdentifierFirstCharOrThrow(Value, invocation, i); }
+            if (Value == '<')
+                ReadingGeneric = true;
+            if (Value == Whitespace)
+                SkipWhitespaceTrail(ref i, invocation);
+            if (Value == MemberAccess && !ReadingIdentifierLead)
+            {
+                ReadingIdentifierLead = true;
+                return true;
+            }
+            if (!ReadingGeneric && Termination(Value))
+            {
+                Terminated = true;
+                ReadField();
+                return false;
+            }
+            if (Value == MethodStart)
+            {
+                ReadingGeneric = false;
+                MethodBegan = true;
+                ReadMethod();
+                return false;
+            }
+            if (ReadingIdentifierLead)
+            {
+                ReadingIdentifierLead =
+                false;
+                ValidIdentifierFirstCharOrThrow(Value, invocation, i);
+            }
             else ValidIdentifier(Value, invocation, i);
             return true;
         }
@@ -239,7 +312,7 @@ namespace XQuinn.CodeAnalysis
         void ReadMain(string? declaringType)
         {
             //reads everything prior to (
-            MethodString method = MethodString.New(sb.ToString(), null, declaringType != null ? TypeString.New(declaringType, null) : null);
+            MethodString method = MethodString.New(sb.ToString(), null, declaringType != null ? TypeString.New(declaringType) : null);
             sb.Length = 0;
             CurrentMethod = method;
             Main = method;
@@ -288,8 +361,8 @@ namespace XQuinn.CodeAnalysis
         void ReadField()
         {
             string typename = ResolveMemberAccess(out string fieldname);
-            TypeString type = TypeString.New(typename, null);
-            FieldString field = new(fieldname, CurrentMethod, type);
+            TypeString type = TypeString.New(typename);
+            FieldString field = new(fieldname, type);
             sb.Length = 0;
             CurrentMethod!.AddParameter(field);
             ReadingIdentifier = false;
@@ -299,7 +372,7 @@ namespace XQuinn.CodeAnalysis
         void ReadMethod()
         {
             string typename = ResolveMemberAccess(out string methodname);
-            TypeString type = TypeString.New(typename, null);
+            TypeString type = TypeString.New(typename);
             MethodString method = MethodString.New(methodname, CurrentMethod, type);
             sb.Length = 0;
             CurrentMethod!.AddParameter(method);
@@ -312,12 +385,13 @@ namespace XQuinn.CodeAnalysis
         void ReadParam()
         {
             string prm = sb.ToString();
-            ValueString param = new(prm, CurrentMethod!);
+            ValueString param = new(prm);
             sb.Length = 0;
             CurrentMethod!.AddParameter(param);
         }
         void FatalLexicalError(string invocation)
         {
+            if (ReadingGeneric) throw new LexicalException("Invalid generic arguments.", invocation, sb);
             if (ReadingChar) throw new LexicalException("Chars require a closing apostrophe character.", invocation, sb);
             if (ReadingDigit) throw new LexicalException("Digit parameter not terminated.", invocation, sb);
             if (ReadingString) throw new LexicalException("Strings require a closing quotation character.", invocation, sb);
@@ -342,7 +416,9 @@ namespace XQuinn.CodeAnalysis
             string lexOutput = sb.ToString();
             sb.Length = 0;
             int lastAccessorIndex = 0;
-            for (int i = 1; i < lexOutput.Length; i++) if (lexOutput[i] == MemberAccess) lastAccessorIndex = i;
+            for (int i = 1; i < lexOutput.Length; i++)
+                if (lexOutput[i] == MemberAccess)
+                    lastAccessorIndex = i;
             member = lexOutput.Substring(lastAccessorIndex + 1);
             return lexOutput.Remove(lastAccessorIndex);
         }
