@@ -59,29 +59,12 @@ namespace XQ
         }
 
     }
-    public class Basado
+
+    public class Paramz
     {
-        int F;
+        public static int Prms(string x, params int[] prms) => prms.Length;
     }
-    public class Ex : Basado
-    {
-        
-        public static string Field = null;
 
-        public static string flag(BindingFlags flag) => flag.ToString();
-        public static string Str()=>string.Empty;
-        public static void Int(object i)
-        {
-            inner((int)i);
-        }
-
-        public static string Str(object obj) => obj.ToString();
-
-        static void inner(int i, int x = 2)
-        {
-            
-        }
-    }
 }
 
 

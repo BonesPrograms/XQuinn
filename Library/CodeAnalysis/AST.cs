@@ -413,6 +413,7 @@ namespace XQ.CodeAnalysis.AST
 
         internal static TypeString New(string name, bool fromLex = false)
         {
+            name = name.Trim();
             return New<TypeString>(new(name, name), fromLex);
         }
 

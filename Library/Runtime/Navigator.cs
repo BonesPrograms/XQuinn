@@ -281,6 +281,11 @@ namespace XQ.Runtime
                     ParameterInfo parameter = actualParameters[i];
                     if (parameter.HasDefaultValue)
                         prms[i] = parameter.DefaultValue;
+                    else if (parameter.IsDefined(typeof(ParamArrayAttribute)))
+                    {
+                        Type elementType = actualParameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentNullException();
+                        prms[i] = Array.CreateInstance(elementType, 0);
+                    }
                     else
                         throw new TargetParameterCountException($"Parameter {parameter} does not have a default value. Input param count {inputAmount} Required count {reqAmount} method name {invocation.String}");
                 }
@@ -390,13 +395,13 @@ namespace XQ.Runtime
                     ResolvedOverload query = ResolvedOverload.OverloadQuery(mthdString);
                     List<MethodBase> methodbases = new();
                     MethodInfo[] methods = fromType.GetMethods(Flag);
-                    for (int x = methods.Length - 1; x >= 0; x--)
+                    for (int x = 0; x < methods.Length; x++)
                         if (methods[x].GetCustomAttribute(typeof(CompilerGeneratedAttribute)) == null)
                             methodbases.Add(methods[x]);
                     if (query.MethodKey.EqualsCaseless("new"))
                     {
                         ConstructorInfo[] ctors = fromType.GetConstructors(Flag);
-                        for (int x = ctors.Length - 1; x >= 0; x--)
+                        for (int x = 0; x < ctors.Length; x++)
                             if (ctors[x].GetCustomAttribute(typeof(CompilerGeneratedAttribute)) == null)
                                 methodbases.Add(ctors[x]);
                     }

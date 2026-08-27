@@ -264,10 +264,8 @@ namespace XQ.Reflection
         /// 
         static class CacheHelpers
         {
-
-            static string NewString(string x )=> x;
+            static Type Of<T>() => typeof(T);
             static Type Of(string x) => GetTypeOrThrow(x);
-        
             static T New<T>() where T : new() => new(); //This is useful for instantiating certain kinds of structs, who's constructors are not accessible due
                                                         //to not being defined at all.
 
