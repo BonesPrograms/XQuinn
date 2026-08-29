@@ -1,0 +1,22 @@
+Beginning read of fields in System.String
+
+
+Beginning read for fields of type System.String.
+Reading FIELD "_stringLength" from type String:
+Type: Int32
+Value: 6
+Declared in: String
+Attributes Private, InitOnly, NotSerialized
+
+Reading FIELD "_firstChar" from type String:
+Type: Char
+Value: s
+Declared in: String
+Attributes Private, NotSerialized
+
+Reading FIELD "Empty" from type String:
+Type: String
+Value: ""
+Declared in: String
+Attributes Public, Static, InitOnly
+

@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using System.Collections.Generic;
 using System;
 
-namespace XQ.IO
+namespace XQuinn.IO
 {
 
 //Source: https://www.tutorialspoint.com/article/how-to-get-a-path-to-the-desktop-for-current-user-in-chash

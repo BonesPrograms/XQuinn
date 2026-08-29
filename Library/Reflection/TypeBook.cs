@@ -1,7 +1,7 @@
 using System.Reflection;
-using XQ.Reflection;
-using XQ.Extensions;
-using static XQ.Reflection.MemberGroup;
+using XQuinn.Reflection;
+using XQuinn.Extensions;
+using static XQuinn.Reflection.MemberGroup;
 using System.Collections.Concurrent;
 using Mono.Reflection;
 using System.Collections.ObjectModel;
@@ -11,7 +11,7 @@ using System.Collections;
 using System.Text.RegularExpressions;
 using System.CodeDom.Compiler;
 using System.Linq;
-namespace XQ.Reflection
+namespace XQuinn.Reflection
 {
 
 
@@ -53,7 +53,7 @@ namespace XQ.Reflection
         //and then return a different name, you can also return null and it will *skip* adding that type to the typebook. Using a ToString will also completely override
         //the default procedure for choosing keys.
 
-        public static TypeBook New(IEnumerable<Type> types, Func<Type, string?> toString, StringComparer? comp = null, bool excludeFileScoped = true)
+        public static TypeBook New(IEnumerable<Type> types, Func<Type, string?> toString, StringComparer? comp = null)
         {
             Dictionary<string, Type> book = new(comp);
             foreach (Type type in types)
@@ -64,7 +64,7 @@ namespace XQ.Reflection
 #endif
                 )
                 {
-                    if (excludeFileScoped && IsFileType(type))
+                    if (IsFileType(type))
                         continue;
                     string? key = toString(type);
                     if (key == null)
@@ -87,7 +87,7 @@ namespace XQ.Reflection
         //     return false;
         // }
 #if NET7_0_OR_GREATER
-        static bool IsGeneratedRegexType(Type type)
+        internal static bool IsGeneratedRegexType(Type type)
         {
             for (var current = type; current != null; current = current.DeclaringType)
             {
@@ -103,7 +103,7 @@ namespace XQ.Reflection
             return false;
         }
 #endif
-        static bool IsFileType(Type t)
+        internal static bool IsFileType(Type t)
         {
             if (!t.IsPublic && !t.IsNested)
                 return t.Name.StartsWith("<");

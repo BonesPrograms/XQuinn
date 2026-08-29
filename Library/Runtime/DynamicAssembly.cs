@@ -1,18 +1,18 @@
 #if NET6_0_OR_GREATER
 using System.Reflection;
-using XQ.Reflection;
-using XQ.Extensions;
+using XQuinn.Reflection;
+using XQuinn.Extensions;
 using System.Text;
 using System.Runtime.CompilerServices;
 using System.Collections.Concurrent;
-using XQ.Parsing;
+using XQuinn.Parsing;
 using System.Runtime.Loader;
 using System;
 using System.IO;
-using XQ.CodeAnalysis;
+using XQuinn.CodeAnalysis;
 
 
-namespace XQ.Runtime
+namespace XQuinn.Runtime
 {
 
     // public interface IDynamicCleanup
@@ -39,7 +39,7 @@ namespace XQ.Runtime
             }
         }
 
-        public readonly NavigationMonitor Monitor;
+        public readonly Monitor Monitor;
         public Func<Type, string?> BookDelegate;
         public string? DefaultLoadedTypeName;
         /// <summary>
@@ -77,8 +77,8 @@ namespace XQ.Runtime
             Load();
          //   Module[] modules = LoadedAssembly!.GetModules();
           //  if (modules.Length > 1) throw new NotSupportedException("Only single file assemblies are supported.");
-            Monitor.Navig.LocalCache = TypeBook.New(LoadedAssembly!.ManifestModule.GetTypes(), BookDelegate, StringComparer.OrdinalIgnoreCase);
-            if (DefaultLoadedTypeName != null) Monitor.Navig.LoadTypeStatics(DefaultLoadedTypeName);
+            Monitor._navigator.LocalCache = TypeBook.New(LoadedAssembly!.ManifestModule.GetTypes(), BookDelegate, StringComparer.OrdinalIgnoreCase);
+            if (DefaultLoadedTypeName != null) Monitor._navigator.LoadTypeStatics(DefaultLoadedTypeName);
             LastWrite = File.GetLastWriteTime(DLLPath);
         }
 
@@ -101,7 +101,7 @@ namespace XQ.Runtime
         WeakReference? Unload()
         {
             if (Box == null) return null;
-            Monitor.Navig.Clear();
+            Monitor._navigator.Clear();
             LoadedAssembly = null;
             WeakReference monitor = new(Box, trackResurrection: true);
             Box?.Unload();

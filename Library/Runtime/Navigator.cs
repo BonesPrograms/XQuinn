@@ -1,16 +1,16 @@
 using System.Reflection;
-using XQ.Extensions;
+using XQuinn.Extensions;
 using System.Text.RegularExpressions;
-using XQ.Reflection;
-using XQ.Parsing;
-using XQ.CodeAnalysis.AST;
+using XQuinn.Reflection;
+using XQuinn.Parsing;
+using XQuinn.CodeAnalysis.AST;
 using System.ComponentModel;
 using System.Data;
 using System.Linq;
 using System.Collections.ObjectModel;
 using System;
 using System.Collections.Generic;
-using XQ.CodeAnalysis;
+using XQuinn.CodeAnalysis;
 using System.Text;
 using System.Diagnostics;
 using System.Collections;
@@ -18,7 +18,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
 
-namespace XQ.Runtime
+namespace XQuinn.Runtime
 {
 
 
@@ -74,9 +74,9 @@ namespace XQ.Runtime
         /// <summary>
         /// This represents the most recently invoked method.
         /// </summary>
-        public MethodBase? LoadedMethod => _loadedMethod;
-        MethodBase? _loadedMethod;
-        ParameterInfo[]? _loadedParams;
+        // public MethodBase? LoadedMethod => _loadedMethod;
+        // MethodBase? _loadedMethod;
+        // ParameterInfo[]? _loadedParams;
         internal static readonly Dictionary<Type, HashSet<string>> AmbiguousMatches = new();
         internal static readonly Dictionary<Type, Dictionary<string, MemberInfo>> KnownMembers = new(); //all members ever accessed by callinterp 
         internal static readonly Dictionary<string, Type> ReifiedGenerics = new(StringComparer.OrdinalIgnoreCase); //reified generics
@@ -91,7 +91,7 @@ namespace XQ.Runtime
         {
 
         }
-        public Navigator(IReadOnlyDictionary<string, Type>? localCache = null)
+        public Navigator(IReadOnlyDictionary<string, Type> localCache)
         {
             LocalCache = localCache;
             //   Overloads = new ReadOnlyDictionary<string, MethodInfo>(_overloads);
@@ -145,8 +145,8 @@ namespace XQ.Runtime
             _instance = null;
             _instanceType = null;
             _loadedType = null;
-            _loadedMethod = null;
-            _loadedParams = null;
+            //   _loadedMethod = null;
+            //_loadedParams = null;
 
         }
         #region Interface
@@ -159,7 +159,7 @@ namespace XQ.Runtime
         /// <exception cref="ArgumentException"></exception>
         public object? Interface(string invocation)
         {
-            if (invocation.Length < 2 || string.IsNullOrWhiteSpace(invocation))
+            if (invocation.Length == 0 || string.IsNullOrWhiteSpace(invocation))
                 return "No command detected.";
             return invocation[0] switch
             {
@@ -171,14 +171,15 @@ namespace XQ.Runtime
                 '*' => LoadInstance(invocation.Substring(1)), ///Load the current Instance from a field or method. Returns loaded value.
                 '^' => CastInstance(invocation.Substring(1)), ///Cast the current Instance to a different type. Returns null.
 
-                '!' => ExplicitInvoke(invocation.Substring(1)), ///Invoke a method or field by type name without changing the loaded type. Returns invoked value.
+                //  '!' => ExplicitInvoke(invocation.Substring(1)), ///Invoke a method or field by type name without changing the loaded type. Returns invoked value.
                 '~' => ChainInvoke(invocation.Substring(1).Split(';'
 #if NET6_0_OR_GREATER
                 , StringSplitOptions.TrimEntries
 #endif
                 )), //chain calls                                             ///Can exclude type name to automatically invoke from the loaded type. This is how you view the values of fields, standard invoke
+                _ => ExplicitInvoke(invocation)
                 /// will throw for anything except method invocations. Also allows you to invoke private members from base types without changing the loaded type.
-                _ => StandardInvokeOrAssign(invocation) ///Invoke a method from the loaded type, or assign. Returns invoked value if invocation. Returns assigned value if assignment.
+                //_ => StandardInvokeOrAssign(invocation) ///Invoke a method from the loaded type, or assign. Returns invoked value if invocation. Returns assigned value if assignment.
             };
         }
         #endregion
@@ -210,13 +211,13 @@ namespace XQ.Runtime
         /// </summary>
         /// <param name="method"></param>
         /// <exception cref="ArgumentException"></exception>
-        public void LoadMethodDirectly(MethodInfo method)
-        {
-            ParameterInfo[] parameters = method.GetParameters();
-            if (!SupportedMember(method, parameters) || !method.IsStatic) throw new NotSupportedException($"Method {method} has in/out/or ref params, or is nonstatic, or has ref return type.");
-            _loadedMethod = method;
-            _loadedParams = parameters;
-        }
+        // public void LoadMethodDirectly(MethodInfo method)
+        // {
+        //     ParameterInfo[] parameters = method.GetParameters();
+        //     if (!SupportedMember(method, parameters) || !method.IsStatic) throw new NotSupportedException($"Method {method} has in/out/or ref params, or is nonstatic, or has ref return type.");
+        //     _loadedMethod = method;
+        //     _loadedParams = parameters;
+        // }
 
 
         void LoadInstance(object instance, Type instanceType)
@@ -229,22 +230,22 @@ namespace XQ.Runtime
         void LoadTypeMembers(Type type)
         {
             _loadedType = type;
-            _loadedParams = null;
-            _loadedMethod = null;
+            // _loadedParams = null;
+            //_loadedMethod = null;
             MapType();
         }
 
 
         //Begins the cycle - lexes the invocation, loads the method, and then sends data off for parsing.
-        object?[]? LoadInvocation(string invocation)
-        {
-            MethodString main = Lexer.ParameterTemplate(invocation, null); //at this point we cannot know if the generic arguments are the same yet, but incase youre reloading the same method with diff generic parameters, we always reload if we detect generic vs generic
-            if (LoadedType == null)
-                throw new InvalidOperationException("Must load a type before attempting to invoke.");
-            _loadedMethod = FindMethod(main);
-            _loadedParams = _loadedMethod.GetParameters();
-            return GetParsedParameters(_loadedParams, main);
-        }
+        // object?[]? LoadInvocation(string invocation)
+        // {
+        //     MethodString main = Lexer.ParameterTemplate(invocation, null); //at this point we cannot know if the generic arguments are the same yet, but incase youre reloading the same method with diff generic parameters, we always reload if we detect generic vs generic
+        //     if (LoadedType == null)
+        //         throw new InvalidOperationException("Must load a type before attempting to invoke.");
+        //     _loadedMethod = FindMethod(main);
+        //     _loadedParams = _loadedMethod.GetParameters();
+        //     return GetParsedParameters(_loadedParams, main);
+        // }
         #endregion
         //If the method input name is equal to the loaded method name, this implies it is a generic method, since we do not allow overloads
         //We always reload on generics, since I cant know at this point what the types of your generic parameters are, they are just strings
@@ -258,10 +259,12 @@ namespace XQ.Runtime
         /// </summary>
         public object?[] GetParsedParameters(ParameterInfo[] actualParameters, MethodString invocation)
         {
-            object?[] prms = new object[actualParameters.Length];
             int inputAmount = invocation.Params.Count;
             int reqAmount = actualParameters.Length;
             int lastparam = reqAmount - 1;
+            if (reqAmount == 0)
+                return inputAmount == 0 ? Array.Empty<object>() : throw new TargetParameterCountException($"input param count: {invocation.Params.Count} required count: {actualParameters.Length} method name {invocation.String}");
+            object?[] prms = new object[actualParameters.Length];
             if (invocation.Params.Count != reqAmount)
                 ResolveUnequalParameters(inputAmount, reqAmount, actualParameters, prms, invocation, lastparam);
             else if (lastparam >= 0 && actualParameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
@@ -283,13 +286,14 @@ namespace XQ.Runtime
                         prms[i] = parameter.DefaultValue;
                     else if (parameter.IsDefined(typeof(ParamArrayAttribute)))
                     {
-                        Type elementType = actualParameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentNullException();
+                        Type elementType = actualParameters[i].ParameterType.GetElementType() ?? throw new ArgumentNullException();
                         prms[i] = Array.CreateInstance(elementType, 0);
                     }
                     else
                         throw new TargetParameterCountException($"Parameter {parameter} does not have a default value. Input param count {inputAmount} Required count {reqAmount} method name {invocation.String}");
                 }
-                for (int i = 0; i < inputAmount; i++) prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
+                for (int i = 0; i < inputAmount; i++)
+                    prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
             }
             else
                 if (lastparam >= 0 && actualParameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
@@ -389,6 +393,12 @@ namespace XQ.Runtime
                         cachedMatches.Add(mthdString.String);
                         // throw new AmbiguousMatchException($"Method named {mthdString.String} in type {fromType} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
                     }
+                    if (call != null)
+                    {
+                        parameters = call.GetParameters();
+                        if (!SupportedMember(call, parameters))
+                            throw new ArgumentException($"Method {call} in type {call.DeclaringType} has unsupported in out or ref params or ref returntype");
+                    }
                 }
                 if (call == null || ambiguousMatch)
                 {
@@ -396,13 +406,13 @@ namespace XQ.Runtime
                     List<MethodBase> methodbases = new();
                     MethodInfo[] methods = fromType.GetMethods(Flag);
                     for (int x = 0; x < methods.Length; x++)
-                        if (methods[x].GetCustomAttribute(typeof(CompilerGeneratedAttribute)) == null)
+                        if (methods[x].GetCustomAttribute<CompilerGeneratedAttribute>() == null)
                             methodbases.Add(methods[x]);
                     if (query.MethodKey.EqualsCaseless("new"))
                     {
                         ConstructorInfo[] ctors = fromType.GetConstructors(Flag);
                         for (int x = 0; x < ctors.Length; x++)
-                            if (ctors[x].GetCustomAttribute(typeof(CompilerGeneratedAttribute)) == null)
+                            if (ctors[x].GetCustomAttribute<CompilerGeneratedAttribute>() == null)
                                 methodbases.Add(ctors[x]);
                     }
                     int i = 0;
@@ -424,21 +434,21 @@ namespace XQ.Runtime
                 }
             }
             call ??= fromType == LoadedType ? FindMethod(mthdString) : throw new MissingMethodException($"No method named {mthdString.String} found in {fromType}'s methods or overload resolutions.");
-            if (call.IsGenericMethodDefinition && call is MethodInfo mthd)
-                call = mthdString.ConvertToGeneric(mthd, LocalCache);
-            if (parameters == null)
+            if (call is MethodInfo mthd)
             {
-                parameters = call.GetParameters();
-                if (!methodCached)
+                if (mthd.IsGenericMethodDefinition)
                 {
-                    if (fromType != LoadedType && !SupportedMember(call, parameters))
-                        throw new ArgumentException($"Method {call} in type {call.DeclaringType} has unsupported in out or ref params or ref returntype");
-                    CacheMember(typeCached, methodCached, fromType, call, mthdString.NameWithGenerics);
+                    call = mthdString.ConvertToGeneric(mthd, LocalCache);
+                    parameters = call.GetParameters();
                 }
-
+                else if (!mthd.IsGenericMethod && mthdString._generics.Count > 0)
+                    throw new ArgumentException($"method {call} cannot accept type arguments.");
             }
+            parameters ??= call.GetParameters();
+            if (!methodCached)
+                CacheMember(typeCached, methodCached, fromType, call, mthdString.NameWithGenerics);
             object? obj = null;
-            object?[]? parsedparams = GetParsedParameters(parameters, mthdString);
+            object?[] parsedparams = GetParsedParameters(parameters, mthdString);
             try
             {
                 obj = call is ConstructorInfo ctor ? ctor.Invoke(parsedparams) : call.Invoke(GetVariableInstance(fromType, variable), parsedparams);
@@ -528,6 +538,8 @@ namespace XQ.Runtime
                 if (Caching)
                     ReifiedGenerics[typename.NameWithGenerics] = t;
             }
+            else if (!t.IsGenericType && typename._generics.Count > 0)
+                throw new ArgumentException($"type {t} does not accept type arguments.");
             return t;
 
         }
@@ -711,6 +723,8 @@ namespace XQ.Runtime
         //Isolated lexing, loading and invocation for "quick invocation" without resetting loaded instance, method or type.
         object? ExplicitInvoke(string invocation)
         {
+            if (Assignment(invocation, out object? assigned))
+                return assigned;
             string typeName = ResolveMemberAccess(invocation, out string member, out bool field) ?? _key ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
             if (!field)
                 return InvokeMethodWithVariable(Lexer.ParameterTemplate(member, typeName!));
@@ -737,22 +751,22 @@ namespace XQ.Runtime
             return t;
         }
 
-        object? StandardInvokeOrAssign(string invocation)
-        {
-            if (Assignment(invocation, out object? assigned))
-                return assigned;
-            object? returned = null;
-            object?[]? parameters = LoadInvocation(invocation);
-            try
-            {
-                returned = LoadedMethod is ConstructorInfo ctor ? ctor.Invoke(parameters) : LoadedMethod!.Invoke(LoadedInstance, parameters);
-            }
-            catch (TargetInvocationException ex) when (ex.InnerException != null)
-            {
-                ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
-            }
-            return returned;
-        }
+        // object? StandardInvokeOrAssign(string invocation)
+        // {
+        //     if (Assignment(invocation, out object? assigned))
+        //         return assigned;
+        //     object? returned = null;
+        //     object?[]? parameters = LoadInvocation(invocation);
+        //     try
+        //     {
+        //         returned = LoadedMethod is ConstructorInfo ctor ? ctor.Invoke(parameters) : LoadedMethod!.Invoke(LoadedInstance, parameters);
+        //     }
+        //     catch (TargetInvocationException ex) when (ex.InnerException != null)
+        //     {
+        //         ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+        //     }
+        //     return returned;
+        // }
 
         bool Assignment(string invocation, out object? assignedValue)
         {
@@ -798,7 +812,7 @@ namespace XQ.Runtime
             if (LoadedInstance == null)
                 throw new InvalidOperationException("No instance is loaded.");
             TypeCache.ThrowIfBadKey(key);
-            Type? typeWithConflictingKey = TypeCache.GetType(key, LocalCache);
+            Type? typeWithConflictingKey = TypeCache.GetTypeCached(key, LocalCache);
             if (typeWithConflictingKey != null)
                 throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
             if (_variables.TryGetValue(key, out VariableBinding? variable))

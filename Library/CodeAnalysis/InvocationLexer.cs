@@ -1,10 +1,10 @@
 using System.Text;
-using XQ.CodeAnalysis.AST;
+using XQuinn.CodeAnalysis.AST;
 using System.Reflection;
 using System;
-using XQ.Extensions;
+using XQuinn.Extensions;
 
-namespace XQ.CodeAnalysis
+namespace XQuinn.CodeAnalysis
 {
 
 

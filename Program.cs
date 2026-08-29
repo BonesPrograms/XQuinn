@@ -1,33 +1,32 @@
 ﻿#if !RELEASE_BUILD
 using System.Collections.Concurrent;
 using System.Reflection;
-using XQ.Runtime;
-using XQ.Reflection;
-using XQ;
-using XQ.NetConsole;
+using XQuinn.Runtime;
+using XQuinn.Reflection;
+using XQuinn;
 using HarmonyLib;
-using XQ.IO;
+using XQuinn.IO;
 using System.Text;
 using System;
 using System.Runtime.Versioning;
-using XQ.CodeAnalysis;
+using XQuinn.CodeAnalysis;
 using System.Linq;
 using System.Collections.Generic;
-using XQ.Extensions;
-using XQ.Parsing;
+using XQuinn.Extensions;
+using XQuinn.Parsing;
 using System.IO;
-using XQ.CodeAnalysis.AST;
+using XQuinn.CodeAnalysis.AST;
 using System.Collections;
+using XQuinn.ObjectModel;
 
-namespace XQ
+namespace XQuinn.Private
 {
 
 
     static class Program
     {
 
-        static readonly NavigationMonitor Monitor = new(true);
-
+        static string path = string.Empty;
         static Span<char> span(string x)
         {
             Span<char> span = new Span<char>(x.ToArray());
@@ -39,32 +38,65 @@ namespace XQ
 #if IAPP_BUILD
             XQuinn.NetConsole.Apps.IApp.RunApp(args);
 #elif DEBUG_BUILD
-            IEnumerable<Type>? types = typeof(Program).Module.GetTypes();
-            TypeBook book = TypeBook.New(types, x => TypeCache.GetCompatibleName(x, false), StringComparer.OrdinalIgnoreCase);
-            TypeCache.CacheTypes(book);
-            TypeCache.CacheType("consoletools", typeof(ConsoleTools));
-            TypeCache.CacheType("console", typeof(Console));
-            TypeCache.CacheType("harmony", typeof(Harmony));
-            TypeCache.CacheType("span", typeof(MemoryExtensions));
+            Assembly xquinn = Assembly.Load("XQuinn");
+            TypeCache.CacheTypes(xquinn.GetTypes(), false);
+            TypeCache.CacheType<Harmony>("harmony");
+            TypeCache.CacheType("accesstools", typeof(AccessTools));
+            TypeCache.CacheType("accesstoolsE", typeof(AccessToolsExtensions));
+            TypeCache.CacheType("program", typeof(Program));
+            //    TypeCache.CacheType("span", typeof(MemoryExtensions));
+            path = XQuinn.IO.Finders.CodeLabFinder.Path;
+            path = Path.Combine(path, @"XQuinnLib\dump\instanceread.log");
+           // string command = $"~ *program.path; +var_path; *instancereader.new(var_path, true, types.of<object>()); +var_reader";
+            Monitor monitor = new(true);
+            //monitor._navigator.Interface(command);
+            //InstanceReader reader = (InstanceReader)monitor._navigator._variables["var_reader"].Object;
             while (true)
             {
+                // var key = Console.ReadKey();
+                // if (key.Key == ConsoleKey.Escape)
+                // {
+
+                //     reader.Dispose();
+                //     return;
+                // }
                 string? msg = Console.ReadLine();
                 if (msg != null)
-                    if (msg.EqualsCaseless("exit"))
+                {
+                    //msg = $"{key.KeyChar}{msg}";
+                    if (msg.EqualsCaseless("exit"))// || string.IsNullOrWhiteSpace(msg))
+                    {
+                      //  reader.Dispose();
                         return;
+                    }
                     else
-                        Console.WriteLine(Monitor.TryCatchInterface(msg, out _, out _));
+                        Console.WriteLine(monitor.TryCatchInterface(msg, out _, out _));
+                }
             }
 #endif
         }
 
     }
 
-    public class Paramz
-    {
-        public static int Prms(string x, params int[] prms) => prms.Length;
-    }
+    class @class<T> { }
 
+    class @class
+    {
+
+        int field = 15;
+
+        public string Str = "hi";
+        static void t()
+        {
+        }
+        static string Func() => "Executed";
+
+        static string Func<T>() => "Executed<>";
+
+        static string mthd() => "mthd";
+
+        public @class(int i, string z) { }
+    }
 }
 
 

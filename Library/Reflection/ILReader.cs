@@ -2,8 +2,8 @@
 using System.Reflection.Emit;
 using System.Reflection;
 using System.Buffers.Binary;
-using static XQ.Numerics.ByteSizes;
-using XQ.IO;
+using static XQuinn.Numerics.ByteSizes;
+using XQuinn.IO;
 using System.Collections.ObjectModel;
 using System;
 using System.Collections.Generic;
@@ -11,13 +11,13 @@ using System.IO;
 using HarmonyLib;
 using System.Text;
 using System.Numerics;
-using XQ.Extensions;
+using XQuinn.Extensions;
 using System.ComponentModel;
-using XQ.Reflection;
-using XQ.Numerics;
+using XQuinn.Reflection;
+using XQuinn.Numerics;
 using System.Linq;
 
-namespace XQ.Reflection
+namespace XQuinn.Reflection
 {
 
     //Todo: Reading delegates, reading delegate bodies?
@@ -78,7 +78,7 @@ namespace XQ.Reflection
         {
             List<ByteCode> codes = GetIL();
             if (makeFileIfNotFound)
-                XQ.IO.Logger.SafetyCheck(outputFilePath);
+                XQuinn.IO.Logger.SafetyCheck(outputFilePath);
             using StreamWriter writer = new(outputFilePath);
             writer.WriteLine("method");
             StringBuilder sb = new();

@@ -1,4 +1,4 @@
-namespace XQ
+namespace XQuinn
 {
     public static class For
     {

@@ -1,13 +1,13 @@
 using System;
 using System.Reflection;
-using XQ.Reflection;
-using XQ.Extensions;
-using static XQ.Reflection.MemberGroup;
+using XQuinn.Reflection;
+using XQuinn.Extensions;
+using static XQuinn.Reflection.MemberGroup;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-namespace XQ.Reflection
+namespace XQuinn.Reflection
 {
 
 

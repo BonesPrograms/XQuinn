@@ -1,6 +1,6 @@
 using HarmonyLib;
 
-namespace XQ
+namespace XQuinn
 {
     public sealed class HarmonyContainer
     {

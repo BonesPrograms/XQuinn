@@ -1,6 +1,6 @@
 using System;
 
-namespace XQ.Parsing
+namespace XQuinn.Parsing
 {
 
     //modern tryparse for older net versions such as net standard 2.0

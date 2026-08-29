@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System;
 using System.Linq;
 using System.Collections;
-using XQ.Reflection;
+using XQuinn.Reflection;
 
-namespace XQ.Extensions
+namespace XQuinn.Extensions
 {
 
 

@@ -2,7 +2,7 @@ using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
 
-namespace XQ.Parsing
+namespace XQuinn.Parsing
 {
 
     //To allow Nint/NUint tryparse on older net versions

@@ -2,12 +2,12 @@
 
 #if NET6_0_OR_GREATER
 using static System.Buffers.Binary.BinaryPrimitives; //binaryprimitives is preferred to bitconverter cause it is more efficient and little endians for me
-using static XQ.Numerics.ByteSizes;
+using static XQuinn.Numerics.ByteSizes;
 #endif
 using System.Numerics;
 using System;
 
-namespace XQ.Numerics
+namespace XQuinn.Numerics
 {
 
     public static class ByteSizes

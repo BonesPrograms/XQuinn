@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using System.Text;
 
-namespace XQ.IO
+namespace XQuinn.IO
 {
 
     public sealed class Logger : IDisposable

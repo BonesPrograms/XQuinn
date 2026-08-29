@@ -7,7 +7,7 @@ using System;
 
 
 
-namespace XQ.Reflection
+namespace XQuinn.Reflection
 {
 
     /// <summary>
@@ -100,6 +100,7 @@ namespace XQ.Reflection
             if (mthd.DeclaringType != null)
             {
                 overriden = mthd.DeclaringType != mthd.GetBaseDefinition().DeclaringType;
+                if(overriden)
                 sb.Append("override ");
             }
             if (mthd.IsFinal)

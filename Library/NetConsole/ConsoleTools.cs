@@ -4,9 +4,9 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Text;
-using XQ.Extensions;
+using XQuinn.Extensions;
 
-namespace XQ.NetConsole
+namespace XQuinn.NetConsole
 {
     public static class ConsoleTools
     {

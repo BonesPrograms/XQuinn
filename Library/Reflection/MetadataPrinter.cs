@@ -3,7 +3,7 @@ using System.Text;
 using HarmonyLib;
 using System;
 
-namespace XQ.Reflection
+namespace XQuinn.Reflection
 {
 
 
@@ -76,8 +76,13 @@ namespace XQ.Reflection
 
         static void GetReturnString(StringBuilder sb, MethodInfo mthd)
         {
+            if (mthd.ReturnType.Name == "Boolean")
+            {
+                sb.Append("bool");
+                return;
+            }
             string lowered = mthd.ReturnType.Name.ToLower();
-            if (lowered != "string" && lowered != "bool" && lowered != "void") GenericTypeToString(sb, mthd.ReturnType);
+            if (lowered != "string" && lowered != "boolean" && lowered != "void") GenericTypeToString(sb, mthd.ReturnType);
             else sb.Append(lowered);
 
         }

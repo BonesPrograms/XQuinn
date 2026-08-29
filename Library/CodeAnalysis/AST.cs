@@ -4,14 +4,14 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using System;
-using XQ.Reflection;
+using XQuinn.Reflection;
 using HarmonyLib;
-using XQ.Extensions;
-using XQ.Parsing;
+using XQuinn.Extensions;
+using XQuinn.Parsing;
 using System.Collections.ObjectModel;
-using XQ;
+using XQuinn;
 
-namespace XQ.CodeAnalysis.AST
+namespace XQuinn.CodeAnalysis.AST
 {
 
     internal interface IMemberString
@@ -438,6 +438,7 @@ namespace XQ.CodeAnalysis.AST
 
         public override MethodInfo ConvertToGeneric(MethodInfo genericMethodDef, IReadOnlyDictionary<string, Type>? types = null)
         {
+          //  Console.WriteLine("TConversion");
             //MethodInfo m;
             return genericMethodDef.MakeGenericMethod(ConvertGenericArguments(types));
         }

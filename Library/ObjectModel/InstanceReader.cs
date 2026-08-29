@@ -3,12 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Reflection;
-using XQ.IO;
-using XQ.Reflection;
+using XQuinn.IO;
+using XQuinn.Reflection;
 using System.IO;
 
 
-namespace XQ.ObjectModel
+namespace XQuinn.ObjectModel
 {
 
 
@@ -65,8 +65,15 @@ namespace XQ.ObjectModel
         public static InstanceReader New(string outputFilePath, bool makeFileIfNotFound, Type? loopLimit = null)
         {
             if (makeFileIfNotFound)
-                XQ.IO.Logger.SafetyCheck(outputFilePath);
+                XQuinn.IO.Logger.SafetyCheck(outputFilePath);
             return new(outputFilePath, loopLimit);
+        }
+
+        public static void Read(string outputFilePath, bool makeFileIfNotFound, object instance, Type? loopLimit = null)
+        {
+            InstanceReader reader = New(outputFilePath,makeFileIfNotFound,loopLimit);
+            reader.Read(instance);
+            reader.Dispose();
         }
         public void Read(object instance, int skip = 0)
         {
@@ -88,7 +95,6 @@ namespace XQ.ObjectModel
             Type objectType = classObj.GetType();
             Write($"Beginning read for fields of type {objectType}.");
             Skip(1);
-
             LoopInheritance(limit ?? LoopLimiter(objectType), classObj, objectType, cameFromCollection, cameFromReferenceType);
         }
 
@@ -330,7 +336,7 @@ namespace XQ.ObjectModel
 
         void Skip(int value)
         {
-            for (int i = 1; i <= value; i++)
+            for (int i = 1; i < value; i++)
                 Write(Environment.NewLine);
         }
 
