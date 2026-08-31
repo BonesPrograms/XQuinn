@@ -1,7 +1,6 @@
 using System.Reflection;
 using XQuinn.Reflection;
 using XQuinn.Extensions;
-using static XQuinn.Reflection.MemberGroup;
 using System.Collections.Concurrent;
 using Mono.Reflection;
 using System.Collections.ObjectModel;

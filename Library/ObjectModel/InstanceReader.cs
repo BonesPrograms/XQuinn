@@ -71,9 +71,8 @@ namespace XQuinn.ObjectModel
 
         public static void Read(string outputFilePath, bool makeFileIfNotFound, object instance, Type? loopLimit = null)
         {
-            InstanceReader reader = New(outputFilePath,makeFileIfNotFound,loopLimit);
+            using InstanceReader reader = New(outputFilePath,makeFileIfNotFound,loopLimit);
             reader.Read(instance);
-            reader.Dispose();
         }
         public void Read(object instance, int skip = 0)
         {

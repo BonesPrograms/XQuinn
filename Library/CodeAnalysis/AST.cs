@@ -464,7 +464,7 @@ namespace XQuinn.CodeAnalysis.AST
         void AppendParams(StringBuilder sb)
         {
             StringBuilder sb2 = new();
-            sb.AppendMany(Params, ", ", x =>
+            sb.AppendMany(Params, ", ", false, x =>
             {
                 if (x is MethodString ms)
                 {

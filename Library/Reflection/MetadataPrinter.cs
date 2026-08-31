@@ -53,7 +53,7 @@ namespace XQuinn.Reflection
             GenericTypeToString(sb, type);
             return sb;
         }
-        static StringBuilder ConstructorToString(StringBuilder sb, ConstructorInfo ctor)
+        public static StringBuilder ConstructorToString(StringBuilder sb, ConstructorInfo ctor)
         {
             if (ctor.DeclaringType != null) GenericTypeToString(sb, ctor.DeclaringType);
             sb.Append($"::.ctor{ParamsToString(ctor.GetParameters())}");
@@ -94,7 +94,9 @@ namespace XQuinn.Reflection
             for (int i = 0; i < args.Length; i++)
             {
                 ParameterInfo arg = args[i];
-                if (arg.IsIn) txt.Append("in ");
+                if(arg.IsDefined(typeof(ParamArrayAttribute)))
+                txt.Append("params ");
+                else if (arg.IsIn) txt.Append("in ");
                 else if (arg.IsOut) txt.Append("out ");
                 else if (arg.ParameterType.IsByRef) txt.Append("ref ");
                 tname.Length = 0;
@@ -102,8 +104,10 @@ namespace XQuinn.Reflection
                 int index = tname.Length - 1;
                 if (tname[index] == '&') tname.Remove(index, 1);
                 txt.Append(tname);
-                if (names) txt.Append($" {arg.Name}");
-                if (For.Multiples(args.Length, i)) txt.Append(", ");
+                if (names)
+                 txt.Append($" {arg.Name}");
+                if (For.NeedsDelimiter(args.Length, i))
+                 txt.Append(", ");
             }
             txt.Append(')');
             return txt;
@@ -138,7 +142,8 @@ namespace XQuinn.Reflection
                 for (int i = 0; i < genericargs.Length; i++)
                 {
                     FixGenericString(sb, genericargs[i].Name);
-                    if (For.Multiples(genericargs.Length, i)) sb.Append(", ");
+                    if (For.NeedsDelimiter(genericargs.Length, i)) 
+                    sb.Append(", ");
                 }
                 sb.Append('>');
             }

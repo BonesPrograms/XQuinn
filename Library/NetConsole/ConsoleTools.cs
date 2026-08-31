@@ -13,13 +13,13 @@ namespace XQuinn.NetConsole
         public static void WriteMany(IEnumerable objs, string? divider = null, Func<object?, string>? toString = null)
         {
             StringBuilder sb = new();
-            sb.AppendMany(objs, divider, toString);
+            sb.AppendMany(objs, divider, true, toString);
             Console.WriteLine(sb);
         }
         public static void WriteMany<T>(IEnumerable<T?> objs, string? divider = null, Func<T?, string>? toString = null)
         {
             StringBuilder sb = new();
-            sb.AppendMany<T>(objs, divider, toString);
+            sb.AppendMany<T>(objs, divider, true, toString);
             Console.WriteLine(sb);
         }
         public static T? Choices<T>(IList<T> array, string? msg = null, Func<T, string>? toString = null, bool forwardLoop = true)

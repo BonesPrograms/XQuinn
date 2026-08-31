@@ -86,7 +86,7 @@ namespace XQuinn.Runtime
         /// </summary>
         public bool Caching = true;
         //this dictionary keeps track of ambiguous matches for method names per type, allows minor efficiency upgrade, we dont always have to map out an entire type if the method is not overloaded
-        const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
+        internal const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         public Navigator()
         {
 
@@ -232,7 +232,7 @@ namespace XQuinn.Runtime
             _loadedType = type;
             // _loadedParams = null;
             //_loadedMethod = null;
-            MapType();
+            MapType(_methods, _overloads, _fields, type);
         }
 
 
@@ -295,20 +295,32 @@ namespace XQuinn.Runtime
                 for (int i = 0; i < inputAmount; i++)
                     prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
             }
+            else if (inputAmount > reqAmount && lastparam >= 0 && actualParameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
+            {
+                GetParamArray(lastparam, actualParameters, prms, invocation);
+            }
             else
-                if (lastparam >= 0 && actualParameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
-                    GetParamArray(lastparam, actualParameters, prms, invocation);
-                else
-                    throw new TargetParameterCountException($"input param count: {invocation.Params.Count} required count: {actualParameters.Length} method name {invocation.String}");
+                throw new TargetParameterCountException($"input param count: {invocation.Params.Count} required count: {actualParameters.Length} method name {invocation.String}");
         }
 
         void GetParamArray(int lastparam, ParameterInfo[] actualParameters, object?[] prms, MethodString invocation)
         {
             int lastBeforeThat = lastparam - 1;
-            if (lastBeforeThat >= 0)
-                for (int i = 0; i < lastBeforeThat; i++)
-                    prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
+            for (int i = 0; i <= lastBeforeThat; i++)
+                prms[i] = ParameterToObject(invocation.Params[i], actualParameters[i].ParameterType);
             Type elementType = actualParameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentNullException();
+            if (invocation.Params.Count == actualParameters.Length)
+            {
+                object? potentialArray = ParameterToObject(invocation.Params[lastparam], elementType);
+                if (potentialArray is IList)
+                {
+                    prms[lastparam] = potentialArray;
+                    return;
+                }
+                //Fixes a bug wherein; if you send an already initialized array[] to a method with the 'params' keyword, it would create a new array (of arrays)
+                //and assign the array you passed us as an element nested inside of the new array.
+            }
+
             Array paramArray = Array.CreateInstance(elementType, invocation.Params.Count - lastparam); //assign array type via reflection becuase object[] wont work for params keyword
             for (int i = lastparam; i < invocation.Params.Count; i++)
                 paramArray.SetValue(ParameterToObject(invocation.Params[i], elementType), i - lastparam);
@@ -389,7 +401,11 @@ namespace XQuinn.Runtime
                     }
                     catch (AmbiguousMatchException)
                     {
-                        if (cachedMatches == null) { cachedMatches = new(StringComparer.OrdinalIgnoreCase); AmbiguousMatches[cachedType] = cachedMatches; }
+                        if (cachedMatches == null)
+                        {
+                            cachedMatches = new(StringComparer.OrdinalIgnoreCase);
+                            AmbiguousMatches[cachedType] = cachedMatches;
+                        }
                         cachedMatches.Add(mthdString.String);
                         // throw new AmbiguousMatchException($"Method named {mthdString.String} in type {fromType} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
                     }
@@ -403,32 +419,29 @@ namespace XQuinn.Runtime
                 if (call == null || ambiguousMatch)
                 {
                     ResolvedOverload query = ResolvedOverload.OverloadQuery(mthdString);
-                    List<MethodBase> methodbases = new();
-                    MethodInfo[] methods = fromType.GetMethods(Flag);
-                    for (int x = 0; x < methods.Length; x++)
-                        if (methods[x].GetCustomAttribute<CompilerGeneratedAttribute>() == null)
-                            methodbases.Add(methods[x]);
+                    List<MethodBase> methodbases = fromType.GetMethods(Flag).Cast<MethodBase>().ToList();
                     if (query.MethodKey.EqualsCaseless("new"))
                     {
                         ConstructorInfo[] ctors = fromType.GetConstructors(Flag);
-                        for (int x = 0; x < ctors.Length; x++)
-                            if (ctors[x].GetCustomAttribute<CompilerGeneratedAttribute>() == null)
-                                methodbases.Add(ctors[x]);
+                        methodbases.AddRange(ctors);
                     }
                     int i = 0;
                     foreach (MethodBase method in methodbases)
                     {
                         string evaluatedName = method.Name == ".ctor" ? "new" : method.Name;
-                        ParameterInfo[] methodparams = method.GetParameters();
-                        if (SupportedMember(method, methodparams) && evaluatedName.EqualsCaseless(query.MethodKey))
+                        if (evaluatedName.EqualsCaseless(query.MethodKey)) //method.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
                         {
-                            if (i == query.Index)
+                            ParameterInfo[] methodparams = method.GetParameters();
+                            if (SupportedMember(method, methodparams))
                             {
-                                parameters = methodparams;
-                                call = method;
-                                break;
+                                if (i == query.Index)
+                                {
+                                    parameters = methodparams;
+                                    call = method;
+                                    break;
+                                }
+                                i++;
                             }
-                            i++;
                         }
                     }
                 }
@@ -622,26 +635,42 @@ namespace XQuinn.Runtime
             return null; //no type name, just a member, this technically isnt allowed but i let you get away with it for instance loading 
         }
 
-        void MapType()
+        internal static void MapType(Dictionary<string, MethodBase>? _methods, Dictionary<ResolvedOverload, MethodBase>? _overloads, Dictionary<string, FieldInfo>? _fields, Type type, bool @new = true)
         {
-            _overloads.Clear();
-            _methods.Clear();
-            List<MethodBase> methodbases = LoadedType!.GetMethods(Flag)
-            .Where(x => SupportedMember(x, x.GetParameters()) && x.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
-            .Cast<MethodBase>()
-            .ToList();
-            IEnumerable<ConstructorInfo> ctors = LoadedType!.GetConstructors(Flag)
-            .Where(x => SupportedMember(x, x.GetParameters()) && x.GetCustomAttribute<CompilerGeneratedAttribute>() == null);
-            foreach (ConstructorInfo ctor in ctors)
-                methodbases.Add(ctor);
-            AddBackwards(_methods, methodbases);
-            IEnumerable<string> names = methodbases
-            .Select(x => x.Name == ".ctor" ? "new" : x.Name)
-            .Distinct(StringComparer.OrdinalIgnoreCase);
-            foreach (string name in names)
-                CompareNames(methodbases, name);
-            _fields.Clear();
-            AddBackwards(_fields, LoadedType!.GetFields(Flag));
+
+            if (_methods != null || _overloads != null)
+            {
+
+                List<MethodBase> methodbases = type!.GetMethods(Flag)
+                .Where(x => SupportedMember(x, x.GetParameters()) && x.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
+                .Cast<MethodBase>()
+                .ToList();
+                if (@new == true) //we always get methods even if new == true, because methods can also be named new of course
+                {
+                    ConstructorInfo[] ctors = type!.GetConstructors(Flag)
+                    .Where(x => SupportedMember(x, x.GetParameters()) && x.GetCustomAttribute<CompilerGeneratedAttribute>() == null).ToArray();
+                    methodbases.AddRange(ctors);
+                }
+                if (_methods != null)
+                {
+                    _methods.Clear();
+                    AddBackwards(_methods, methodbases);
+                }
+                if (_overloads != null)
+                {
+                    _overloads.Clear();
+                    IEnumerable<string> names = methodbases
+                    .Select(x => x.Name == ".ctor" ? "new" : x.Name)
+                    .Distinct(StringComparer.OrdinalIgnoreCase);
+                    foreach (string name in names)
+                        CompareNames(methodbases, name, _methods, _overloads);
+                }
+            }
+            if (_fields != null)
+            {
+                _fields.Clear();
+                AddBackwards(_fields, type!.GetFields(Flag));
+            }
 
 
         }
@@ -665,7 +694,7 @@ namespace XQuinn.Runtime
 
         //Also dictionary overwiting helps get rid of every overload except the first declared overload
 
-        void CompareNames(List<MethodBase> methods, string name)
+        static void CompareNames(List<MethodBase> methods, string name, Dictionary<string, MethodBase>? _methods, Dictionary<ResolvedOverload, MethodBase> _overloads)
         {
             int count = 0;
             MethodBase? first = null;
@@ -683,14 +712,14 @@ namespace XQuinn.Runtime
                     }
                     else
                     {
-                        _overloads[new(evaluatedName, count - 1)] = method;
                         if (first != null)
                         {
                             _overloads[new(firstEvaluatedName!, 0)] = first;
-                            _methods.Remove(firstEvaluatedName!);
+                            _methods?.Remove(firstEvaluatedName!);
                             first = null;
                             firstEvaluatedName = null;
                         }
+                        _overloads[new(evaluatedName, count - 1)] = method;
                     }
 
                 }
@@ -727,7 +756,10 @@ namespace XQuinn.Runtime
                 return assigned;
             string typeName = ResolveMemberAccess(invocation, out string member, out bool field) ?? _key ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
             if (!field)
-                return InvokeMethodWithVariable(Lexer.ParameterTemplate(member, typeName!));
+            {
+                TypeString declaringtype = TypeString.New(typeName);
+                return InvokeMethodWithVariable(Lexer.ParameterTemplate(member, declaringtype, _key == null ? null : TypeString.New(_key!)));
+            }
             else
             {
                 if (member.EqualsCaseless("this"))
@@ -772,7 +804,8 @@ namespace XQuinn.Runtime
         {
             assignedValue = null;
             string[] assignment = invocation.Split('=');
-            if (assignment.Length == 1) return false;
+            if (assignment.Length == 1) 
+            return false;
             if (assignment.Length != 2) throw new ArgumentException($"Invalid assignment, can only contain left hand and right hand. Bad assignment: {invocation}");
             string lefthand = assignment[0];
             string righthand = assignment[1];
@@ -793,10 +826,36 @@ namespace XQuinn.Runtime
             }
             FieldInfo assigningTo = lefthandtype.GetField(lefthand, Flag) ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
             string? righthandTypeName = ResolveMemberAccess(righthand, out righthand, out bool righthandfield);// ?? _key ?? throw new ArgumentException("No type loaded for implicit access on righthand side.");
-            if (righthandTypeName != null) assignedValue = righthandfield ? GetFieldWithVariable(new(righthand, TypeString.New(righthandTypeName))) : InvokeMethodWithVariable(Lexer.ParameterTemplate(righthand, righthandTypeName));
-            else assignedValue = ParseParameter(new(righthand.Trim()), assigningTo.FieldType);
+
+            if (righthandTypeName != null)
+            {
+                TypeString tstring = TypeString.New(righthandTypeName);
+                assignedValue = righthandfield ? GetFieldWithVariable(new(righthand, tstring)) : InvokeMethodWithVariable(Lexer.ParameterTemplate(righthand, tstring, null));
+            }
+            else if (!CheckIfMethod(righthand))
+                assignedValue = ParseParameter(new(righthand.Trim()), assigningTo.FieldType);
+            else //this enables implicit this access, ie. field = method() 
+            {
+                TypeString tstring = TypeString.New(_key ?? throw new InvalidOperationException());
+                assignedValue = InvokeMethodWithVariable(Lexer.ParameterTemplate(righthand, tstring, tstring));
+            }
             assigningTo.SetValue(instance, assignedValue);
             return true;
+        }
+
+        static bool CheckIfMethod(string righthand) //makes sure that the '(' contained is not part of a string and is actually a method parameter
+        {
+            for (int i = 0; i < righthand.Length; i++)
+            {
+                char value = righthand[i];
+                if (value == '"')
+                    return false;
+                if (value == '\'')
+                    return false;
+                if (value == '(')
+                    return true;
+            }
+            return false;
         }
 
         bool RemoveVariable(string key)

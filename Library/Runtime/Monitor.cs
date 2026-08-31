@@ -25,32 +25,16 @@ namespace XQuinn.Runtime
         }
         readonly StringBuilder sb = new();
         internal readonly Navigator _navigator = new();
-       // public string LastInvoke => _lastinvoke;
         public string Invoking => _invoking;
         public string Returned => _ret;
-        // public string BeforeLoadedType => _btype;
-        // public string BeforeLoadedMethpd => _bmethod;
-        // public string BeforeInstanceType => _binstanceType;
-        // public string BeforeTypeCacheKey => _btypeCacheKey;
-        // public string BeforeVariableKey => _bvariableKey;
-        // public string BeforeInstance => _binstanceToString;
-        public string AfterLoadedType => _atype;
-        public string AfterInstanceType => _ainstanceType;
-        public string AfterTypeCacheKey => _atypeCacheKey;
-        public string AfterVariableKey => _avariableKey;
-        public string AfterInstance => _ainstanceToString;
-        //    public string Exception => _exception;
-       // string _rawinvocation = string.Empty;
-       // string _lastinvoke = string.Empty;
+        public string LoadedType => _atype;
+        public string InstanceType => _ainstanceType;
+        public string TypeKey => _atypeCacheKey;
+        public string VariableKey => _avariableKey;
+        public string InstanceObject => _ainstanceToString;
+
         string _invoking = string.Empty;
         string _ret = string.Empty;
-        // string _btype = string.Empty;
-        // string _bmethod = string.Empty;
-        // string _binstanceType = string.Empty;
-        // string _btypeCacheKey = string.Empty;
-        // string _bvariableKey = string.Empty;
-
-        // string _binstanceToString = string.Empty;
         string _atype = string.Empty;
         string _ainstanceType = string.Empty;
         string _atypeCacheKey = string.Empty;
@@ -107,7 +91,7 @@ namespace XQuinn.Runtime
 
         string ProcessReturn(object? ret)
         {
-            return (ret is IEnumerable enumerable and not string) ? AppendWithBreak($"Returned: \n{new StringBuilder().AppendMany(enumerable, Environment.NewLine)}") : AppendWithBreak($"Returned: {ret?.ToString() ?? "null"}");
+            return (ret is IEnumerable enumerable and not string) ? AppendWithBreak($"Returned: \n{new StringBuilder().AppendMany(enumerable, Environment.NewLine, enumerable is IList)}") : AppendWithBreak($"Returned: {ret?.ToString() ?? "null"}");
         }
 
         string SwitchQuestion(string input)
@@ -161,7 +145,7 @@ namespace XQuinn.Runtime
             if (!collection.Any())
                 return $"No {kind} found.";
             sb.AppendLine($"Printing {kind}.");
-            sb.AppendMany<T>(collection, Environment.NewLine, toString);
+            sb.AppendMany<T>(collection, Environment.NewLine, false, toString);
             string output = sb.ToString();
             sb.Length = 0;
             return output;

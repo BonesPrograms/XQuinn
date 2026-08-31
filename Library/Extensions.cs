@@ -27,7 +27,7 @@ namespace XQuinn.Extensions
     public static class StringBuilderExtensions
     {
 
-        public static StringBuilder AppendMany(this StringBuilder sb, IEnumerable many, string? divider = null, Func<object?, string?>? toString = null)
+        public static StringBuilder AppendMany(this StringBuilder sb, IEnumerable many, string? delimiter = null, bool appendIndex = false, Func<object?, string?>? toString = null)
         {
             int length;
             if (many is ICollection col)
@@ -41,24 +41,28 @@ namespace XQuinn.Extensions
                 }
             int i = 0;
             foreach (object? element in many)
-                AppendMany<object>(length, ref i, sb, element, divider, toString);
+                AppendMany(length, ref i, sb, element, delimiter, appendIndex, toString);
             return sb;
         }
-        public static StringBuilder AppendMany<T>(this StringBuilder sb, IEnumerable<T?> many, string? divider = null, Func<T?, string?>? toString = null)
+        public static StringBuilder AppendMany<T>(this StringBuilder sb, IEnumerable<T?> many, string? delimiter = null, bool appendIndex = false,Func<T?, string?>? toString = null)
         {
             int length = many.Count();
             int i = 0;
             foreach (T? element in many)
-                AppendMany<T>(length, ref i, sb, element, divider, toString);
+                AppendMany(length, ref i, sb, element, delimiter, appendIndex, toString);
             return sb;
         }
 
-        static void AppendMany<T>(int length, ref int i, StringBuilder sb, T? element, string? divider = null, Func<T?, string?>? toString = null)
+        static void AppendMany<T>(int length, ref int i, StringBuilder sb, T? element, string? delimiter = null, bool appendIndex = false, Func<T?, string?>? toString = null)
         {
+            if(appendIndex)
+            sb.Append($"[{i}] ");
             string? text = toString?.Invoke(element);
-            if (toString == null) text = element?.ToString();
+            if (toString == null)
+                text = element?.ToString();
             sb.Append(text ?? "null");
-            if (divider != null && For.Multiples(length, i)) sb.Append(divider);
+            if (delimiter != null && For.NeedsDelimiter(length, i))
+                sb.Append(delimiter);
             i++;
         }
         public static void CatchException(this StringBuilder sb, Exception ex)

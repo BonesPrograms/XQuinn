@@ -4,6 +4,23 @@ You can only use public parameterless constructors w/ the generic new() constrai
 constructing. I also had an idea for "coyping generic list" by initializing it and then adding to the list in a foreach, though I think that thought hasnt been fully thought out yet
 Remember that in the future when trying to instance stuff using generics.
 
+numeric char - '0' = actual number for that char
+
+normalizing chars
+
+```cs
+#if NET6_0_OR_GREATER
+            public override int GetHashCode()
+            {
+                HashCode hash = new();
+                foreach (char c in MethodKey) hash.Add(Normalize(c));// hash.Add(char.ToUpperInvariant(c));
+                hash.Add(Index);
+                return hash.ToHashCode();
+                // return HashCode.Combine(hash.ToHashCode(), Index);
+            }
+            static char Normalize(char c) => c is >= 'a' and <= 'z' ? (char)(c - ('a' - 'A')) : c;
+#else
+```
 
 Covariant return types:
 

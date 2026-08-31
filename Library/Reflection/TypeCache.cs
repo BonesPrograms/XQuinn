@@ -14,6 +14,7 @@ using System.Runtime.InteropServices;
 using XQuinn.ObjectModel;
 using XQuinn.IO;
 using System.Runtime.CompilerServices;
+using System.Linq;
 
 
 namespace XQuinn.Reflection
@@ -74,7 +75,7 @@ namespace XQuinn.Reflection
             ["nint"] = typeof(nint),
             ["nuint"] = typeof(nuint),
 
-            ["enum"] = typeof(Enum),
+            //["enum"] = typeof(Enum),
             ["tuple"] = typeof(ValueTuple),
             ["bindingflags"] = typeof(BindingFlags),
 
@@ -84,7 +85,7 @@ namespace XQuinn.Reflection
 #if NET6_0_OR_GREATER                                 
             ["ilreader"] = typeof(ILReader),
 #endif
-
+            ["typecache"] = typeof(TypeCache),
             ["type"] = typeof(Type),
             ["assembly"] = typeof(Assembly),
             ["activator"] = typeof(Activator),
@@ -243,7 +244,11 @@ namespace XQuinn.Reflection
                         throw new ArgumentException($"Keys can only consist of digits, letters, underscores, [] array brackets at the end, or single periods between names. Bad Key {key}. If you are having trouble caching generics, use TypeExtensions.SnipGenericName.");
                 }
                 else if (accessor)
+                {
+                    if (!InvocationLexer.ValidIdentifierFirstChar(value))
+                        throw new ArgumentException($"Member access must be followed by an underscore or a letter for namespaces. Bad Key: {key}");
                     accessor = false;
+                }
 
             }
 
@@ -286,15 +291,43 @@ namespace XQuinn.Reflection
 
         static class Types
         {
+            public static IEnumerable<string> Fields<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Fields(typeof(T), contains, search);
+            public static IEnumerable<string> Overloads<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Overloads(typeof(T), contains, search);
+            public static IEnumerable<string> Methods<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Methods(typeof(T), contains, search);
+
+            ///Send GetType as your Type Parameter if your instance's type is not in the cache
+            public static IEnumerable<string> Fields(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
+            {
+                Dictionary<string, FieldInfo> fields = new();
+                Navigator.MapType(null, null, fields, t);
+                return ReadMembers(fields, contains, search);
+            }
+            public static IEnumerable<string> Overloads(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
+            {
+                Dictionary<Navigator.ResolvedOverload, MethodBase> overloads = new();
+                Navigator.MapType(null, overloads, null, t, contains?.EqualsCaseless("new") ?? true);
+                var asStrings = overloads.Select(x => new KeyValuePair<string, MethodBase>(x.Key.ToString(), x.Value));
+                return ReadMembers(asStrings, contains, search);
+            }
+
+
+            public static IEnumerable<string> Methods(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
+            {
+                Dictionary<string, MethodBase> methods = new();
+                Navigator.MapType(methods, null, null, t, contains?.EqualsCaseless("new") ?? true);
+                return ReadMembers(methods, contains, search);
+            }
+
 
             public static void FlushStaticCache(bool ambiguousMatches, bool accessedMembers, bool reifiedGenerics)
             {
                 Navigator.FlushStaticCache(ambiguousMatches, accessedMembers, reifiedGenerics);
             }
             public static Type Of<T>() => typeof(T);
-            public static Type Of(string x) => GetTypeOrThrow(x);
+            public static Type Of(string x) => GetTypeOrThrow(x); //for generic definitions
+
+            public static T? New<T>(T? obj = default) => obj; ///helpful for instantiating enums with OR
             public static T New<T>() where T : new() => new();
-            public static T New<T>(T obj) => obj;
             public static bool LateCache(string assemblyName, string targettypeName, string keyForCaching)
             {
                 Assembly assembly = Assembly.Load(assemblyName);
@@ -314,6 +347,92 @@ namespace XQuinn.Reflection
                 Type targetType = assembly.GetType(targetTypeName, false, true) ?? throw new ArgumentException($"No type found in assembly {assembly.FullName} named {targetTypeName}. Requires full name.");
                 return CacheType(keyForCaching, targetType);
             }
+
+            static IEnumerable<string> ReadMembers<T>(IEnumerable<KeyValuePair<string, T>> members, string? key, BindingFlags flags) where T : MemberInfo
+            {
+                if (key != null)
+                {
+                    bool contained = false;
+                    foreach (var member in members)
+                    {
+                        if (SearchModifiers.ProcessSearch(member.Value, flags) && member.Key.Contains(key, StringComparison.OrdinalIgnoreCase))
+                        {
+                            contained = true;
+                            yield return $"[Key: {member.Key} :: {ReflectionPrinter.Print(member.Value)}]";
+                        }
+                    }
+                    if (!contained)
+                        yield return $"No {typeof(T).Name} found with name containing {key} with search option {flags}.";
+                }
+                else
+                    foreach (var member in members)
+                        if (SearchModifiers.ProcessSearch(member.Value, flags))
+                            yield return $"[Key: {member.Key} :: {ReflectionPrinter.Print(member.Value)}]";
+            }
+
+
+
+            struct SearchModifiers
+            {
+                bool _static;
+                bool _public;
+                bool _inherited;
+
+                public static bool ProcessSearch(MemberInfo inf, BindingFlags flags)
+                {
+                    return inf is MethodBase mthd ? New(mthd).ProcessSearch(flags) : New((FieldInfo)inf).ProcessSearch(flags);
+                }
+
+                public readonly bool ProcessSearch(BindingFlags flags)
+                {
+                    if (_inherited)
+                    {
+                        if (flags.HasFlag(BindingFlags.DeclaredOnly))
+                            return false;
+                    }
+                    if (_public)
+                    {
+                        if (!flags.HasFlag(BindingFlags.Public))
+                            return false;
+
+                    }
+                    else
+                    {
+                        if (!flags.HasFlag(BindingFlags.NonPublic))
+                            return false;
+                    }
+                    if (_static && _inherited)
+                        return flags.HasFlag(BindingFlags.FlattenHierarchy);
+                    if (_static)
+                        return flags.HasFlag(BindingFlags.Static);
+                    else
+                        return flags.HasFlag(BindingFlags.Instance);
+                }
+
+                public static SearchModifiers New(MethodBase method)
+                {
+                    SearchModifiers modifiers = new()
+                    {
+                        _static = method.IsStatic,
+                        _public = method.IsPublic
+                    };
+                    if (method.DeclaringType != null && method is MethodInfo mthinfo)
+                        modifiers._inherited = method.ReflectedType != mthinfo.DeclaringType;
+                    return modifiers;
+                }
+                public static SearchModifiers New(FieldInfo field)
+                {
+                    SearchModifiers extract = new()
+                    {
+                        _static = field.IsStatic,
+                        _public = field.IsPublic
+                    };
+                    if (field.DeclaringType != null)
+                        extract._inherited = field.DeclaringType != field.ReflectedType;
+                    return extract;
+                }
+            }
+
         }
         static class ArrayGen
         {
