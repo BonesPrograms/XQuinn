@@ -8,6 +8,7 @@ namespace XQuinn.IO
 //Source: https://www.tutorialspoint.com/article/how-to-get-a-path-to-the-desktop-for-current-user-in-chash
 public enum KnownFolder
 {
+    _invalid,
     Contacts,
     Downloads,
     Favorites,
@@ -18,8 +19,8 @@ public enum KnownFolder
  
 public static class KnownFolders
 {
-    public static readonly string Desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
-    private static readonly Dictionary<KnownFolder, Guid> _guids = new()
+    public static readonly string s_desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+    private static readonly Dictionary<KnownFolder, Guid> s_guids = new()
     {
         [KnownFolder.Contacts] = new("56784854-C6CB-462B-8169-88E350ACB882"),
         [KnownFolder.Downloads] = new("374DE290-123F-4565-9164-39C4925E467B"),
@@ -32,7 +33,7 @@ public static class KnownFolders
     // c# shgetknownfolderpath directory path
     public static string GetPath(KnownFolder knownFolder)
     {
-        return SHGetKnownFolderPath(_guids[knownFolder], 0);
+        return SHGetKnownFolderPath(s_guids[knownFolder], 0);
     }
  
     [DllImport("shell32",

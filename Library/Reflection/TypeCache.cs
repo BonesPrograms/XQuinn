@@ -32,11 +32,11 @@ namespace XQuinn.Reflection
     {
 
         public static readonly IReadOnlyDictionary<string, Type> GlobalCache;
-        public static ICollection<string> Keys => _registry.Keys;
-        public static ICollection<Type> Values => _registry.Values;
+        public static ICollection<string> Keys => s_registry.Keys;
+        public static ICollection<Type> Values => s_registry.Values;
         public static IEnumerable<KeyValuePair<string, Type>> Enumerate()
         {
-            foreach (var obj in _registry)
+            foreach (var obj in s_registry)
                 yield return obj;
         }
 
@@ -55,7 +55,7 @@ namespace XQuinn.Reflection
         ///  If you let arraygen create the key, it will automatically be snipped using GetCompatibleName
         /// If you are caching many types at once your should filter your names through GetCompatibleName, because default generic names and nested names (Short or full) are incompatible
         /// and will throw exceptions. Rule of thumb: alphanumerics and underscores only, do not start with a digit, and [] is allowed but good practice is to reserve that for array types.
-        static readonly ConcurrentDictionary<string, Type> _registry = new(StringComparer.OrdinalIgnoreCase)
+        static readonly ConcurrentDictionary<string, Type> s_registry = new(StringComparer.OrdinalIgnoreCase)
         {
             ["object"] = typeof(object), ///Keyword types
             ["string"] = typeof(string),
@@ -119,15 +119,15 @@ namespace XQuinn.Reflection
 
         static TypeCache()
         {
-            GlobalCache = new ReadOnlyDictionary<string, Type>(_registry);
+            GlobalCache = new ReadOnlyDictionary<string, Type>(s_registry);
             string[] keywordTypes = new[]
              { "object", "string", "bool", "byte", "sbyte", "char", "int", "uint", "short", "ushort", "ulong", "long", "float", "decimal", "double", "nint", "nuint" };
             foreach (string keyword in keywordTypes)
-                _registry[$"{keyword}[]"] = _registry[keyword].MakeArrayType();
+                s_registry[$"{keyword}[]"] = s_registry[keyword].MakeArrayType();
         }
 
-        public static bool Contains(string name) => _registry.ContainsKey(name);
-        public static bool TryGetType(string name, out Type? cachedtype) => _registry.TryGetValue(name, out cachedtype);
+        public static bool Contains(string name) => s_registry.ContainsKey(name);
+        public static bool TryGetType(string name, out Type? cachedtype) => s_registry.TryGetValue(name, out cachedtype);
 
         public static Type? GetTypeCached(string name, IReadOnlyDictionary<string, Type>? book = null)
         {
@@ -154,7 +154,7 @@ namespace XQuinn.Reflection
             ThrowIfBadKey(key);
             if (CheckDuplicateOrCached())
                 return false;
-            _registry.TryAdd(key, type);
+            s_registry.TryAdd(key, type);
             return true;
 
             bool IsFileType()

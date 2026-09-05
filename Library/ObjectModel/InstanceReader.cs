@@ -49,10 +49,10 @@ namespace XQuinn.ObjectModel
             GC.SuppressFinalize(this);
         }
 
-         void Write(string txt) => Writer.WriteLine(txt); //rewrote the code to use a streamwriter and im lazy, method was already called "Write"
+        void Write(string txt) => Writer.WriteLine(txt); //rewrote the code to use a streamwriter and im lazy, method was already called "Write"
 
         public Type LoopLimit;
-         readonly StreamWriter Writer = null!;
+        readonly StreamWriter Writer = null!;
         const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.Static;
         //loops through all base types so its declared only, but "source type" is tracked (the inheritor at the very end) if its a Field
 
@@ -71,7 +71,7 @@ namespace XQuinn.ObjectModel
 
         public static void Read(string outputFilePath, bool makeFileIfNotFound, object instance, Type? loopLimit = null)
         {
-            using InstanceReader reader = New(outputFilePath,makeFileIfNotFound,loopLimit);
+            using InstanceReader reader = New(outputFilePath, makeFileIfNotFound, loopLimit);
             reader.Read(instance);
         }
         public void Read(object instance, int skip = 0)

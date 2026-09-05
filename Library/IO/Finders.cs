@@ -13,8 +13,8 @@ namespace XQuinn.IO.Finders
     /// </summary>
     public static class SteamGameFinder //beleive there is a better way to do this incase they do not store the game in common folder but for now idk
     {
-        public static readonly string SteamCommonPath = Path.Combine(GetSteamPath(), @"steamapps\common");
-        static readonly EnumerationOptions DefaultOption = new()
+        public static readonly string s_steam_common = Path.Combine(GetSteamPath(), @"steamapps\common");
+        static readonly EnumerationOptions s_default = new()
         {
             IgnoreInaccessible = true,
             RecurseSubdirectories = true,
@@ -27,7 +27,7 @@ namespace XQuinn.IO.Finders
         {
             if (string.IsNullOrWhiteSpace(exeName))
                 throw new ArgumentException("exeName cannot be whitespace or null.");
-            return Directory.EnumerateFiles(SteamCommonPath, $"{exeName}*.exe", options ?? DefaultOption).FirstOrDefault();
+            return Directory.EnumerateFiles(s_steam_common, $"{exeName}*.exe", options ?? s_default).FirstOrDefault();
         }
         public static string FindOrThrow(string exeName, EnumerationOptions? options = null) => Find(exeName, options) ?? throw new FileNotFoundException(null, $"{exeName}.exe");
 
@@ -48,21 +48,21 @@ namespace XQuinn.IO.Finders
     /// </summary>
     internal static class VietnamWarModLab
     {
-        public static readonly string Path = System.IO.Path.Combine(CodeLabFinder.Path, "VietnamWarModLab") ?? throw new DirectoryNotFoundException("VietnamWarModLab not found in C#Lab!");
+        public static readonly string s_path = System.IO.Path.Combine(CodeLabFinder.s_path, "VietnamWarModLab") ?? throw new DirectoryNotFoundException("VietnamWarModLab not found in C#Lab!");
 
 
     }
 
     internal static class VietnamWarSource
     {
-        public static readonly string Path = System.IO.Path.GetDirectoryName(SteamGameFinder.FindOrThrow("Vietnam War"))!;
+        public static readonly string s_path = System.IO.Path.GetDirectoryName(SteamGameFinder.FindOrThrow("Vietnam War"))!;
 
 
     }
 
     internal static class CodeLabFinder
     {
-        public static readonly string Path = System.IO.Path.Combine(KnownFolders.Desktop, "C#Lab") ?? throw new DirectoryNotFoundException("C#Lab not found on Desktop!");
+        public static readonly string s_path = System.IO.Path.Combine(KnownFolders.s_desktop, "C#Lab") ?? throw new DirectoryNotFoundException("C#Lab not found on Desktop!");
     }
 }
 #endif

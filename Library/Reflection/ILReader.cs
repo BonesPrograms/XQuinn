@@ -159,12 +159,12 @@ namespace XQuinn.Reflection
             {
                 byte nextbyte = IL[i + 1];
                 short key = (short)((PrefixBit << 0x08) | nextbyte);
-                code = OpCodeMap.OpCodes[key];
+                code = OpCodeMap.s_opCodes[key];
                 i += 2;
             }
             else
             {
-                code = OpCodeMap.OpCodes[indexedbyte];
+                code = OpCodeMap.s_opCodes[indexedbyte];
                 i++;
             }
             return code;
@@ -259,15 +259,15 @@ namespace XQuinn.Reflection
         /// <summary>
         /// A dictionary of opcodes that can be indexed by their short value (OpCode.Value).
         /// </summary>
-        public static readonly IReadOnlyDictionary<short, OpCode> OpCodes = Map();
+        public static readonly IReadOnlyDictionary<short, OpCode> s_opCodes = Map();
 
-        static ReadOnlyDictionary<short, OpCode> Map()
+        static Dictionary<short, OpCode> Map()
         {
             Dictionary<short, OpCode> dic = typeof(OpCodes)
             .GetFields(BindingFlags.Static | BindingFlags.Public)
             .Where(x => x.FieldType == typeof(OpCode))
             .Select(x => (OpCode)x.GetValue(null)!).ToDictionary(x => x.Value, v => v);
-            return new ReadOnlyDictionary<short, OpCode>(dic);
+            return dic;
         }
 
     }

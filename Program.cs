@@ -26,8 +26,8 @@ namespace XQuinn.Private
 
     static class Program
     {
-        static Monitor monitor = new();
-        static string path = string.Empty;
+        static Monitor s_monitor = new();
+        static string s_path = string.Empty;
         static Span<char> span(string x)
         {
             Span<char> span = new Span<char>(x.ToArray());
@@ -46,8 +46,8 @@ namespace XQuinn.Private
             TypeCache.CacheType("accesstoolsE", typeof(AccessToolsExtensions));
             //  TypeCache.CacheType(typeof(Program), false);
             //    TypeCache.CacheType("span", typeof(MemoryExtensions));
-            path = XQuinn.IO.Finders.CodeLabFinder.Path;
-            path = Path.Combine(path, @"XQuinnLib\dump\instanceread.log");
+            s_path = XQuinn.IO.Finders.CodeLabFinder.s_path;
+            s_path = Path.Combine(s_path, @"XQuinnLib\dump\instanceread.log");
             // string command = $"~ *program.path; +var_path; *instancereader.new(var_path, true, types.of<object>()); +var_reader";
             //Monitor monitor = new(true);
             //monitor._navigator.Interface(command);
@@ -72,7 +72,7 @@ namespace XQuinn.Private
                         return;
                     }
                     else
-                        Console.WriteLine(monitor.SafeInterface(msg, out _, out _));
+                        Console.WriteLine(s_monitor.SafeInterface(msg, out _, out _));
                 }
             }
 #endif

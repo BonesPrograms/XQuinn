@@ -76,19 +76,20 @@ namespace XQuinn.LexicalAnalysis.Syntaxes
                     return null;
                 asType = Nullable.GetUnderlyingType(asType) ?? throw new ArgumentException($"Underlying type for Nullable<T> type {asType} is null.");
             }
-            if (asType.IsPrimitive || asType == typeof(object))
-            {
-                if (ParsePrimitive(asType, out object? primitive))
-                    return primitive;
-            }
             if (asType.IsEnum)
             {
                 if (EnumNet20.TryParse(NameOrValue.Replace('|', ','), asType, true, out Enum? @enum))
                     return @enum;
             }
-            throw asType.IsValueType ?
-            new NotSupportedException($"Cannot convert values to user defined struct instances. struct type: {asType}. Value: {NameOrValue}") :
-            new FormatException($"Failed to convert {NameOrValue} to {asType}.");
+            else if (asType.IsPrimitive || asType == typeof(object))
+            {
+                if (ParsePrimitive(asType, out object? primitive))
+                    return primitive;
+            }
+            throw asType.IsPrimitive || asType == typeof(object) ?
+            new FormatException($"Failed to convert {NameOrValue} to {asType}.") :
+            new NotSupportedException($"Cannot convert values to user defined struct instances. struct type: {asType}. Value: {NameOrValue}");
+            
         }
 
         bool IsFormattedLikeAString(bool formatException, out string? extract)
