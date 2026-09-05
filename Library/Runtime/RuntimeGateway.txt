@@ -32,7 +32,7 @@ namespace XQuinn.Runtime
         public sealed class RuntimeGateway
         {
                 public readonly Logger Logger;
-                public readonly NavigationMonitor Monitor = new();
+                public readonly Monitor Monitor = new();
 #if NET6_0_OR_GREATER
                 public readonly DynamicAssembly? Assembly;
                 public RuntimeGateway(string logto, string? assemblyPath = null, Func<Type, string?>? bookDelegate = null) : this(logto)

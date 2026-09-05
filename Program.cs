@@ -9,16 +9,17 @@ using XQuinn.IO;
 using System.Text;
 using System;
 using System.Runtime.Versioning;
-using XQuinn.LexicalAnalysis;
+using XQuinn.CodeAnalysis;
 using System.Linq;
 using System.Collections.Generic;
 using XQuinn.Extensions;
 using XQuinn.Parsing;
 using System.IO;
-using XQuinn.LexicalAnalysis.Syntaxes;
+using XQuinn.CodeAnalysis.AST;
 using System.Collections;
 using XQuinn.ObjectModel;
 using System.Runtime.InteropServices;
+using System.ComponentModel;
 
 namespace XQuinn.Private
 {
@@ -26,57 +27,54 @@ namespace XQuinn.Private
 
     static class Program
     {
-        static Monitor s_monitor = new();
-        static string s_path = string.Empty;
-        static Span<char> span(string x)
-        {
-            Span<char> span = new Span<char>(x.ToArray());
-            return span;
-        }
+
 
         static void Main(string[] args)
         {
 #if IAPP_BUILD
             XQuinn.NetConsole.Apps.IApp.RunApp(args);
 #elif DEBUG_BUILD
+            Cache();
+            RunNavigator();
+
+
+
+
+#endif
+        }
+#if DEBUG_BUILD
+
+
+        static class BitConv
+        {
+            
+        }
+
+        static void RunNavigator()
+        {
+            Monitor s_monitor = new();
+            while (true)
+            {
+                string? msg = Console.ReadLine();
+                if (msg != null)
+                    Console.WriteLine(s_monitor.SafeInterface(msg, out _, out _));
+            }
+        }
+        static void Cache()
+        {
             Assembly xquinn = Assembly.Load("XQuinn");
             TypeCache.CacheTypes(xquinn.GetTypes(), false);
             TypeCache.CacheType<Harmony>(false);
             TypeCache.CacheType(typeof(AccessTools), false);
-            TypeCache.CacheType("accesstoolsE", typeof(AccessToolsExtensions));
-            //  TypeCache.CacheType(typeof(Program), false);
-            //    TypeCache.CacheType("span", typeof(MemoryExtensions));
-            s_path = XQuinn.IO.Finders.CodeLabFinder.s_path;
-            s_path = Path.Combine(s_path, @"XQuinnLib\dump\instanceread.log");
-            // string command = $"~ *program.path; +var_path; *instancereader.new(var_path, true, types.of<object>()); +var_reader";
-            //Monitor monitor = new(true);
-            //monitor._navigator.Interface(command);
-            //InstanceReader reader = (InstanceReader)monitor._navigator._variables["var_reader"].Object;
-
-            while (true)
-            {
-                // var key = Console.ReadKey();
-                // if (key.Key == ConsoleKey.Escape)
-                // {
-
-                //     reader.Dispose();
-                //     return;
-                // }
-                string? msg = Console.ReadLine();
-                if (msg != null)
-                {
-                    //msg = $"{key.KeyChar}{msg}";
-                    if (msg.EqualsCaseless("exit"))// || string.IsNullOrWhiteSpace(msg))
-                    {
-                        //  reader.Dispose();
-                        return;
-                    }
-                    else
-                        Console.WriteLine(s_monitor.SafeInterface(msg, out _, out _));
-                }
-            }
-#endif
+            TypeCache.CacheType(typeof(AccessToolsExtensions),"accesstoolsE");
+            TypeCache.CacheType(typeof(BitConverter), false);
+            TypeCache.CacheType(typeof(BytesLittleEndian), "bytes");
         }
+#endif
+
+
+
+
 
     }
 
@@ -85,7 +83,7 @@ namespace XQuinn.Private
 
     abstract class BaseClass
     {
-       public static T Obj<T>(T val) => val;
+        public static T Obj<T>(T val) => val;
 
         public static T[] Prms<T>(params T[] prms) => prms;
     }
@@ -98,15 +96,25 @@ namespace XQuinn.Private
     class Instance : BaseClass
     {
 
+        int a;
+        public bool Method(Instance x)
+        {
+            return x is Instance;
+        }
     }
 
 
-    class Class<T>
+    class Class<T> where T : new()
     {
         static T[] arr = Array.Empty<T>();
         static T? obj = default;
 
         static T Ret(T obj) => obj;
+
+        static IReadOnlyList<T> list = new List<T>()
+        {
+            new(), new(), new()
+        };
     }
 
 

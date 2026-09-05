@@ -62,7 +62,7 @@ namespace XQuinn.IO.Finders
 
     internal static class CodeLabFinder
     {
-        public static readonly string s_path = System.IO.Path.Combine(KnownFolders.s_desktop, "C#Lab") ?? throw new DirectoryNotFoundException("C#Lab not found on Desktop!");
+        public static readonly string s_path = System.IO.Path.Combine(KnownFolders.Desktop, "C#Lab") ?? throw new DirectoryNotFoundException("C#Lab not found on Desktop!");
     }
 }
 #endif

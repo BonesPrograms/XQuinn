@@ -1,6 +1,5 @@
 Types not available in NetStandard2.0 edition:
 
-Entire XQuinn.IO.Finders namespace (uses EnumerationOptions)
-ILReader (relies in binaryprimitives)
-BytesLittleEndian (relies on binaryprimitives, i dont feel like making a byeteconverter editon) from XQuinn.Numerics
+Entire XQuinn.IO.Finders namespace (uses EnumerationOptions // win64)
+ILReader from XQuinn.Reflection
 DynamicInvoker (relies on assemblyloadcontext from net6) from XQuinn.Runtime

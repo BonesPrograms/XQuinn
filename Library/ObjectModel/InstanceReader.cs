@@ -45,21 +45,21 @@ namespace XQuinn.ObjectModel
     {
         public void Dispose()
         {
-            Writer.Close();
+            _writer.Close();
             GC.SuppressFinalize(this);
         }
 
-        void Write(string txt) => Writer.WriteLine(txt); //rewrote the code to use a streamwriter and im lazy, method was already called "Write"
+        void Write(string txt) => _writer.WriteLine(txt); //rewrote the code to use a streamwriter and im lazy, method was already called "Write"
 
         public Type LoopLimit;
-        readonly StreamWriter Writer = null!;
+        readonly StreamWriter _writer = null!;
         const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.Static;
         //loops through all base types so its declared only, but "source type" is tracked (the inheritor at the very end) if its a Field
 
         InstanceReader(string path, Type? loopLimit = null)
         {
             LoopLimit = loopLimit ?? typeof(object);
-            Writer = new(path);
+            _writer = new(path);
 
         }
         public static InstanceReader New(string outputFilePath, bool makeFileIfNotFound, Type? loopLimit = null)

@@ -7,8 +7,8 @@ using HarmonyLib;
 using System.Collections.ObjectModel;
 using System.Reflection;
 using XQuinn.Extensions;
-using XQuinn.CodeAnalysis;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LexicalAnalysis;
+using XQuinn.LexicalAnalysis.Syntaxes;
 using XQuinn.Reflection;
 using XQuinn.Runtime;
 
@@ -137,10 +137,19 @@ namespace XQuinn.Runtime
                         Command? command = method.GetCustomAttribute<Command>();
                         if (command != null)
                         {
-                            if (!method.IsStatic) throw new CommandException(method, command, "is not static.");
+                            if (!method.IsStatic)
+                                throw new CommandException(method, command, "is not static.");
                             TypeCache.ThrowIfBadKey(command.Name);
-                            if (!RuntimeNavigator.SupportedMember(method, method.GetParameters())) throw new CommandException(method, command, "has an unsupported in out or ref parameter, or ref return type.");
-                            if (_registry.TryGetValue(command.Name, out MethodInfo? alreadyCached)) { if (method != alreadyCached) throw new CommandException(method, command, "cannot be cached, command name is already taken."); else continue; }
+                            if (!Navigator.SupportedMember(method, method.GetParameters()))
+                                throw new CommandException(method, command, "has an unsupported in out or ref parameter, or ref return type.");
+                            if (_registry.TryGetValue(command.Name, out MethodInfo? alreadyCached))
+
+                            {
+                                if (method != alreadyCached)
+                                    throw new CommandException(method, command, "cannot be cached, command name is already taken.");
+                                else
+                                    continue;
+                            }
                             _registry.TryAdd(command.Name, method);
                         }
                     }

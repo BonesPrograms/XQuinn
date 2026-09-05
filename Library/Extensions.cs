@@ -95,6 +95,11 @@ namespace XQuinn.Extensions
             return strng.Equals(txt, StringComparison.OrdinalIgnoreCase);
         }
 
+        public static bool ContainsCaseless(this string strng, string? txt)
+        {
+            return strng.IndexOf(txt, StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
         // /// <summary>
         // /// Remove all occurances of a specified series of characters.
         // /// </summary>

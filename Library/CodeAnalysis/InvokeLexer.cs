@@ -1,10 +1,10 @@
 using System.Text;
-using XQuinn.LexicalAnalysis.Syntaxes;
+using XQuinn.CodeAnalysis.AST;
 using System.Reflection;
 using System;
 using XQuinn.Extensions;
 
-namespace XQuinn.LexicalAnalysis
+namespace XQuinn.CodeAnalysis
 {
 
 
@@ -30,12 +30,12 @@ namespace XQuinn.LexicalAnalysis
 
         }
     }
-    internal sealed class MethodLexer
+    internal sealed class InvokeLexer
     {
 
 
-        const char VaidNonAlphaNumeric = '_'; 
-                                             
+        const char VaidNonAlphaNumeric = '_';
+
         const char MethodStart = '(';
 
         const char MethodTerminate = ')';
@@ -68,6 +68,7 @@ namespace XQuinn.LexicalAnalysis
 
         //Primary reading rulesets - determine how to lex incoming data based on context
         bool _readChar;
+        bool _readCharValue = false;
         bool _readArbitraryLegalValue;
         bool _readQualifiedMember;
         bool _readDigit;
@@ -82,8 +83,8 @@ namespace XQuinn.LexicalAnalysis
         bool _stringEnding;         //the trailing whitespace after "hello" willbe skipped, and the trailing s after 33 will cause an exception
 
         bool _beganReadingMainMethodName; //This is a very specific flag that allows you to have leading whitespace for the main method name. Pretned | is string start. you can do |   call("hello")vb kjmhnnnnnnnnnnmm
-                             // You need this flag to help differentiate if the whitespace is leading, or inside the method name itself, which is of course
-                             //illegal.
+                                          // You need this flag to help differentiate if the whitespace is leading, or inside the method name itself, which is of course
+                                          //illegal.
 
         //These are for getting context on parameter values. Once a method begins or a parameter/method terminates, one of these is true, and we wait until we receive a character that gives us context on what will be read next.
         //Once we receive context, a Reading flag is set to true related to that specific context, and these flags are set to false, to prevent context getting reset in the middle of a read.
@@ -92,10 +93,10 @@ namespace XQuinn.LexicalAnalysis
 
         int _readingSubparams;
         int _lastReadingCount; //this is used to track how deeply we are reading parameters
-                              //so if readingsubparamsof == 2, we are reading a method that is the parameter of a method that is a parameter of the "main" method. ie. Method(typename:MethodTwo(typename:MethodThree())) //reading methodThree gives us a reading value of 2
-                              //once were done reading (we see a Terminate op), we decrement ReadingSubParams
-                              //             //and if lastreadingvalue is > readingsubparams,it lets us know "okay, we just finished reading method params, return to the method
-                              //that we were reading before we started reading this one"
+                               //so if readingsubparamsof == 2, we are reading a method that is the parameter of a method that is a parameter of the "main" method. ie. Method(typename:MethodTwo(typename:MethodThree())) //reading methodThree gives us a reading value of 2
+                               //once were done reading (we see a Terminate op), we decrement ReadingSubParams
+                               //             //and if lastreadingvalue is > readingsubparams,it lets us know "okay, we just finished reading method params, return to the method
+                               //that we were reading before we started reading this one"
 
 
 
@@ -116,8 +117,8 @@ namespace XQuinn.LexicalAnalysis
         public MethodString MethodTemplate(string invocation, TypeString declaringType, TypeString? implicitAccess)
         {
 
-           // if (string.IsNullOrWhiteSpace(invocation))
-             //   throw new ArgumentException("Invocation cannot be null or whitespace.");
+            //   if (string.IsNullOrWhiteSpace(invocation))
+            //   throw new ArgumentException("Invocation cannot be null or whitespace.");
             Clear();
             int i = 0;
             _declaringType = declaringType; //this is specifically to support trycatch, though otherwise not necessary because it always clears at the end to avoid holding onto stale data
@@ -163,11 +164,7 @@ namespace XQuinn.LexicalAnalysis
                 else if (_value == Whitespace)
                     goto Increment;
                 else if (_terminated || _methodParamsBegan)
-                {
                     GetContext(invocation, ref i);
-                    if (_readChar)
-                        goto Increment;
-                }
                 if (_lastReadingCount > _readingSubparams)
                 {
                     _currentMethod = _currentMethod!._subParamOf; _lastReadingCount--;
@@ -200,28 +197,21 @@ namespace XQuinn.LexicalAnalysis
             return primary;
         }
 
+
         bool ReadChar(ref int i, string invocation)
         {
             const string error = "Characer declarations must be enclosed with character declaration communicators (apostrophes).";
-            if (!_finishedReadChar)
+            if (!_readCharValue)
             {
-                char? next = null;
-                try
-                {
-                    next = invocation[i + 1];
-                }
-                catch (IndexOutOfRangeException)
-                {
-
-                }
-                if (next != CharDeclr)
-                    throw next == null ? new LexicalException(error, invocation, _sb) : new LexicalException(error, invocation, next.Value, _sb, i);
-                else
-                {
-                    _finishedReadChar = true;
-                    i++;
-                    return true;
-                }
+                _readCharValue = true;
+                return true;
+            }
+            else if (!_finishedReadChar)
+            {
+                if (_value != CharDeclr)
+                    throw new LexicalException(error, invocation, _value, _sb, i);
+                _finishedReadChar = true;
+                return true;
             }
             else if (_value == Whitespace)
                 SkipWhitespaceTrail(ref i, invocation);
@@ -232,6 +222,39 @@ namespace XQuinn.LexicalAnalysis
             }
             return false;
         }
+
+        // bool ReadChar(ref int i, string invocation)
+        // {
+        //     const string error = "Characer declarations must be enclosed with character declaration communicators (apostrophes).";
+        //     if (!_finishedReadChar)
+        //     {
+        //         char? next = null;
+        //         try
+        //         {
+        //             next = invocation[i + 1];
+        //         }
+        //         catch (IndexOutOfRangeException)
+        //         {
+
+        //         }
+        //         if (next != CharDeclr)
+        //             throw next == null ? new LexicalException(error, invocation, _sb) : new LexicalException(error, invocation, next.Value, _sb, i);
+        //         else
+        //         {
+        //             _finishedReadChar = true;
+        //             i++;
+        //             return true;
+        //         }
+        //     }
+        //     else if (_value == Whitespace)
+        //         SkipWhitespaceTrail(ref i, invocation);
+        //     if (_finishedReadChar)
+        //     {
+        //         _finishedReadChar = false;
+        //         _readChar = false;
+        //     }
+        //     return false;
+        // }
 
         void GetContext(string invocation, ref int i) //helps us figure out whats about to be read 
         {
@@ -398,20 +421,12 @@ namespace XQuinn.LexicalAnalysis
                 _noEscape = false;
                 return false; //return false allows parameter control flow to takeover
             }
-            else if (!_noEscape && _value == EscSeq)
+            if (!_noEscape && _value == EscSeq)
             {
-                i++;
+                i += 2;
                 _value = invocation[i];
-                //      if(Value == 'n')
-                //    {
-                _sb.Append(Environment.NewLine);
-                //i++;
-                //Value = invocation[i]; if value == '"' endstring = true
-                //    return false; ret false increment would help here
-                //        }
-                return true;
             }
-            else if (_value == StringDeclr)
+            if (_value == StringDeclr)
             {
                 _stringEnding = true;
             }
@@ -427,7 +442,7 @@ namespace XQuinn.LexicalAnalysis
         void ReadField()
         {
             string typename = ResolveMemberAccess(out string fieldname)!;
-            TypeString type = TypeName(typename);
+            TypeString type = ImplicitDeclaredOrNew(typename);
             FieldString field = new(fieldname, type);
             _sb.Length = 0;
             _currentMethod!.AddParameter(field);
@@ -438,7 +453,7 @@ namespace XQuinn.LexicalAnalysis
         void ReadMethod()
         {
             string? typename = ResolveMemberAccess(out string methodname);
-            TypeString type = TypeName(typename);
+            TypeString type = ImplicitDeclaredOrNew(typename);
             MethodString method = MethodString.New(methodname, _currentMethod, type);
             _sb.Length = 0;
             _currentMethod!.AddParameter(method);
@@ -448,7 +463,7 @@ namespace XQuinn.LexicalAnalysis
             _lastReadingCount++;
         }
 
-        TypeString TypeName(string? name)
+        TypeString ImplicitDeclaredOrNew(string? name)
         {
             if (name == null)
                 return _implicit_this ?? throw new InvalidOperationException("Cannot use implicit this, no implicit this has been provided.");
@@ -548,6 +563,7 @@ namespace XQuinn.LexicalAnalysis
             _stringEnding = false;
             _readQualifiedMember = false;
             _finishedReadChar = false;
+            _readCharValue=false;
             _readChar = false;
             _readArbitraryLegalValue = false;
             _methodParamsBegan = false;

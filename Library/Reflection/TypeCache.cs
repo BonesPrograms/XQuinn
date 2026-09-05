@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using HarmonyLib;
 using XQuinn.Parsing;
-using XQuinn.LexicalAnalysis;
+using XQuinn.CodeAnalysis;
 using XQuinn.Extensions;
 using System.Text;
 using System.Collections;
@@ -80,16 +80,18 @@ namespace XQuinn.Reflection
             ["bindingflags"] = typeof(BindingFlags),
 
             ["types"] = typeof(Types),
-            ["arraygen"] = typeof(ArrayGen),
+            // ["arraygen"] = typeof(ArrayGen),
             ["instancereader"] = typeof(InstanceReader),
 #if NET6_0_OR_GREATER                                 
             ["ilreader"] = typeof(ILReader),
 #endif
             ["typecache"] = typeof(TypeCache),
-            ["type"] = typeof(Type),
+            //  ["type"] = typeof(Type),
             ["assembly"] = typeof(Assembly),
             ["activator"] = typeof(Activator),
             ["convert"] = typeof(Convert),
+
+            ["idisposable"] = typeof(IDisposable),
 
             ["environment"] = typeof(Environment),
             ["appdomain"] = typeof(AppDomain),
@@ -108,7 +110,7 @@ namespace XQuinn.Reflection
             ["dictionary"] = typeof(Dictionary<,>),
             ["idictionaryT"] = typeof(IDictionary<,>),
             ["idictionary"] = typeof(IDictionary),
-            ["keyvaluepair"] = typeof(KeyValuePair<,>),
+            ["kvp"] = typeof(KeyValuePair<,>),
             ["hashset"] = typeof(HashSet<>),
             ["collection"] = typeof(Collection<>),
             ["icollection"] = typeof(ICollection),
@@ -120,10 +122,15 @@ namespace XQuinn.Reflection
         static TypeCache()
         {
             GlobalCache = new ReadOnlyDictionary<string, Type>(s_registry);
-            string[] keywordTypes = new[]
-             { "object", "string", "bool", "byte", "sbyte", "char", "int", "uint", "short", "ushort", "ulong", "long", "float", "decimal", "double", "nint", "nuint" };
-            foreach (string keyword in keywordTypes)
-                s_registry[$"{keyword}[]"] = s_registry[keyword].MakeArrayType();
+            Assembly mscorlib = Assembly.Load("System.Private.CoreLib");
+            Type runtimeType = mscorlib.GetType("System.RuntimeType", true)!;
+            s_registry["type"] = runtimeType; //Type doesnt really exist at Runtime, and there is an issue where the methods of Type and RuntimeType are order-swapped
+                                              //so its hard to tell what overload indexes are unless you load a runtimetype, thus, we replace Type with runtimetype so its easier
+
+            // string[] keywordTypes = new[]
+            //  { "object", "string", "bool", "byte", "sbyte", "char", "int", "uint", "short", "ushort", "ulong", "long", "float", "decimal", "double", "nint", "nuint" };
+            // foreach (string keyword in keywordTypes)
+            //     s_registry[$"{keyword}[]"] = s_registry[keyword].MakeArrayType();
         }
 
         public static bool Contains(string name) => s_registry.ContainsKey(name);
@@ -147,40 +154,27 @@ namespace XQuinn.Reflection
         /// <param name="key"></param>
         /// <param name="type"></param>
         /// <returns></returns>
-        public static bool CacheType(string key, Type type)
+        /// 
+
+        public static bool CacheType(Type type, string key)
         {
-            if (type.IsDefined(typeof(CompilerGeneratedAttribute)) || IsFileType())
-                return false;
-            ThrowIfBadKey(key);
-            if (CheckDuplicateOrCached())
-                return false;
-            s_registry.TryAdd(key, type);
-            return true;
-
-            bool IsFileType()
-            {
-                if (!type.IsPublic && !type.IsNested)
-                    return type.Name.StartsWith("<");
-                return false;
-            }
-
-            bool CheckDuplicateOrCached()
-            {
-                if (TryGetType(key, out Type? cachedtype))
-                    return type == cachedtype ? true : throw new DuplicateKeyException(cachedtype!, type, key);
-                return false;
-            }
+            return CacheType(type, key, true);
         }
 
-
+        static bool CheckDuplicateOrCached(Type type, string key)
+        {
+            if (TryGetType(key, out Type? cachedtype))
+                return type == cachedtype ? true : throw new DuplicateKeyException(cachedtype!, type, key);
+            return false;
+        }
         public static bool CacheType<T>(string key)
         {
-            return CacheType(key, typeof(T));
+            return CacheType(typeof(T), key);
         }
 
         public static bool CacheType(Type type, bool fullname)
         {
-            return CacheType(GetCompatibleName(type, fullname), type);
+            return CacheType(type, GetCompatibleName(type, fullname));
         }
 
         public static bool CacheType<T>(bool fullname)
@@ -196,16 +190,30 @@ namespace XQuinn.Reflection
 
         }
 
-        public static void CacheTypes(IEnumerable<Type> types, Func<Type, string?> toString)
+        public static void CacheTypes(IEnumerable<Type> types, Func<Type, string?> keyProvider)
         {
             foreach (Type type in types)
             {
-                string? key = toString.Invoke(type);
+                string? key = keyProvider.Invoke(type);
                 if (key != null)
-                    CacheType(key, type);
+                    CacheType(type, key);
             }
         }
-
+        public static void CacheTypes(TypeBook book)
+        {
+            foreach (KeyValuePair<string, Type> pair in book)
+                CacheType(pair.Value, pair.Key, false);
+        }
+        static bool CacheType(Type type, string key, bool compilerGen)
+        {
+            if (compilerGen && type.IsDefined(typeof(CompilerGeneratedAttribute)) || TypeBook.IsFileType(type))
+                return false;
+            ThrowIfBadKey(key);
+            if (CheckDuplicateOrCached(type, key))
+                return false;
+            s_registry.TryAdd(key, type);
+            return true;
+        }
         // public static void CacheTypes(IEnumerable<KeyValuePair<string, Type>> book)
         // {
         //     foreach (var pair in book)
@@ -215,37 +223,38 @@ namespace XQuinn.Reflection
         {
             string name = fullname ? type.FullName ?? throw new ArgumentNullException(nameof(fullname), $"Type {type} returned null for fullname.") : type.Name;
             if (type.IsGenericTypeDefinition)
-                return GenericToString();
+                return GenericToString(name, type.GetGenericArguments().Length);
             else if (type.IsNested && fullname)
                 return name.Replace('+', '.');
             else
                 return name;
 
-            string GenericToString()
-            {
-                StringBuilder snippedname = SnipGenericName();
-                if (fullname && type.IsNested)
-                    snippedname.Replace('+', '.');
-                snippedname.Append('T');
-                int genericargs = type.GetGenericArguments().Length;
-                if (genericargs > 0)
-                    snippedname.Append(genericargs);
-                return snippedname.ToString();
-
-                StringBuilder SnipGenericName()
-                {
-                    StringBuilder sb = new();
-                    foreach (char c in name)
-                        if (c == '`')
-                            break;
-                        else sb.Append(c);
-                    return sb;
-                }
-            }
 
         }
+        static string GenericToString(string name, int genericargs)
+        {
+            StringBuilder snippedname = SnipGenericName(name);
+            snippedname.Append('T');
+            if (genericargs > 1)
+                snippedname.Append(genericargs);
+            return snippedname.ToString();
 
 
+        }
+        static StringBuilder SnipGenericName(string name)
+        {
+            StringBuilder sb = new();
+            for (int i = 0; i < name.Length; i++)
+            {
+                char c = name[i];
+                if (c == '+')
+                    c = '.';
+                else if (c == '`')
+                    break;
+                sb.Append(c);
+            }
+            return sb;
+        }
         //Not sure if this should be a thing... its mostly so that keys can work with invocationlexer and callinterp. typecache was pretty much made *for* callinterp so not a problem imo
         internal static void ThrowIfBadKey(string key)
         {
@@ -284,7 +293,7 @@ namespace XQuinn.Reflection
                 }
                 else if (accessor)
                 {
-                    if (!MethodLexer.ValidIdentifierFirstChar(value))
+                    if (!InvokeLexer.ValidIdentifierFirstChar(value))
                         throw new ArgumentException($"Member access must be followed by an underscore or a letter for namespaces. Bad Key: {key}");
                     accessor = false;
                 }
@@ -322,8 +331,7 @@ namespace XQuinn.Reflection
             {
                 Dictionary<Navigator.ResolvedOverload, MethodBase> overloads = new();
                 Navigator.MapType(null, overloads, null, t, contains?.EqualsCaseless("new") ?? true);
-                var asStrings = overloads.Select(x => new KeyValuePair<string, MethodBase>(x.Key.ToString(), x.Value));
-                return ReadMembers(asStrings, contains, search);
+                return ReadMembers(overloads, contains, search);
             }
 
 
@@ -339,49 +347,57 @@ namespace XQuinn.Reflection
             {
                 Navigator.FlushStaticCache(ambiguousMatches, accessedMembers, reifiedGenerics);
             }
-            public static Type Of<T>() => typeof(T);
-            public static Type Of(string x) => GetTypeOrThrow(x); //for generic definitions
 
-            public static T? New<T>(T? obj = default) => obj; ///helpful for instantiating enums with OR
-            public static T New<T>() where T : new() => new();
-            public static bool LateCache(string assemblyName, string targettypeName, string keyForCaching)
+            // public static T Cast<T>(object obj)
+            // {
+            //     return (T)Convert.ChangeType(obj, typeof(T));
+            // }
+            public static Type Of<T>() => typeof(T);
+            public static Type Of(string name) => GetTypeOrThrow(name); //for generic definitions which cant be passed as T without their own typeargs
+            public static T Struct<T>(T obj = default) where T : unmanaged => obj;
+            public static T Enum<T>(T obj) where T : Enum => obj;
+            public static string String(string txt) => txt; //only way to instantiate an isolated new string using the navigator
+            public static T[] Array<T>(params T[] arr) => arr.Length == 0 ? System.Array.Empty<T>() : arr;
+            public static T[] Array<T>(int i) => i == 0 ? System.Array.Empty<T>() : new T[i];
+            public static bool LateCache(string assemblyName, string targetTypeName, string keyForCaching)
             {
                 Assembly assembly = Assembly.Load(assemblyName);
-                return LateCache(assembly, targettypeName, keyForCaching);
-
-            }
-            public static bool LateCache<T>(string targetTypeName, string keyForCaching)
-            {
-                return LateCache(typeof(T), targetTypeName, keyForCaching);
-            }
-            public static bool LateCache(Type cachedType, string targetTypeName, string keyForCaching)
-            {
-                return LateCache(cachedType.Assembly, targetTypeName, keyForCaching);
-            }
-            public static bool LateCache(Assembly assembly, string targetTypeName, string keyForCaching)
-            {
                 Type targetType = assembly.GetType(targetTypeName, false, true) ?? throw new ArgumentException($"No type found in assembly {assembly.FullName} named {targetTypeName}. Requires full name.");
-                return CacheType(keyForCaching, targetType);
-            }
+                return CacheType(targetType, keyForCaching);
 
-            static IEnumerable<string> ReadMembers<T>(IEnumerable<KeyValuePair<string, T>> members, string? key, BindingFlags flags) where T : MemberInfo
+            }
+            // public static bool LateCache<T>(string targetTypeName, string keyForCaching)
+            // {
+            //     return LateCache(typeof(T), targetTypeName, keyForCaching);
+            // }
+            // public static bool LateCache(Type cachedType, string targetTypeName, string keyForCaching)
+            // {
+            //     return LateCache(cachedType.Assembly, targetTypeName, keyForCaching);
+            // }
+            // public static bool LateCache(Assembly assembly, string targetTypeName, string keyForCaching)
+            // {
+            //     Type targetType = assembly.GetType(targetTypeName, false, true) ?? throw new ArgumentException($"No type found in assembly {assembly.FullName} named {targetTypeName}. Requires full name.");
+            //     return CacheType(keyForCaching, targetType);
+            // }
+
+            static IEnumerable<string> ReadMembers<K, V>(IEnumerable<KeyValuePair<K, V>> members, string? key, BindingFlags flags) where V : MemberInfo
             {
                 if (key != null)
                 {
                     bool contained = false;
-                    foreach (var member in members)
+                    foreach (KeyValuePair<K, V> member in members)
                     {
-                        if (SearchModifiers.ProcessSearch(member.Value, flags) && member.Key.Contains(key, StringComparison.OrdinalIgnoreCase))
+                        if (SearchModifiers.ProcessSearch(member.Value, flags) && member.Key!.ToString()!.ContainsCaseless(key))
                         {
                             contained = true;
                             yield return $"[Key: {member.Key} :: {ReflectionPrinter.Print(member.Value)}]";
                         }
                     }
                     if (!contained)
-                        yield return $"No {typeof(T).Name} found with name containing {key} with search option {flags}.";
+                        yield return $"No {typeof(V).Name} found with name containing {key} with search option {flags}.";
                 }
                 else
-                    foreach (var member in members)
+                    foreach (KeyValuePair<K, V> member in members)
                         if (SearchModifiers.ProcessSearch(member.Value, flags))
                             yield return $"[Key: {member.Key} :: {ReflectionPrinter.Print(member.Value)}]";
             }
@@ -450,44 +466,44 @@ namespace XQuinn.Reflection
             }
 
         }
-        static class ArrayGen
-        {
+        // static class ArrayGen
+        // {
 
-            public static T[] New<T>(params T[] arr) => arr;
+        //     // public static T[] New<T>(params T[] arr) => arr;
 
-            public static T[] New<T>(int i) => new T[i];
+        //     // public static T[] New<T>(int i) => new T[i];
 
-            public static bool GenerateCachedArray<T>(string name)
-            {
-                return GenerateCachedArray(typeof(T[]), name);
-            }
-            public static bool GenerateCachedArray(Type t, string name)
-            {
-                Type array = t.IsArray ? t : t.MakeArrayType();
-                return TypeCache.CacheType(name, array);
+        //     // public static bool GenerateCachedArray<T>(string name)
+        //     // {
+        //     //     return GenerateCachedArray(typeof(T[]), name);
+        //     // }
+        //     // public static bool GenerateCachedArray(Type t, string name)
+        //     // {
+        //     //     Type array = t.IsArray ? t : t.MakeArrayType();
+        //     //     return TypeCache.CacheType(name, array);
 
-            }
+        //     }
 
-            // public static string GenerateCachedArray<T>(bool fullname)
-            // {
-            //     return GenerateCachedArray(typeof(T[]), fullname);
-            // }
-            //Just put your own name for now
-            // public static string GenerateCachedArray(Type t, bool fullname)
-            // {
-            //     Type array = t.IsArray ? t : t.MakeArrayType();
-            //     string name;
-            //     if (t.IsArray)
-            //     {
-            //         Type underlying = t.GetElementType()!;
-            //         name = $"{TypeCache.GetCompatibleName(underlying, fullname)}[]";
-            //     }
-            //     else name = $"{TypeCache.GetCompatibleName(t, fullname)}[]";
-            //     TypeCache.CacheType(name, array);
-            //     return name;
-            // }
+        //     // public static string GenerateCachedArray<T>(bool fullname)
+        //     // {
+        //     //     return GenerateCachedArray(typeof(T[]), fullname);
+        //     // }
+        //     //Just put your own name for now
+        //     // public static string GenerateCachedArray(Type t, bool fullname)
+        //     // {
+        //     //     Type array = t.IsArray ? t : t.MakeArrayType();
+        //     //     string name;
+        //     //     if (t.IsArray)
+        //     //     {
+        //     //         Type underlying = t.GetElementType()!;
+        //     //         name = $"{TypeCache.GetCompatibleName(underlying, fullname)}[]";
+        //     //     }
+        //     //     else name = $"{TypeCache.GetCompatibleName(t, fullname)}[]";
+        //     //     TypeCache.CacheType(name, array);
+        //     //     return name;
+        //     // }
 
-        }
+        // }
 
 
 

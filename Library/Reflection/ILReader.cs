@@ -2,7 +2,8 @@
 using System.Reflection.Emit;
 using System.Reflection;
 using System.Buffers.Binary;
-using static XQuinn.Numerics.ByteSizes;
+using static System.Buffers.Binary.BinaryPrimitives; //binaryprimitives is preferred to bitconverter cause it is more efficient and little endians for me
+using static XQuinn.Reflection.ILReader;
 using XQuinn.IO;
 using System.Collections.ObjectModel;
 using System;
@@ -14,8 +15,8 @@ using System.Numerics;
 using XQuinn.Extensions;
 using System.ComponentModel;
 using XQuinn.Reflection;
-using XQuinn.Numerics;
 using System.Linq;
+using static XQuinn.Reflection.ByteSizes;
 
 namespace XQuinn.Reflection
 {
@@ -34,23 +35,23 @@ namespace XQuinn.Reflection
     public sealed class ILReader : IDisposable
     {
 
-        IList<LocalVariableInfo> Locals = null!;
-        ParameterInfo[] Params = null!;
-        byte[] IL = null!;
-        Module Module = null!;
-        MethodBase Method = null!;
+        IList<LocalVariableInfo> _localvars = null!;
+        ParameterInfo[] _params = null!;
+        byte[] _il = null!;
+        Module _module = null!;
+        MethodBase _methodbase = null!;
 
         /// <summary>
         /// Some opcodes are 2 bytes long, they will always start with a "prefix" byte.
         /// </summary>
         const byte PrefixBit = 0xFE;
-        Type[]? GenericMethodArgs;
-        Type[]? GenericTypeArgs;
+        Type[]? _generic_method_args;
+        Type[]? _generic_type_args;
 
-        readonly StreamWriter writer;
+        readonly StreamWriter _writer;
         ILReader(string path)
         {
-            writer = new(path);
+            _writer = new(path);
         }
         public static void PrintIL(MethodBase method, string outputFilePath, bool makeFileIfNotFound)
         {
@@ -73,14 +74,14 @@ namespace XQuinn.Reflection
             if (Harmony.GetPatchInfo(method) != null)
                 throw new NotSupportedException($"{method} in {method.DeclaringType} has been patched by harmony and it's actual behavior cannot properly be represented by ILReader.");
             MethodBody body = method.GetMethodBody() ?? throw new ArgumentException("Method body is null.");
-            Method = method;
-            Module = method.Module;
-            Locals = body.LocalVariables;
-            IL = body.GetILAsByteArray() ?? throw new ArgumentException("Byte array is null.");
-            Params = method.GetParameters();
+            _methodbase = method;
+            _module = method.Module;
+            _localvars = body.LocalVariables;
+            _il = body.GetILAsByteArray() ?? throw new ArgumentException("Byte array is null.");
+            _params = method.GetParameters();
             if (method is MethodInfo)
-                GenericMethodArgs = method.GetGenericArguments();
-            GenericTypeArgs = method.DeclaringType?.GetGenericArguments();
+                _generic_method_args = method.GetGenericArguments();
+            _generic_type_args = method.DeclaringType?.GetGenericArguments();
         }
 
 
@@ -95,35 +96,35 @@ namespace XQuinn.Reflection
         /// <param name="outputFilePath"></param>
         public void PrintIL() //sho
         {
-            if (Method == null)
-                throw new ArgumentNullException(nameof(Method));
-            writer.WriteLine("method");
-            writer.Write("  ");
+            if (_methodbase == null)
+                throw new ArgumentNullException(nameof(_methodbase));
+            _writer.WriteLine("method");
+            _writer.Write("  ");
             string methodstring;
-            if (Method is MethodInfo mthdinfo)
+            if (_methodbase is MethodInfo mthdinfo)
                 methodstring = MetadataPrinter.MethodToString(new(), mthdinfo, true).ToString();
             else
-                methodstring = MetadataPrinter.ConstructorToString(new(), (ConstructorInfo)Method).ToString();
-            writer.WriteLine($"  {methodstring}");//,maybe should edit the stringbuilder to slip in parameter names
-            writer.WriteLine("");
+                methodstring = MetadataPrinter.ConstructorToString(new(), (ConstructorInfo)_methodbase).ToString();
+            _writer.WriteLine($"  {methodstring}");//,maybe should edit the stringbuilder to slip in parameter names
+            _writer.WriteLine("");
             //  writer.WriteLine("	.maxstack 1");
-            writer.WriteLine("Locals");
-            for (int i = 0; i < Locals.Count; i++)
+            _writer.WriteLine("Locals");
+            for (int i = 0; i < _localvars.Count; i++)
             {
-                bool needcomma = For.NeedsDelimiter(Locals.Count, i);
+                bool needcomma = For.NeedsDelimiter(_localvars.Count, i);
                 char? comma = needcomma ? ',' : null;
-                writer.WriteLine($"		[{i}] {Locals[i].LocalType.Name}{comma}");
+                _writer.WriteLine($"		[{i}] {_localvars[i].LocalType.Name}{comma}");
 
             }
-            writer.WriteLine("");
+            _writer.WriteLine("");
             List<ByteCode> codes = GetIL();
             foreach (ByteCode code in codes)
-                writer.WriteLine("	" + code.ToString());
+                _writer.WriteLine("	" + code.ToString());
         }
 
         public void Dispose()
         {
-            writer.Close();
+            _writer.Close();
             GC.SuppressFinalize(this);
         }
 
@@ -135,7 +136,7 @@ namespace XQuinn.Reflection
         {
             int i = 0;
             List<ByteCode> codes = new();
-            while (i < IL.Length)
+            while (i < _il.Length)
                 BytesToIL(codes, ref i);
             return codes;
         }
@@ -154,10 +155,10 @@ namespace XQuinn.Reflection
         OpCode GetOpCode(ref int i)
         {
             OpCode code;
-            byte indexedbyte = IL[i];
+            byte indexedbyte = _il[i];
             if (indexedbyte == PrefixBit)
             {
-                byte nextbyte = IL[i + 1];
+                byte nextbyte = _il[i + 1];
                 short key = (short)((PrefixBit << 0x08) | nextbyte);
                 code = OpCodeMap.s_opCodes[key];
                 i += 2;
@@ -176,16 +177,16 @@ namespace XQuinn.Reflection
             if (size == x0bit)
                 return x0bit; //no operand
             else if (size == x8bit)
-                return IL[i];
+                return _il[i];
             else if (size == x16bit)
-                return BinaryPrimitives.ReadInt16LittleEndian(IL.AsSpan(i, x16bit));
+                return BinaryPrimitives.ReadInt16LittleEndian(_il.AsSpan(i, x16bit));
             else if (size == x32bit)
             {
                 int token;
                 if (type == OperandType.ShortInlineR)
-                    return BinaryPrimitives.ReadSingleLittleEndian(IL.AsSpan(i, x32bit));
+                    return BinaryPrimitives.ReadSingleLittleEndian(_il.AsSpan(i, x32bit));
                 else
-                    token = BinaryPrimitives.ReadInt32LittleEndian(IL.AsSpan(i, x32bit)); ;
+                    token = BinaryPrimitives.ReadInt32LittleEndian(_il.AsSpan(i, x32bit)); ;
                 if (type == OperandType.InlineSwitch)
                     size += token * 4;
                 return token;
@@ -193,8 +194,8 @@ namespace XQuinn.Reflection
             else if (size == x64bit)
             {
                 if (type == OperandType.InlineR)
-                    return BinaryPrimitives.ReadDoubleLittleEndian(IL.AsSpan(i, x64bit));
-                return BinaryPrimitives.ReadInt64LittleEndian(IL.AsSpan(i, x64bit));
+                    return BinaryPrimitives.ReadDoubleLittleEndian(_il.AsSpan(i, x64bit));
+                return BinaryPrimitives.ReadInt64LittleEndian(_il.AsSpan(i, x64bit));
             }
             throw new InvalidOperationException("OperandSize(OperandType) returned an out-of-range value.");
         }
@@ -211,12 +212,12 @@ namespace XQuinn.Reflection
                 OperandType.InlineI8 => (long)token, //maybe i could just check if the token is not int... would require changing the base constructor since it takes the operand first
                 OperandType.ShortInlineVar => GetVariable(code, (byte)token), //or something
                 OperandType.InlineVar => GetVariable(code, (short)token),
-                OperandType.InlineMethod => Module.ResolveMethod((int)token, GenericTypeArgs, GenericMethodArgs),
-                OperandType.InlineField => Module.ResolveField((int)token, GenericTypeArgs, GenericMethodArgs),
-                OperandType.InlineType => Module.ResolveType((int)token, GenericTypeArgs, GenericMethodArgs),
-                OperandType.InlineString => Module.ResolveString((int)token),
-                OperandType.InlineTok => Module.ResolveMember((int)token, GenericTypeArgs, GenericMethodArgs),
-                OperandType.InlineSig => Module.ResolveSignature((int)token),
+                OperandType.InlineMethod => _module.ResolveMethod((int)token, _generic_type_args, _generic_method_args),
+                OperandType.InlineField => _module.ResolveField((int)token, _generic_type_args, _generic_method_args),
+                OperandType.InlineType => _module.ResolveType((int)token, _generic_type_args, _generic_method_args),
+                OperandType.InlineString => _module.ResolveString((int)token),
+                OperandType.InlineTok => _module.ResolveMember((int)token, _generic_type_args, _generic_method_args),
+                OperandType.InlineSig => _module.ResolveSignature((int)token),
                 OperandType.InlineNone or OperandType.InlineSwitch => null, //the "token" is the jump target, and will carry over for display in ByteCode, so operand is unecessary
                 OperandType.InlineBrTarget => (int)token + i + 1, //idk why u need to do +1 but it is always -1 instruction off from its actual jump target
                 _ => throw new InvalidProgramException("Operand type does not exist.")
@@ -226,17 +227,17 @@ namespace XQuinn.Reflection
         {
             if (opcode.Name?.Contains("loc") ?? false)
             {
-                return Locals[token];
+                return _localvars[token];
             }
             else
             {
-                if (Method.IsStatic)
+                if (_methodbase.IsStatic)
                 {
-                    return Params[token];
+                    return _params[token];
                 }
                 else if (token == 0) //idk why a token of 0 == this, but i guess that is the byte code for this, wonder where i can learn that
                     return "this"; //idk how to get this, was trying to research it monocecil, but cant access the class they use to resolve waht this is
-                return Params[token - 1]; //not sure why they do -1 here, not sure why i do +1 for the jump label lol
+                return _params[token - 1]; //not sure why they do -1 here, not sure why i do +1 for the jump label lol
             }                              //i suppose it has something to do with being nonstatic? but why -1? is "this" on the params list?
         }
 
@@ -337,6 +338,154 @@ namespace XQuinn.Reflection
             else
                 sb.Append($"{Operand?.ToString()}");
         }
+    }
+
+
+    static class ByteSizes
+    {
+        /// <summary>
+        /// 0 bytes.
+        /// </summary>
+        public const int x0bit = 0x00;
+
+        /// <summary>
+        /// 1 byte.
+        /// </summary>
+        public const int x8bit = 0x01;
+        /// <summary>
+        /// 2 bytes.
+        /// </summary>
+        public const int x16bit = 0x02;
+        /// <summary>
+        /// 4 bytes.
+        /// </summary>
+        public const int x32bit = 0x04;
+        /// <summary>
+        /// 8 bytes.
+        /// </summary>
+        public const int x64bit = 0x08;
+
+        //  public const int x128bit = 0x16;
+
+        //  public const int x256bit = 0x32;
+    }
+
+
+    static class BytesLittleEndian
+    {
+
+        //Not available in net6, not supported.
+
+        // public static byte[] AsBytes(UInt128 uint128) => uint128.AsBytesInternal();
+        //public static byte[] AsBytes(Int128 sint128) => sint128.AsBytesInternal();
+        public static byte[] AsBytes(nuint uint32or64) => uint32or64.AsBytesInternal();
+        public static byte[] AsBytes(nint sint32or64) => sint32or64.AsBytesInternal();
+        public static byte[] AsBytes(ulong uint64) => uint64.AsBytesInternal();
+        public static byte[] AsBytes(uint uint32) => uint32.AsBytesInternal();
+        public static byte[] AsBytes(double float64) => float64.AsBytesInternal();
+        public static byte[] AsBytes(long sint64) => sint64.AsBytesInternal();
+        public static byte[] AsBytes(float float32) => float32.AsBytesInternal();
+        public static byte[] AsBytes(int sint32) => sint32.AsBytesInternal();
+        public static byte[] AsBytes(Half float16) => float16.AsBytesInternal();
+        public static byte[] AsBytes(ushort uint16) => uint16.AsBytesInternal();
+        public static byte[] AsBytes(short sint16) => sint16.AsBytesInternal();
+        public static byte[] AsBytes(char utf16) => utf16.AsBytesInternal();
+
+        static byte[] AsBytesInternal<T>(this T num) 
+        {
+            byte[] bytes = Array.Empty<byte>();
+
+            switch (num)
+            {
+                // case byte int8:
+                //     bytes = new byte[1];
+                //     bytes[0] = int8;
+                //     break;
+                case char utf16:
+                    bytes = new byte[sizeof(char)]; // 2 bytes
+                    WriteUInt16LittleEndian(bytes, utf16);
+                    break;
+                case short sint16:
+                    bytes = new byte[sizeof(short)]; // 2 bytes
+                    WriteInt16LittleEndian(bytes, sint16);
+                    break;
+                case ushort uint16:
+                    bytes = new byte[sizeof(ushort)]; // 2 bytes
+                    WriteUInt16LittleEndian(bytes, uint16);
+                    break;
+                case Half float16:
+                    bytes = new byte[x16bit];
+                    WriteHalfLittleEndian(bytes, float16);
+                    break;
+                case int sint32:
+                    bytes = new byte[sizeof(int)]; // 4 bytes
+                    WriteInt32LittleEndian(bytes, sint32);
+                    break;
+                case uint uint32:
+                    bytes = new byte[sizeof(uint)]; // 4 bytes
+                    WriteUInt32LittleEndian(bytes, uint32);
+                    break;
+                case float float32:
+                    bytes = new byte[sizeof(float)]; // 4 bytes
+                    WriteSingleLittleEndian(bytes, float32);
+                    break;
+                case long sint64:
+                    bytes = new byte[sizeof(long)]; // 8 bytes
+                    WriteInt64LittleEndian(bytes, sint64);
+                    break;
+                case ulong uint64:
+                    bytes = new byte[sizeof(ulong)]; // 8 bytes
+                    WriteUInt64LittleEndian(bytes, uint64);
+                    break;
+                case double float64:
+                    bytes = new byte[sizeof(double)]; // 8 bytes
+                    WriteDoubleLittleEndian(bytes, float64);
+                    break;
+                // case Int128 sint128:
+                //     bytes = new byte[x128bit]; //absolutely massive
+                //     WriteInt128LittleEndian(bytes, sint128);
+                //     break;
+                // case UInt128 uint128:
+                //     bytes = new byte[x128bit];
+                //     WriteUInt128LittleEndian(bytes, uint128);
+                //     break;
+                case nint sint32or64:
+                    if (IntPtr.Size == x32bit)
+                    {
+                        bytes = new byte[x32bit];
+                        WriteInt32LittleEndian(bytes, (int)sint32or64);
+                    }
+                    else if (IntPtr.Size == x64bit)
+                    {
+                        bytes = new byte[x64bit];
+                        WriteInt64LittleEndian(bytes, sint32or64);
+                    }
+                    else
+                        throw new PlatformNotSupportedException("Must be 32bit or 64bit process");
+                    break;
+                case nuint uint32or64:
+                    if (!Environment.Is64BitProcess)
+                    {
+                        bytes = new byte[x32bit];
+                        WriteUInt32LittleEndian(bytes, (uint)uint32or64);
+                    }
+                    else if (Environment.Is64BitProcess)
+                    {
+                        bytes = new byte[x64bit];
+                        WriteUInt64LittleEndian(bytes, uint32or64);
+                    }
+                    else
+                        throw new PlatformNotSupportedException("Must be 32bit or 64bit process");
+                    break;
+                    // case decimal float128:
+                    // bytes = new byte[x128bit];
+                    // Write
+            }
+            if (bytes.Length == 0)
+                throw new NotSupportedException("Numeric type not supported by BinaryPrimitives.");
+            return bytes;
+        }
+
     }
 }
 #endif

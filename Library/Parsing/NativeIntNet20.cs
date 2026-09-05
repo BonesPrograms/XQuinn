@@ -1,26 +1,31 @@
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.Numerics;
+using static XQuinn.Parsing.NativeIntNet20;
 
 namespace XQuinn.Parsing
 {
 
     //To allow Nint/NUint tryparse on older net versions
     //Currently only for strings though
-    public abstract class NativeIntNet20
+    internal static class NativeIntNet20
     {
-        public static readonly bool Is64Bit;
-        private protected NativeIntNet20() { }
-        static NativeIntNet20() { unsafe { Is64Bit = sizeof(nint) == sizeof(long); } }
+        internal static readonly bool s_64bit;
+        static NativeIntNet20()
+        {
+            unsafe
+            {
+                s_64bit = sizeof(nint) == sizeof(long);
+            }
+        }
 
     }
-    public sealed class NIntNet20 : NativeIntNet20
+    public static class NIntNet20
     {
-        NIntNet20() { }
         public static bool TryParse(string value, out nint num)
         {
             num = default;
-            if (Is64Bit)
+            if (s_64bit)
             {
                 if (long.TryParse(value, out long int64))
                 {
@@ -37,13 +42,12 @@ namespace XQuinn.Parsing
         }
     }
 
-    public sealed class NUIntNet20 : NativeIntNet20
+    public static class NUIntNet20
     {
-        NUIntNet20() { }
         public static bool TryParse(string value, out nuint num)
         {
             num = default;
-            if (Is64Bit)
+            if (s_64bit)
             {
                 if (ulong.TryParse(value, out ulong uint64))
                 {

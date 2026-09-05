@@ -39,8 +39,8 @@ namespace XQuinn.Runtime
             }
         }
 
-        public readonly Monitor Monitor;
-        public Func<Type, string?> BookDelegate;
+        readonly Monitor Monitor;
+        public Func<Type, string?> BookDelegate = x => TypeCache.GetCompatibleName(x, false);
         public string? DefaultLoadedTypeName;
         /// <summary>
         /// If changing DLLPath, call Reload.
@@ -54,9 +54,10 @@ namespace XQuinn.Runtime
         /// </summary>
         DateTime LastWrite;
 
-        DynamicAssembly(string path, Func<Type, string?> bookDelegate) //DynamicReloader exists purely as a base class for DynamicInvoker. It is not intended for anyone else to inherit from.
+        DynamicAssembly(string path, Func<Type, string?>? bookDelegate) //DynamicReloader exists purely as a base class for DynamicInvoker. It is not intended for anyone else to inherit from.
         {
-            BookDelegate = bookDelegate;
+            if (bookDelegate != null)
+                BookDelegate = bookDelegate;
             DLLPath = path;
             Monitor = new(false);
         }
@@ -75,10 +76,10 @@ namespace XQuinn.Runtime
             // if (monitor != null)
             //     Collect(monitor);
             Load();
-         //   Module[] modules = LoadedAssembly!.GetModules();
-          //  if (modules.Length > 1) throw new NotSupportedException("Only single file assemblies are supported.");
+            //   Module[] modules = LoadedAssembly!.GetModules();
+            //  if (modules.Length > 1) throw new NotSupportedException("Only single file assemblies are supported.");
             Monitor._navigator.LocalCache = TypeBook.New(LoadedAssembly!.ManifestModule.GetTypes(), BookDelegate, StringComparer.OrdinalIgnoreCase);
-            if (DefaultLoadedTypeName != null) Monitor._navigator.LoadTypeStatics(DefaultLoadedTypeName);
+            if (DefaultLoadedTypeName != null) Monitor._navigator.LoadTypeStatic(DefaultLoadedTypeName);
             LastWrite = File.GetLastWriteTime(DLLPath);
         }
 
@@ -111,8 +112,9 @@ namespace XQuinn.Runtime
 
         public object? Interface(string invocation, out string output, out bool exception)
         {
-            if (CheckForReload()) Reload();
-            output = Monitor.TryCatchInterface(invocation, out object? ret, out exception);
+            if (CheckForReload())
+                Reload();
+            output = Monitor.SafeInterface(invocation, out object? ret, out exception);
             return ret;
         }
 

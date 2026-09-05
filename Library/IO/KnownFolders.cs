@@ -19,7 +19,7 @@ public enum KnownFolder
  
 public static class KnownFolders
 {
-    public static readonly string s_desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
+    public static readonly string Desktop = Environment.GetFolderPath(Environment.SpecialFolder.Desktop);
     private static readonly Dictionary<KnownFolder, Guid> s_guids = new()
     {
         [KnownFolder.Contacts] = new("56784854-C6CB-462B-8169-88E350ACB882"),

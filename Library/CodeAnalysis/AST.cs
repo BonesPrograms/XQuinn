@@ -11,7 +11,7 @@ using XQuinn.Parsing;
 using System.Collections.ObjectModel;
 using XQuinn;
 
-namespace XQuinn.LexicalAnalysis.Syntaxes
+namespace XQuinn.CodeAnalysis.AST
 {
 
     internal interface IMemberString
@@ -89,7 +89,7 @@ namespace XQuinn.LexicalAnalysis.Syntaxes
             throw asType.IsPrimitive || asType == typeof(object) ?
             new FormatException($"Failed to convert {NameOrValue} to {asType}.") :
             new NotSupportedException($"Cannot convert values to user defined struct instances. struct type: {asType}. Value: {NameOrValue}");
-            
+
         }
 
         bool IsFormattedLikeAString(bool formatException, out string? extract)
@@ -184,7 +184,7 @@ namespace XQuinn.LexicalAnalysis.Syntaxes
             }
             if (AsObjectOr<char>(asType))
             {
-                if (char.TryParse(NameOrValue, out char utf16))
+                if (CharTryParse(out char utf16, asType == typeof(char)))
                 {
                     primitive = utf16;
                     return true;
@@ -225,11 +225,21 @@ namespace XQuinn.LexicalAnalysis.Syntaxes
             return primitive != null;
         }
 
-        //// bool TryParseChar(out char utf16)
-        // {
-        //if (String.Length != 3) throw new FormatException($"Invalid char format. Input: {String}. Must be surrounzed by apostrophes, must be a single char.");
-        //  return char.TryParse(String[2].ToString(), out utf16);
-        //}
+        bool CharTryParse(out char utf16, bool formatException)
+        {
+            utf16 = default;
+            if (NameOrValue.Length == 3)
+            {
+                if (NameOrValue[0] == '\'' && NameOrValue[2] == '\'')
+                {
+                    utf16 = NameOrValue[1];
+                    return true;
+                }
+             }
+            return formatException ? throw new FormatException($"Invalid char format. Input: {NameOrValue}. Must be surrounzed by apostrophes, must be a single char.") : false;
+
+
+        }
         static bool AsObjectOr<T>(Type asType) => typeof(T) == asType || typeof(object) == asType;
 
     }
@@ -250,7 +260,13 @@ namespace XQuinn.LexicalAnalysis.Syntaxes
 
         public string NameWithGenerics => _fullname;
         string _fullname;
-        public IReadOnlyList<TypeString> Generics = Array.Empty<TypeString>();
+        public IReadOnlyList<TypeString> Generics
+        {
+            get
+            {
+                return _type_args == null ? Array.Empty<TypeString>() : _type_args;
+            }
+        }
         List<TypeString>? _type_args;
         internal GenericString(string nameForSnipping) : base(nameForSnipping)
         {
@@ -260,27 +276,27 @@ namespace XQuinn.LexicalAnalysis.Syntaxes
         {
             if (!dontLex)
             {
-                if (CheckForGenericArguments(genericString.NameOrValue))
+                if (genericString.HasTypeArgs())
                 {
                     StringBuilder sb = new();
                     genericString.LexGenerics(sb);
                     sb.Length = 0;
-                    genericString._fullname = genericString.PrintGenericArgs(sb);
+                    genericString.PrintTypeArgs(sb);
                 }
             }
             return genericString;
         }
 
-        static bool CheckForGenericArguments(string name)
+        bool HasTypeArgs()
         {
             bool genericStart = false;
-            for (int i = 0; i < name.Length; i++)
+            for (int i = 0; i < NameOrValue.Length; i++)
             {
-                char c = name[i];
+                char c = NameOrValue[i];
                 if (c == '<') genericStart = true;
-                else if (c == '>') return genericStart ? true : throw new FormatException($"Invalid generic argument format. {name}");
+                else if (c == '>') return genericStart ? true : throw new FormatException($"Invalid generic argument format. {NameOrValue}");
             }
-            return genericStart ? throw new FormatException($"Invalid generic argument format. {name}") : false;
+            return genericStart ? throw new FormatException($"Invalid generic argument format. {NameOrValue}") : false;
         }
         public Type[] ConvertGenericArguments(IReadOnlyDictionary<string, Type>? dic = null)
         {
@@ -310,7 +326,7 @@ namespace XQuinn.LexicalAnalysis.Syntaxes
                 if (c == '<')
                 {
                     if (finishedReadingLeadName)
-                        currentGeneric = NewArg(sb, currentGeneric);
+                        currentGeneric = currentGeneric.AddTypeArg(sb);
                     else
                     {
                         currentGeneric.NameOrValue = sb.ToString();
@@ -322,7 +338,7 @@ namespace XQuinn.LexicalAnalysis.Syntaxes
                 {
                     if (sb.Length > 0)
                     {
-                        NewArg(sb, currentGeneric);
+                        currentGeneric.AddTypeArg(sb);
                         if (currentGeneric != this)
                         {
                             TypeString currentArg = (TypeString)currentGeneric;
@@ -335,23 +351,19 @@ namespace XQuinn.LexicalAnalysis.Syntaxes
                 else if (c == ',')
                 {
                     if (sb.Length > 0)
-                        NewArg(sb, currentGeneric);
+                        currentGeneric.AddTypeArg(sb);
                 }
                 else sb.Append(c);
             }
         }
 
-        static TypeString NewArg(StringBuilder sb, GenericString currentGeneric)
+        TypeString AddTypeArg(StringBuilder sb)
         {
             string name = sb.ToString();
             sb.Length = 0;
-            if (currentGeneric._type_args == null)
-            {
-                currentGeneric._type_args = new();
-                currentGeneric.Generics = currentGeneric._type_args;
-            }
-            TypeString typearg = TypeString.New(name, currentGeneric, true);
-            currentGeneric._type_args.Add(typearg);
+            _type_args ??= new List<TypeString>();
+            TypeString typearg = TypeString.New(name, this, true);
+            _type_args.Add(typearg);
             return typearg;
         }
 
@@ -361,13 +373,13 @@ namespace XQuinn.LexicalAnalysis.Syntaxes
             return _fullname;
         }
 
-        string PrintGenericArgs(StringBuilder sb)
+        void PrintTypeArgs(StringBuilder sb)
         {
             sb.Append(NameOrValue);
             sb.Append('<');
             sb.AppendMany(Generics, ",");
             sb.Append('>');
-            return sb.ToString();
+            _fullname = sb.ToString();
         }
 
 
@@ -411,8 +423,14 @@ namespace XQuinn.LexicalAnalysis.Syntaxes
         internal readonly MethodString? _subParamOf;
         public TypeString DeclaringType => _type;
         readonly TypeString _type;
-        public IReadOnlyList<ParameterString> Params = Array.Empty<ParameterString>();
-        List<ParameterString>? _args;
+        public IReadOnlyList<ParameterString> Params
+        {
+            get
+            {
+                return _args == null ? Array.Empty<ParameterString>() : _args;
+            }
+        }
+        List<ParameterString>? _args; //= Array.Empty<ParameterString>();
         internal static MethodString New(string name, MethodString? paramOf, TypeString declaredIn)
         {
             return New<MethodString>(new(name, paramOf, declaredIn));
@@ -439,11 +457,6 @@ namespace XQuinn.LexicalAnalysis.Syntaxes
         // }
         internal void AddParameter(ParameterString param)
         {
-            if (_args == null)
-            {
-                _args = new List<ParameterString>();
-                Params = _args;
-            }
             _args ??= new List<ParameterString>();
             _args.Add(param);
         }

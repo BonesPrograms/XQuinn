@@ -1,0 +1,97 @@
+However, if you want to avoid the dependency entirely, you can compare and hash only the relevant portion of the string by indexing its characters directly. No Substring allocation is needed.
+
+For ASCII alphanumeric identifiers, you could implement it like this:
+
+csharp
+
+Copy
+
+
+private static char Normalize(char c)
+{
+    return c >= 'a' && c <= 'z'
+        ? (char)(c - ('a' - 'A'))
+        : c;
+}
+
+public bool Equals(Overload other)
+{
+    if (Index != other.Index)
+        return false;
+
+    if (NameLength != other.NameLength)
+        return false;
+
+    for (int i = 0; i < NameLength; i++)
+    {
+        if (Normalize(Key[i]) != Normalize(other.Key[i]))
+            return false;
+    }
+
+    return true;
+}
+
+public override int GetHashCode()
+{
+    unchecked
+    {
+        uint hash = 2166136261;
+
+        for (int i = 0; i < NameLength; i++)
+        {
+            hash ^= Normalize(Key[i]);
+            hash *= 16777619;
+        }
+
+        hash ^= (uint)Index;
+        hash *= 16777619;
+
+        return (int)hash;
+    }
+}
+Here, NameLength is the length of the actual method name, excluding the trailing numeric suffix. For example:
+
+text
+
+Copy
+
+
+Key:        "Calculate2"
+NameLength: 9
+Name:       "Calculate"
+Both equality and hashing inspect only Key[0..NameLength], so the suffix is ignored without creating a substring.
+
+For example, these would compare equal if their Index values are equal:
+
+text
+
+Copy
+
+
+"Calculate1"
+"calculate99"
+The equality loop normalizes both strings to the same uppercase ASCII representation, and the hash loop performs the same normalization. That matching behavior is the important requirement.
+
+If your type is immutable, you can cache the hash in a readonly field, but calculate it using the same range-based logic in the constructor:
+
+csharp
+
+Copy
+
+
+private readonly int _hashCode;
+
+public Overload(string key, int nameLength, int index)
+{
+    Key = key;
+    NameLength = nameLength;
+    Index = index;
+
+    _hashCode = CalculateHashCode();
+}
+
+public override int GetHashCode()
+{
+    return _hashCode;
+}
+For most short method names, I would initially avoid caching it. The direct character loop avoids allocations,

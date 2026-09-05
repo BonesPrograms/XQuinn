@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 using XQuinn.Extensions;
-using XQuinn.LexicalAnalysis;
+using XQuinn.CodeAnalysis;
 using System.Collections.Generic;
 using System.Reflection;
 using XQuinn.Reflection;
@@ -11,12 +11,15 @@ using System.Collections;
 
 namespace XQuinn.Runtime
 {
-
+    interface INavigator
+    {
+        
+    }
 
     /// <summary>
     /// Monitor the output, activity and exceptions of a Navigator instance via strings.
     /// </summary>
-    public sealed class Monitor
+    public class Monitor
     {
         public bool Caching
         {
@@ -26,7 +29,7 @@ namespace XQuinn.Runtime
         readonly StringBuilder sb = new();
 
         readonly StringBuilder enumerator = new();
-        internal readonly Navigator _navigator = new();
+        internal Navigator _navigator = new();
 
         public Monitor()
         {
@@ -48,10 +51,8 @@ namespace XQuinn.Runtime
             }
             catch (Exception ex)
             {
-                string navigData = sb.ToString();
                 sb.Length = 0;
                 sb.CatchException(ex);
-                sb.Append(navigData);
                 output = sb.ToString();
                 sb.Length = 0;
                 exception = true;
@@ -75,9 +76,10 @@ namespace XQuinn.Runtime
 
         void ProcessReturn(object? ret)
         {
+            var c = sb[1];
             if (ret is IEnumerable enumerable and not string)
             {
-                sb.AppendLine($"Returned: \n{enumerator.AppendMany(enumerable, Environment.NewLine, enumerable is IList)}");
+                sb.AppendLine($"Returned: \n{enumerator.AppendMany(enumerable, Environment.NewLine, true)}");
                 enumerator.Length = 0;
             }
             else
@@ -105,10 +107,7 @@ namespace XQuinn.Runtime
         string Search(int startint, string[] arr)
         {
             if (arr[startint].EqualsCaseless("overloads") || arr[startint].EqualsCaseless("overload"))
-            {
-                IEnumerable<KeyValuePair<string, MethodBase>> asStrings = _navigator._overloads.Select(x => new KeyValuePair<string, MethodBase>(x.Key.ToString(), x.Value));
-                return Extract(asStrings, "overloads", arr[startint + 1]);
-            }
+                return Extract(_navigator._overloads, "overloads", arr[startint + 1]);
             else if (arr[startint].EqualsCaseless("method") || arr[startint].EqualsCaseless("methods"))
                 return Extract(_navigator._methods, "methods", arr[startint + 1]);
             else if (arr[startint].EqualsCaseless("field") || arr[startint].EqualsCaseless("fields"))
@@ -116,9 +115,9 @@ namespace XQuinn.Runtime
             return "Invalid query.";
         }
 
-        string Extract<T>(IEnumerable<KeyValuePair<string, T>> extract, string kind, string containing) where T : MemberInfo
+        string Extract<K,V>(IEnumerable<KeyValuePair<K, V>> extract, string kind, string containing) where V : MemberInfo
         {
-            extract = extract.Where(x => x.Key.Contains(containing, StringComparison.OrdinalIgnoreCase));
+            extract = extract.Where(x => x.Key!.ToString()!.ContainsCaseless(containing));
             return GetCollection(extract, kind, containing);
 
         }
