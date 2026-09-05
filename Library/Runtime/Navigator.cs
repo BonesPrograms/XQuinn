@@ -52,7 +52,6 @@ namespace XQuinn.Runtime
         /// The currently loaded type.
         /// </summary>
         internal Type? _loadedType;
-        string? _key;
         TypeString? _implicit_this;
         internal readonly Dictionary<string, MethodBase> _methods = new(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<ResolvedOverload, MethodBase> _overloads = new();
@@ -194,7 +193,6 @@ namespace XQuinn.Runtime
         {
             TypeString tstring = TypeString.New(typeName);
             Type t = FindType(tstring, true);
-            _key = tstring.NameOrValue;
             _implicit_this = tstring;
             LoadTypeMembers(t);
             _instance = null;
@@ -223,7 +221,6 @@ namespace XQuinn.Runtime
             LoadTypeMembers(instanceType);
             _instanceType = instanceType;
             _implicit_this = TypeString.s_this;
-            _key = "this"; //We cannot know a the typecache key of a loaded instance, so the system defaults to "this" for implicit access of the loaded instance's type members
         }
         void LoadTypeMembers(Type type)
         {
@@ -527,11 +524,11 @@ namespace XQuinn.Runtime
         {
             if (!staticLoadOrCasting)
             {
-                if (_variables.TryGetValue(typename.NameOrValue, out VariableBinding? variable))
-                    return variable.ObjectType;
+                // if (_variables.TryGetValue(typename.NameOrValue, out VariableBinding? variable))
+                //     return variable.ObjectType;
                 if (typename.NameOrValue.EqualsCaseless("this"))
                     return _instanceType == null ? throw new InvalidOperationException("Cannot pass this, instance is null.") : _loadedType!;
-                if (typename.NameOrValue.EqualsCaseless(_key))
+                if (typename.NameWithGenerics.EqualsCaseless(_implicit_this?.NameWithGenerics))
                     return _loadedType!;
             }
             if (typename.NameOrValue.EqualsCaseless("base"))
@@ -606,7 +603,11 @@ namespace XQuinn.Runtime
             }
         }
 
-
+        TypeString ThisOrNew(string typename)
+        {
+           // return _implicit_this?.NameWithGenerics.EqualsCaseless(typename) ?? false ? _implicit_this : TypeString.New(typename);
+            return typename.EqualsCaseless(_implicit_this?.NameWithGenerics) ? _implicit_this! : TypeString.New(typename);
+        }
         #endregion
 
         #region Mapping
@@ -754,7 +755,7 @@ namespace XQuinn.Runtime
         {
             if (Assignment(invocation, out object? assigned))
                 return assigned;
-            string typeName = ResolveMemberAccess(invocation, out string member, out bool field) ?? _key ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
+            string typeName = ResolveMemberAccess(invocation, out string member, out bool field) ?? _implicit_this?.NameWithGenerics ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
             if (!field)
             {
                 TypeString declaringtype = ThisOrNew(typeName);
@@ -773,18 +774,13 @@ namespace XQuinn.Runtime
             }
 
         }
-        TypeString ThisOrNew(string typename)
-        {
-           // return _implicit_this?.NameWithGenerics.EqualsCaseless(typename) ?? false ? _implicit_this : TypeString.New(typename);
-            return typename.EqualsCaseless(_implicit_this?.NameWithGenerics) ? _implicit_this  ?? throw new InvalidOperationException() : TypeString.New(typename);
-        }
+
         Type CastInstance(string invocation)
         {
             if (_instance == null)
                 throw new InvalidOperationException("Cannot cast, instance is null.");
             TypeString tstring = TypeString.New(invocation);
             Type t = FindType(tstring, true);
-            _key = tstring.NameOrValue;
             _implicit_this = tstring;
             if (!t.IsAssignableFrom(_instanceType))
                 throw new InvalidCastException($"{_instanceType} cannot cast to {t}.");

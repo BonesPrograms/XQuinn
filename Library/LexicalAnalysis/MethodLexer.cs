@@ -452,8 +452,8 @@ namespace XQuinn.LexicalAnalysis
         {
             if (name == null)
                 return _implicit_this ?? throw new InvalidOperationException("Cannot use implicit this, no implicit this has been provided.");
-            if (_implicit_this != null && name.EqualsCaseless(_implicit_this.NameWithGenerics)) // == this or == _key
-                return _implicit_this;
+            if (name.EqualsCaseless(_implicit_this?.NameWithGenerics)) // == this or == _key
+                return _implicit_this!;
             if (name.EqualsCaseless(_declaringType!.NameWithGenerics))
                 return _declaringType;
             return TypeString.New(name);
