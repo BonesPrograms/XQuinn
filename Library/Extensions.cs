@@ -44,7 +44,7 @@ namespace XQuinn.Extensions
                 AppendMany(length, ref i, sb, element, delimiter, appendIndex, toString);
             return sb;
         }
-        public static StringBuilder AppendMany<T>(this StringBuilder sb, IEnumerable<T?> many, string? delimiter = null, bool appendIndex = false,Func<T?, string?>? toString = null)
+        public static StringBuilder AppendMany<T>(this StringBuilder sb, IEnumerable<T?> many, string? delimiter = null, bool appendIndex = false, Func<T?, string?>? toString = null)
         {
             int length = many.Count();
             int i = 0;
@@ -55,8 +55,8 @@ namespace XQuinn.Extensions
 
         static void AppendMany<T>(int length, ref int i, StringBuilder sb, T? element, string? delimiter = null, bool appendIndex = false, Func<T?, string?>? toString = null)
         {
-            if(appendIndex)
-            sb.Append($"[{i}] ");
+            if (appendIndex)
+                sb.Append($"[{i}] ");
             string? text = toString?.Invoke(element);
             if (toString == null)
                 text = element?.ToString();
@@ -89,15 +89,12 @@ namespace XQuinn.Extensions
     public static class StringExtensions
     {
 
-#if NET6_0_OR_GREATER
-        public static bool EqualsCaseless(this string strng, ReadOnlySpan<char> txt) => txt.Equals(strng, StringComparison.OrdinalIgnoreCase);
 
-#else
-        public static bool EqualsCaseless(this string strng, string txt)
+        public static bool EqualsCaseless(this string strng, string? txt)
         {
             return strng.Equals(txt, StringComparison.OrdinalIgnoreCase);
         }
-#endif
+
         // /// <summary>
         // /// Remove all occurances of a specified series of characters.
         // /// </summary>

@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using HarmonyLib;
 using XQuinn.Parsing;
-using XQuinn.CodeAnalysis;
+using XQuinn.LexicalAnalysis;
 using XQuinn.Extensions;
 using System.Text;
 using System.Collections;
@@ -149,19 +149,29 @@ namespace XQuinn.Reflection
         /// <returns></returns>
         public static bool CacheType(string key, Type type)
         {
-            return CacheTypeInternal(key, type, true);
-        }
-
-        static bool CacheTypeInternal(string key, Type type, bool checkForGeneratedOrFileType)
-        {
-            if (checkForGeneratedOrFileType && (type.IsDefined(typeof(CompilerGeneratedAttribute)) || TypeBook.IsFileType(type)))
+            if (type.IsDefined(typeof(CompilerGeneratedAttribute)) || IsFileType())
                 return false;
             ThrowIfBadKey(key);
-            if (CheckDuplicateOrCached(key, type))
+            if (CheckDuplicateOrCached())
                 return false;
             _registry.TryAdd(key, type);
             return true;
+
+            bool IsFileType()
+            {
+                if (!type.IsPublic && !type.IsNested)
+                    return type.Name.StartsWith("<");
+                return false;
+            }
+
+            bool CheckDuplicateOrCached()
+            {
+                if (TryGetType(key, out Type? cachedtype))
+                    return type == cachedtype ? true : throw new DuplicateKeyException(cachedtype!, type, key);
+                return false;
+            }
         }
+
 
         public static bool CacheType<T>(string key)
         {
@@ -178,11 +188,7 @@ namespace XQuinn.Reflection
             return CacheType(typeof(T), fullname);
         }
 
-        public static void CacheTypes(TypeBook book)
-        {
-            foreach (var pair in book)
-                CacheTypeInternal(pair.Key, pair.Value, false);
-        }
+
         public static void CacheTypes(IEnumerable<Type> types, bool fullname)
         {
             foreach (Type type in types)
@@ -190,20 +196,53 @@ namespace XQuinn.Reflection
 
         }
 
-        public static void CacheTypes(IEnumerable<KeyValuePair<string, Type>> book)
+        public static void CacheTypes(IEnumerable<Type> types, Func<Type, string?> toString)
         {
-            foreach (var pair in book)
-                CacheType(pair.Key, pair.Value);
+            foreach (Type type in types)
+            {
+                string? key = toString.Invoke(type);
+                if (key != null)
+                    CacheType(key, type);
+            }
         }
+
+        // public static void CacheTypes(IEnumerable<KeyValuePair<string, Type>> book)
+        // {
+        //     foreach (var pair in book)
+        //         CacheType(pair.Key, pair.Value);
+        // }
         public static string GetCompatibleName(Type type, bool fullname)
         {
             string name = fullname ? type.FullName ?? throw new ArgumentNullException(nameof(fullname), $"Type {type} returned null for fullname.") : type.Name;
             if (type.IsGenericTypeDefinition)
-                return GenericToString(name, type.GetGenericArguments().Length, fullname, type.IsNested);
+                return GenericToString();
             else if (type.IsNested && fullname)
                 return name.Replace('+', '.');
             else
                 return name;
+
+            string GenericToString()
+            {
+                StringBuilder snippedname = SnipGenericName();
+                if (fullname && type.IsNested)
+                    snippedname.Replace('+', '.');
+                snippedname.Append('T');
+                int genericargs = type.GetGenericArguments().Length;
+                if (genericargs > 0)
+                    snippedname.Append(genericargs);
+                return snippedname.ToString();
+
+                StringBuilder SnipGenericName()
+                {
+                    StringBuilder sb = new();
+                    foreach (char c in name)
+                        if (c == '`')
+                            break;
+                        else sb.Append(c);
+                    return sb;
+                }
+            }
+
         }
 
 
@@ -245,7 +284,7 @@ namespace XQuinn.Reflection
                 }
                 else if (accessor)
                 {
-                    if (!InvocationLexer.ValidIdentifierFirstChar(value))
+                    if (!MethodLexer.ValidIdentifierFirstChar(value))
                         throw new ArgumentException($"Member access must be followed by an underscore or a letter for namespaces. Bad Key: {key}");
                     accessor = false;
                 }
@@ -255,12 +294,7 @@ namespace XQuinn.Reflection
         }
 
 
-        static bool CheckDuplicateOrCached(string Key, Type Value)
-        {
-            if (TryGetType(Key, out Type? cachedtype))
-                return Value == cachedtype ? true : throw new DuplicateKeyException(cachedtype!, Value, Key);
-            return false;
-        }
+
         /// <summary>
         /// Make a nested or generic name compatible with the cache. 
         /// </summary>
@@ -269,25 +303,7 @@ namespace XQuinn.Reflection
         /// <param name="snipgenerics"></param>
         /// <returns></returns>
 
-        static string GenericToString(string name, int genericargs, bool fullname, bool nested)
-        {
-            StringBuilder snippedname = SnipGenericName(name);
-            if (fullname && nested)
-                snippedname.Replace('+', '.');
-            snippedname.Append('T');
-            if (genericargs > 0)
-                snippedname.Append(genericargs);
-            return snippedname.ToString();
-        }
-        static StringBuilder SnipGenericName(string name)
-        {
-            StringBuilder sb = new();
-            foreach (char c in name)
-                if (c == '`')
-                    break;
-                else sb.Append(c);
-            return sb;
-        }
+
 
         static class Types
         {

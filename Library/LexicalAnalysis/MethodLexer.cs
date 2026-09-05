@@ -1,10 +1,10 @@
 using System.Text;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LexicalAnalysis.Syntaxes;
 using System.Reflection;
 using System;
 using XQuinn.Extensions;
 
-namespace XQuinn.CodeAnalysis
+namespace XQuinn.LexicalAnalysis
 {
 
 
@@ -30,31 +30,12 @@ namespace XQuinn.CodeAnalysis
 
         }
     }
-    internal sealed class InvocationLexer
+    internal sealed class MethodLexer
     {
-        // static readonly HashSet<char> Alphabet = new()
-        // {
-        //   'A','B','C','D','E','F','G','H','I','J','K','L','M','N','O','P','Q','R','S','T','U','V','W','X','Y','Z',
-        //   'a','b','c','d','e','f','g','h','i','j','k','l','m','n','o','p','q','r','s','t','u','v','w','x','y','z',
-
-        // };
 
 
-
-        // static readonly HashSet<char> Numbers = new()
-        // {
-        //     '1','2','3','4','5','6','7','8','9', '0'
-        // };
-        // static readonly HashSet<char> Communicators = typeof(InvocationLexer)
-        // .GetFields(BindingFlags.Static | BindingFlags.NonPublic)
-        // .Where(x => x.IsLiteral && x.FieldType == typeof(char))
-        // .Select(x => (char)x.GetValue(null)!)
-        // .ToHashSet();
-
-
-
-        const char VaidNonAlphaNumeric = '_'; //underscores are valid as part of identifier names
-                                              //    const char ValidLeadingNonAlphaNumeric = '@'; //this isnt allowed except at the very beginning of an identifier name
+        const char VaidNonAlphaNumeric = '_'; 
+                                             
         const char MethodStart = '(';
 
         const char MethodTerminate = ')';
@@ -71,46 +52,46 @@ namespace XQuinn.CodeAnalysis
 
         const char CharDeclr = '\'';
 
-        readonly StringBuilder sb = new();
+        readonly StringBuilder _sb = new();
 
-        MethodString? Main;
+        MethodString? _main;
 
-        MethodString? CurrentMethod;
+        MethodString? _currentMethod;
 
-        TypeString? DeclaringType;
+        TypeString? _declaringType;
 
-        TypeString? ImplicitAccess;
-        char Value;
-        bool Start = true;
+        TypeString? _implicit_this;
+
+
+        char _value;
+        bool _start = true;
 
         //Primary reading rulesets - determine how to lex incoming data based on context
-        bool ReadingChar;
-        bool ReadingArbitrary;
-        bool ReadingIdentifier;
-        bool ReadingDigit;
-        bool ReadingString;
-
-        bool ReadingGeneric;
-
-        bool NoEscape;
+        bool _readChar;
+        bool _readArbitraryLegalValue;
+        bool _readQualifiedMember;
+        bool _readDigit;
+        bool _readString;
+        bool _readGeneric;
+        bool _noEscape;
 
         //These are supporting flags for rulesets, some rulesets have specific rules for specific characters, or need to be read around declaration characters
-        bool ReadingIdentifierLead;
-        bool ReadFloat;
-        bool FinishedReadChar;  //Finishers/Enders are primarily for catching trailing garbage data or skipping whtiespace - ex Method("hello"  , 22, 33 s)
-        bool EndString;         //the trailing whitespace after "hello" willbe skipped, and the trailing s after 33 will cause an exception
+        bool _readFirstCharOfName;
+        bool _readFloat;
+        bool _finishedReadChar;  //Finishers/Enders are primarily for catching trailing garbage data or skipping whtiespace - ex Method("hello"  , 22, 33 s)
+        bool _stringEnding;         //the trailing whitespace after "hello" willbe skipped, and the trailing s after 33 will cause an exception
 
-        bool BeganFirstRead; //This is a very specific flag that allows you to have leading whitespace for the main method name. Pretned | is string start. you can do |   call("hello")vb kjmhnnnnnnnnnnmm
+        bool _beganReadingMainMethodName; //This is a very specific flag that allows you to have leading whitespace for the main method name. Pretned | is string start. you can do |   call("hello")vb kjmhnnnnnnnnnnmm
                              // You need this flag to help differentiate if the whitespace is leading, or inside the method name itself, which is of course
                              //illegal.
 
         //These are for getting context on parameter values. Once a method begins or a parameter/method terminates, one of these is true, and we wait until we receive a character that gives us context on what will be read next.
         //Once we receive context, a Reading flag is set to true related to that specific context, and these flags are set to false, to prevent context getting reset in the middle of a read.
-        bool MethodBegan;
-        bool Terminated;
+        bool _methodParamsBegan;
+        bool _terminated;
 
-        int ReadingSubparamsOf;
-        int LastReadingValue; //this is used to track how deeply we are reading parameters
+        int _readingSubparams;
+        int _lastReadingCount; //this is used to track how deeply we are reading parameters
                               //so if readingsubparamsof == 2, we are reading a method that is the parameter of a method that is a parameter of the "main" method. ie. Method(typename:MethodTwo(typename:MethodThree())) //reading methodThree gives us a reading value of 2
                               //once were done reading (we see a Terminate op), we decrement ReadingSubParams
                               //             //and if lastreadingvalue is > readingsubparams,it lets us know "okay, we just finished reading method params, return to the method
@@ -132,40 +113,40 @@ namespace XQuinn.CodeAnalysis
         //1) you will append a communicator (SUPER ILLEGAL)
         //2) you will append an extra character to the parameter
         //That being said,if you do not jump to append before the parameter read is finished, you will cause things like strings to fail to parse, since they can contain terminators.
-        public MethodString ParameterTemplate(string invocation, TypeString declaringType, TypeString? implicitAccess)
+        public MethodString MethodTemplate(string invocation, TypeString declaringType, TypeString? implicitAccess)
         {
 
-            if (string.IsNullOrWhiteSpace(invocation))
-                throw new ArgumentException("Invocation cannot be null or whitespace.");
+           // if (string.IsNullOrWhiteSpace(invocation))
+             //   throw new ArgumentException("Invocation cannot be null or whitespace.");
             Clear();
             int i = 0;
-            DeclaringType = declaringType; //this is specifically to support trycatch, though otherwise not necessary because it always clears at the end to avoid holding onto stale data
-            ImplicitAccess = implicitAccess;
+            _declaringType = declaringType; //this is specifically to support trycatch, though otherwise not necessary because it always clears at the end to avoid holding onto stale data
+            _implicit_this = implicitAccess;
             while (i < invocation.Length)
             {
-                Value = invocation[i];
-                if (Start)
+                _value = invocation[i];
+                if (_start)
                 {
                     if (ReadMainMethod(ref i, invocation))
                         goto Append;
                     goto Increment;
                 }
-                else if (ReadingDigit)
+                else if (_readDigit)
                 {
                     if (ReadNum(ref i, invocation))
                         goto Append;
                 }
-                else if (ReadingString)
+                else if (_readString)
                 {
                     if (ReadString(ref i, invocation))
                         goto Append;
                 }
-                else if (ReadingChar)
+                else if (_readChar)
                 {
                     if (ReadChar(ref i, invocation))
                         goto Append;
                 }
-                else if (ReadingArbitrary)
+                else if (_readArbitraryLegalValue)
                 {
                     int result = ReadArbitrary(ref i, invocation);
                     if (result == 1)
@@ -173,48 +154,48 @@ namespace XQuinn.CodeAnalysis
                     else if (result == 2)
                         goto Increment;
                 }
-                else if (ReadingIdentifier)
+                else if (_readQualifiedMember)
                 {
                     if (ReadIdentifier(ref i, invocation))
                         goto Append;
                     goto Increment;
                 }
-                else if (Value == Whitespace)
+                else if (_value == Whitespace)
                     goto Increment;
-                else if (Terminated || MethodBegan)
+                else if (_terminated || _methodParamsBegan)
                 {
                     GetContext(invocation, ref i);
-                    if (ReadingChar)
+                    if (_readChar)
                         goto Increment;
                 }
-                if (LastReadingValue > ReadingSubparamsOf)
+                if (_lastReadingCount > _readingSubparams)
                 {
-                    CurrentMethod = CurrentMethod!.ParamOf; LastReadingValue--;
+                    _currentMethod = _currentMethod!._subParamOf; _lastReadingCount--;
                 }
-                if (Value == MethodTerminate)
+                if (_value == MethodTerminate)
                 {
-                    if (ReadingSubparamsOf > 0)
-                        ReadingSubparamsOf--;
+                    if (_readingSubparams > 0)
+                        _readingSubparams--;
                 }
-                if (Termination(Value))
+                if (Termination(_value))
                 {
-                    if (sb.Length != 0)
+                    if (_sb.Length != 0)
                     {
                         ReadParam();
-                        ReadingArbitrary = false;
-                        Terminated = true;
+                        _readArbitraryLegalValue = false;
+                        _terminated = true;
                     }
                     goto Increment;
                 }
             Append:
-                if (!ReadingArbitrary && !ReadingChar && !ReadingDigit && !ReadingString && !ReadingIdentifier && !Start)
-                    ValidIdentifier(Value, invocation, i);
-                sb.Append(Value);
+                if (!_readArbitraryLegalValue && !_readChar && !_readDigit && !_readString && !_readQualifiedMember && !_start)
+                    ValidIdentifier(_value, invocation, i);
+                _sb.Append(_value);
             Increment:
                 i++;
             }
             FatalLexicalError(invocation);
-            MethodString primary = Main!;
+            MethodString primary = _main!;
             Clear();
             return primary;
         }
@@ -222,7 +203,7 @@ namespace XQuinn.CodeAnalysis
         bool ReadChar(ref int i, string invocation)
         {
             const string error = "Characer declarations must be enclosed with character declaration communicators (apostrophes).";
-            if (!FinishedReadChar)
+            if (!_finishedReadChar)
             {
                 char? next = null;
                 try
@@ -234,205 +215,205 @@ namespace XQuinn.CodeAnalysis
 
                 }
                 if (next != CharDeclr)
-                    throw next == null ? new LexicalException(error, invocation, sb) : new LexicalException(error, invocation, next.Value, sb, i);
+                    throw next == null ? new LexicalException(error, invocation, _sb) : new LexicalException(error, invocation, next.Value, _sb, i);
                 else
                 {
-                    FinishedReadChar = true;
+                    _finishedReadChar = true;
                     i++;
                     return true;
                 }
             }
-            else if (Value == Whitespace)
+            else if (_value == Whitespace)
                 SkipWhitespaceTrail(ref i, invocation);
-            if (FinishedReadChar)
+            if (_finishedReadChar)
             {
-                FinishedReadChar = false;
-                ReadingChar = false;
+                _finishedReadChar = false;
+                _readChar = false;
             }
             return false;
         }
 
         void GetContext(string invocation, ref int i) //helps us figure out whats about to be read 
         {
-            if (Value == CharDeclr)
-                ReadingChar = true;
-            else if (Value == StringDeclr || Value == '@')
+            if (_value == CharDeclr)
+                _readChar = true;
+            else if (_value == StringDeclr || _value == '@')
             {
-                if (Value == '@')
+                if (_value == '@')
                 {
-                    NoEscape = true;
+                    _noEscape = true;
                     if (invocation[i + 1] != '"')
-                        throw new LexicalException("Invalid string format", invocation, sb);
+                        throw new LexicalException("Invalid string format", invocation, _sb);
                     i++; //very brute forced, we check if the next key is a quote, then we jump forward, assign the quote to Value, and continue the read as we normally would for strings
-                    Value = '"'; //as if we just detected a quotation mark and not an @ symbol
+                    _value = '"'; //as if we just detected a quotation mark and not an @ symbol
                 }
-                ReadingString = true;
+                _readString = true;
             }
-            else if (Value == '-' || Value.IsDigit())
-                ReadingDigit = true;
-            else if (ValidIdentifierFirstChar(Value))
-                ReadingArbitrary = true;
-            if (ReadingDigit || ReadingString || ReadingArbitrary || ReadingChar)
+            else if (_value == '-' || _value.IsDigit())
+                _readDigit = true;
+            else if (ValidIdentifierFirstChar(_value))
+                _readArbitraryLegalValue = true;
+            if (_readDigit || _readString || _readArbitraryLegalValue || _readChar)
             {
-                Terminated = false;
-                MethodBegan = false;
+                _terminated = false;
+                _methodParamsBegan = false;
             }
         }
         int ReadArbitrary(ref int i, string invocation)
         {
-            if (Value == Whitespace)
+            if (_value == Whitespace)
                 SkipWhitespaceTrail(ref i, invocation);
-            if (Value == '<')
-                ReadingGeneric = true;
-            else if (Value == MemberAccess)
+            if (_value == '<')
+                _readGeneric = true;
+            else if (_value == MemberAccess)
             {
-                ReadingGeneric = false;
-                ReadingIdentifierLead = true;
-                ReadingIdentifier = true;
-                ReadingArbitrary = false;
+                _readGeneric = false;
+                _readFirstCharOfName = true;
+                _readQualifiedMember = true;
+                _readArbitraryLegalValue = false;
                 return 1;
             }
-            else if (Value == MethodStart)
+            else if (_value == MethodStart)
             {
-                ReadingArbitrary = false;
-                ReadingGeneric = false;
-                MethodBegan = true;
+                _readArbitraryLegalValue = false;
+                _readGeneric = false;
+                _methodParamsBegan = true;
                 ReadMethod();
                 return 2; //special case where we need to skip to increment if a method is detected
             }           //otherwise it will throw
-            else if (!Termination(Value))
-                ValidIdentifier(Value, invocation, i);
-            else if (ReadingGeneric)
+            else if (!Termination(_value))
+                ValidIdentifier(_value, invocation, i);
+            else if (_readGeneric)
                 return 1; //true
             return 0; //false
         }
 
         bool ReadIdentifier(ref int i, string invocation) //once an arbitrary is determined to be an identifier, it is read with stricter rules
         {
-            if (Value == '<')
-                ReadingGeneric = true;
-            if (Value == Whitespace)
+            if (_value == '<')
+                _readGeneric = true;
+            if (_value == Whitespace)
                 SkipWhitespaceTrail(ref i, invocation);
-            if (Value == MemberAccess && !ReadingIdentifierLead)
+            if (_value == MemberAccess && !_readFirstCharOfName)
             {
-                ReadingIdentifierLead = true;
+                _readFirstCharOfName = true;
                 return true;
             }
-            if (!ReadingGeneric && Termination(Value))
+            if (!_readGeneric && Termination(_value))
             {
-                Terminated = true;
+                _terminated = true;
                 ReadField();
                 return false;
             }
-            if (Value == MethodStart)
+            if (_value == MethodStart)
             {
-                ReadingGeneric = false;
-                MethodBegan = true;
+                _readGeneric = false;
+                _methodParamsBegan = true;
                 ReadMethod();
                 return false;
             }
-            if (ReadingIdentifierLead)
+            if (_readFirstCharOfName)
             {
-                ReadingIdentifierLead = false;
-                ValidIdentifierFirstCharOrThrow(Value, invocation, i);
+                _readFirstCharOfName = false;
+                ValidIdentifierFirstCharOrThrow(_value, invocation, i);
             }
             else
-                ValidIdentifier(Value, invocation, i);
+                ValidIdentifier(_value, invocation, i);
             return true;
         }
 
         //all errors stop the program, but these errors mean you really messed up 
         bool ReadMainMethod(ref int i, string invocation)
         {
-            if (BeganFirstRead)
+            if (_beganReadingMainMethodName)
             {
-                if (Value == Whitespace)
+                if (_value == Whitespace)
                     SkipWhitespaceTrail(ref i, invocation);
-                if (Value == MethodStart)
+                if (_value == MethodStart)
                 {
                     ReadMain();
-                    Start = false;
-                    MethodBegan = true;
-                    BeganFirstRead = false;
+                    _start = false;
+                    _methodParamsBegan = true;
+                    _beganReadingMainMethodName = false;
                     return false;
                 }
-                ValidIdentifier(Value, invocation, i);
+                ValidIdentifier(_value, invocation, i);
                 return true;
             }
-            else if (Value == Whitespace)
+            else if (_value == Whitespace)
                 return false;
-            if (ValidIdentifierFirstCharOrThrow(Value, invocation, i))
-                BeganFirstRead = true;
+            if (ValidIdentifierFirstCharOrThrow(_value, invocation, i))
+                _beganReadingMainMethodName = true;
             return true;
         }
 
         void ReadMain()
         {
             //reads everything prior to (
-            MethodString method = MethodString.New(sb.ToString(), null, DeclaringType);
-            sb.Length = 0;
-            CurrentMethod = method;
-            Main = method;
+            MethodString method = MethodString.New(_sb.ToString(), null, _declaringType!);// ?? throw new InvalidOperationException());
+            _sb.Length = 0;
+            _currentMethod = method;
+            _main = method;
 
         }
 
         bool ReadNum(ref int i, string invocation) //readnum doesnt influence jumps because numeric values are strict and can only contain digits/decimal pointer
         {
-            if (Value.IsDigit())
+            if (_value.IsDigit())
                 return true;
-            if (Value == Whitespace) //we skip leading and trailing whitespace
+            if (_value == Whitespace) //we skip leading and trailing whitespace
             {
                 SkipWhitespaceTrail(ref i, invocation);
-                ReadingDigit = false;
-                ReadFloat = false;
+                _readDigit = false;
+                _readFloat = false;
                 return false;
             }
             else //nondigit value
             {
-                if (Value == MemberAccess)
+                if (_value == MemberAccess)
                 {
-                    if (ReadFloat) throw new LexicalException("Floats cannot contain multiple periods.", invocation, Value, sb, i);
-                    ReadFloat = true;
+                    if (_readFloat) throw new LexicalException("Floats cannot contain multiple periods.", invocation, _value, _sb, i);
+                    _readFloat = true;
                     return true;
                 }
-                if (Termination(Value))
+                if (Termination(_value))
                 {
-                    ReadingDigit = false;
-                    ReadFloat = false;
+                    _readDigit = false;
+                    _readFloat = false;
                     return false;
                 }
-                throw new LexicalException("Numbers can only contain digits or one decimal.", invocation, Value, sb, i);
+                throw new LexicalException("Numbers can only contain digits or one decimal.", invocation, _value, _sb, i);
             }
         }
 
         bool ReadString(ref int i, string invocation)
         {
 
-            if (EndString)
+            if (_stringEnding)
             {
-                if (Value == Whitespace)
+                if (_value == Whitespace)
                     SkipWhitespaceTrail(ref i, invocation);
-                EndString = false;
-                ReadingString = false;
-                NoEscape = false;
+                _stringEnding = false;
+                _readString = false;
+                _noEscape = false;
                 return false; //return false allows parameter control flow to takeover
             }
-            else if (!NoEscape && Value == EscSeq)
+            else if (!_noEscape && _value == EscSeq)
             {
                 i++;
-                Value = invocation[i];
+                _value = invocation[i];
                 //      if(Value == 'n')
                 //    {
-                sb.Append(Environment.NewLine);
+                _sb.Append(Environment.NewLine);
                 //i++;
                 //Value = invocation[i]; if value == '"' endstring = true
                 //    return false; ret false increment would help here
                 //        }
                 return true;
             }
-            else if (Value == StringDeclr)
+            else if (_value == StringDeclr)
             {
-                EndString = true;
+                _stringEnding = true;
             }
             return true; //skips parameter control flow, appends
         }
@@ -446,50 +427,61 @@ namespace XQuinn.CodeAnalysis
         void ReadField()
         {
             string typename = ResolveMemberAccess(out string fieldname)!;
-            TypeString type = TypeString.New(typename);
+            TypeString type = TypeName(typename);
             FieldString field = new(fieldname, type);
-            sb.Length = 0;
-            CurrentMethod!.AddParameter(field);
-            ReadingIdentifier = false;
+            _sb.Length = 0;
+            _currentMethod!.AddParameter(field);
+            _readQualifiedMember = false;
         }
 
 
         void ReadMethod()
         {
             string? typename = ResolveMemberAccess(out string methodname);
-            TypeString type = typename == null ? ImplicitAccess ?? throw new InvalidOperationException() : TypeString.New(typename);
-            MethodString method = MethodString.New(methodname, CurrentMethod, type);
-            sb.Length = 0;
-            CurrentMethod!.AddParameter(method);
-            CurrentMethod = method;
-            ReadingIdentifier = false;
-            ReadingSubparamsOf++;
-            LastReadingValue++;
+            TypeString type = TypeName(typename);
+            MethodString method = MethodString.New(methodname, _currentMethod, type);
+            _sb.Length = 0;
+            _currentMethod!.AddParameter(method);
+            _currentMethod = method;
+            _readQualifiedMember = false;
+            _readingSubparams++;
+            _lastReadingCount++;
+        }
+
+        TypeString TypeName(string? name)
+        {
+            if (name == null)
+                return _implicit_this ?? throw new InvalidOperationException("Cannot use implicit this, no implicit this has been provided.");
+            if (_implicit_this != null && name.EqualsCaseless(_implicit_this.NameWithGenerics)) // == this or == _key
+                return _implicit_this;
+            if (name.EqualsCaseless(_declaringType!.NameWithGenerics))
+                return _declaringType;
+            return TypeString.New(name);
         }
 
         void ReadParam()
         {
-            string prm = sb.ToString();
+            string prm = _sb.ToString();
             ValueString param = new(prm);
-            sb.Length = 0;
-            CurrentMethod!.AddParameter(param);
+            _sb.Length = 0;
+            _currentMethod!.AddParameter(param);
         }
         void FatalLexicalError(string invocation)
         {
-            if (ReadingGeneric)
-                throw new LexicalException("Invalid generic arguments.", invocation, sb);
-            if (ReadingChar)
-                throw new LexicalException("Chars require a closing apostrophe character.", invocation, sb);
-            if (ReadingDigit)
-                throw new LexicalException("Digit parameter not terminated.", invocation, sb);
-            if (ReadingString)
-                throw new LexicalException("Strings require a closing quotation character.", invocation, sb);
-            if (ReadingArbitrary)
-                throw new LexicalException("Parameter or method not terminated.", invocation, sb);
-            if (ReadingIdentifier)
-                throw new LexicalException("Member access requires a terminator after the member's name; either a ( leading parenthesis for method names, or a , comma for fields.", invocation, sb);
-            if (Start)
-                throw new LexicalException("Method name was unable to be read due to missing ( leading parenthesis.", invocation, sb);
+            if (_readGeneric)
+                throw new LexicalException("Invalid generic arguments.", invocation, _sb);
+            if (_readChar)
+                throw new LexicalException("Chars require a closing apostrophe character.", invocation, _sb);
+            if (_readDigit)
+                throw new LexicalException("Digit parameter not terminated.", invocation, _sb);
+            if (_readString)
+                throw new LexicalException("Strings require a closing quotation character.", invocation, _sb);
+            if (_readArbitraryLegalValue)
+                throw new LexicalException("Parameter or method not terminated.", invocation, _sb);
+            if (_readQualifiedMember)
+                throw new LexicalException("Member access requires a terminator after the member's name; either a ( leading parenthesis for method names, or a , comma for fields.", invocation, _sb);
+            if (_start)
+                throw new LexicalException("Method name was unable to be read due to missing ( leading parenthesis.", invocation, _sb);
         }
 
         void SkipWhitespaceTrail(ref int i, string invocation)
@@ -497,18 +489,18 @@ namespace XQuinn.CodeAnalysis
             while (i < invocation.Length)
             {
                 i++;
-                Value = invocation[i];
-                if (Termination(Value) || ((ReadingIdentifier || BeganFirstRead) && Value == MethodStart))
+                _value = invocation[i];
+                if (Termination(_value) || ((_readQualifiedMember || _beganReadingMainMethodName) && _value == MethodStart))
                     return;
-                if (Value != Whitespace)
-                    throw new LexicalException("Detected trailing input after whitespace.", invocation, Value, sb, i);
+                if (_value != Whitespace)
+                    throw new LexicalException("Detected trailing input after whitespace.", invocation, _value, _sb, i);
             } //if we dont do this, then values like 22 2 will parse to 222 because we otherwise skip whitespace
         }
 
         string? ResolveMemberAccess(out string member) //returns typename, outputs the accessed member
         {
-            string lexOutput = sb.ToString();
-            sb.Length = 0;
+            string lexOutput = _sb.ToString();
+            _sb.Length = 0;
             int? lastAccessorIndex = null;
             for (int i = 1; i < lexOutput.Length; i++)
                 if (lexOutput[i] == MemberAccess)
@@ -527,7 +519,7 @@ namespace XQuinn.CodeAnalysis
         {
             const string error = "Identifier names must start with a letter, @ or an underscore.";
             if (!ValidIdentifierFirstChar(next))
-                throw i == null ? new LexicalException(error, invocation, next, sb) : new LexicalException(error, invocation, next, sb, i.Value);
+                throw i == null ? new LexicalException(error, invocation, next, _sb) : new LexicalException(error, invocation, next, _sb, i.Value);
             return true;
         }
 
@@ -535,7 +527,7 @@ namespace XQuinn.CodeAnalysis
         {
             const string error = "Detected illegal character in identifier.";//&&value!='('
             if (value != '<' && value != '>' && value != ',' && value != '[' && value != ']' && value != ':' && value != '|' && Illegal(value))
-                throw i == null ? new LexicalException(error, invocation, value, sb) : throw new LexicalException(error, invocation, value, sb, i.Value);
+                throw i == null ? new LexicalException(error, invocation, value, _sb) : throw new LexicalException(error, invocation, value, _sb, i.Value);
 
         }
         public static bool Illegal(char val) => val != VaidNonAlphaNumeric && !val.IsDigit() && !val.IsLetter();
@@ -544,25 +536,25 @@ namespace XQuinn.CodeAnalysis
 
         void Clear()
         {
-            Main = null;
-            DeclaringType = null;
-            ImplicitAccess = null;
-            Start = true;
-            BeganFirstRead = false;
-            CurrentMethod = null;
-            ReadingDigit = false;
-            ReadFloat = false;
-            ReadingString = false;
-            EndString = false;
-            ReadingIdentifier = false;
-            FinishedReadChar = false;
-            ReadingChar = false;
-            ReadingArbitrary = false;
-            MethodBegan = false;
-            Terminated = false;
-            ReadingSubparamsOf = 0;
-            LastReadingValue = 0;
-            sb.Length = 0;
+            _main = null;
+            _declaringType = null;
+            _implicit_this = null;
+            _start = true;
+            _beganReadingMainMethodName = false;
+            _currentMethod = null;
+            _readDigit = false;
+            _readFloat = false;
+            _readString = false;
+            _stringEnding = false;
+            _readQualifiedMember = false;
+            _finishedReadChar = false;
+            _readChar = false;
+            _readArbitraryLegalValue = false;
+            _methodParamsBegan = false;
+            _terminated = false;
+            _readingSubparams = 0;
+            _lastReadingCount = 0;
+            _sb.Length = 0;
         }
 
     }

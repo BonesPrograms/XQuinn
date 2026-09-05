@@ -9,15 +9,16 @@ using XQuinn.IO;
 using System.Text;
 using System;
 using System.Runtime.Versioning;
-using XQuinn.CodeAnalysis;
+using XQuinn.LexicalAnalysis;
 using System.Linq;
 using System.Collections.Generic;
 using XQuinn.Extensions;
 using XQuinn.Parsing;
 using System.IO;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LexicalAnalysis.Syntaxes;
 using System.Collections;
 using XQuinn.ObjectModel;
+using System.Runtime.InteropServices;
 
 namespace XQuinn.Private
 {
@@ -25,7 +26,7 @@ namespace XQuinn.Private
 
     static class Program
     {
-
+        static Monitor monitor = new();
         static string path = string.Empty;
         static Span<char> span(string x)
         {
@@ -43,16 +44,15 @@ namespace XQuinn.Private
             TypeCache.CacheType<Harmony>(false);
             TypeCache.CacheType(typeof(AccessTools), false);
             TypeCache.CacheType("accesstoolsE", typeof(AccessToolsExtensions));
-          //  TypeCache.CacheType(typeof(Program), false);
+            //  TypeCache.CacheType(typeof(Program), false);
             //    TypeCache.CacheType("span", typeof(MemoryExtensions));
             path = XQuinn.IO.Finders.CodeLabFinder.Path;
             path = Path.Combine(path, @"XQuinnLib\dump\instanceread.log");
             // string command = $"~ *program.path; +var_path; *instancereader.new(var_path, true, types.of<object>()); +var_reader";
-            Monitor monitor = new(true);
+            //Monitor monitor = new(true);
             //monitor._navigator.Interface(command);
             //InstanceReader reader = (InstanceReader)monitor._navigator._variables["var_reader"].Object;
-            object[] arr = new object[] { 22, "hello world" };
-            object ret = Activator.CreateInstance(typeof(@class), arr) ?? throw new();
+
             while (true)
             {
                 // var key = Console.ReadKey();
@@ -72,7 +72,7 @@ namespace XQuinn.Private
                         return;
                     }
                     else
-                        Console.WriteLine(monitor.TryCatchInterface(msg, out _, out _));
+                        Console.WriteLine(monitor.SafeInterface(msg, out _, out _));
                 }
             }
 #endif
@@ -80,69 +80,38 @@ namespace XQuinn.Private
 
     }
 
-    class BaseObj
+
+
+
+    abstract class BaseClass
     {
-        public int Base_Object_Field;
+       public static T Obj<T>(T val) => val;
 
-        public static int Base_Static_Field;
-
-        public void Base_Method()
-        {}
-
-        public static void Base_Static_Method()
-        {
-            
-        }
-
-        protected void ProtMethod()
-        {
-            
-        }
+        public static T[] Prms<T>(params T[] prms) => prms;
     }
-    class Obj : BaseObj
-    {
-        public void My_Method(){}
 
+    class Static : BaseClass
+    {
 
     }
 
-    class @class
+    class Instance : BaseClass
     {
 
-        int field = 15;
-
-        public string Str = "hi";
-
-        public static string p(string s) => s;
-        static bool unbox(int i, int x)
-        {
-            return ReferenceEquals(i, x);
-        }
-        static string Func() => "Executed";
-
-        static string Func<T>() => "Executed<>";
-
-        static string prms(int x, int y, params object[] arr)
-        {
-            StringBuilder sb = new();
-            sb.Append(arr.Length);
-            sb.AppendMany(arr, Environment.NewLine);
-            return sb.ToString();
-          //  return new StringBuilder().AppendMany(arr).ToString();
-        }
-
-        /// <summary>
-        ///these were for generic cache testing
-        /// </summary>
-        /// <returns></returns>
-
-
-        static string mthd() => "mthd";
-
-        public @class() { }
-
-        public @class(int i, string z) { field = i; Str = z;}
     }
+
+
+    class Class<T>
+    {
+        static T[] arr = Array.Empty<T>();
+        static T? obj = default;
+
+        static T Ret(T obj) => obj;
+    }
+
+
+
+
 }
 
 

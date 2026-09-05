@@ -1,7 +1,7 @@
 using System;
 using System.Text;
 using XQuinn.Extensions;
-using XQuinn.CodeAnalysis;
+using XQuinn.LexicalAnalysis;
 using System.Collections.Generic;
 using System.Reflection;
 using XQuinn.Reflection;
@@ -24,24 +24,9 @@ namespace XQuinn.Runtime
             set => _navigator.Caching = value;
         }
         readonly StringBuilder sb = new();
+
+        readonly StringBuilder enumerator = new();
         internal readonly Navigator _navigator = new();
-        public string Invoking => _invoking;
-        public string Returned => _ret;
-        public string LoadedType => _atype;
-        public string InstanceType => _ainstanceType;
-        public string TypeKey => _atypeCacheKey;
-        public string VariableKey => _avariableKey;
-        public string InstanceObject => _ainstanceToString;
-
-        string _invoking = string.Empty;
-        string _ret = string.Empty;
-        string _atype = string.Empty;
-        string _ainstanceType = string.Empty;
-        string _atypeCacheKey = string.Empty;
-        string _avariableKey = string.Empty;
-
-        string _ainstanceToString = string.Empty;
-        //  string _exception = string.Empty;
 
         public Monitor()
         {
@@ -51,7 +36,7 @@ namespace XQuinn.Runtime
             Caching = caching;
         }
 
-        public string TryCatchInterface(string input, out object? interpretereReturned, out bool exception)
+        public string SafeInterface(string input, out object? interpretereReturned, out bool exception)
         {
             sb.Length = 0;
             exception = false;
@@ -63,42 +48,47 @@ namespace XQuinn.Runtime
             }
             catch (Exception ex)
             {
+                string navigData = sb.ToString();
+                sb.Length = 0;
                 sb.CatchException(ex);
+                sb.Append(navigData);
                 output = sb.ToString();
                 sb.Length = 0;
                 exception = true;
             }
             return output;
         }
-        string Interface(string input, out object? interpreterReturned)
+        string Interface(string input, out object? navigReturnValue)
         {
-            interpreterReturned = null;
-            sb.AppendLine();
-            AppendWithBreak($"{DateTime.Now}");
+            navigReturnValue = null;
+            sb.AppendLine($"{Environment.NewLine}{DateTime.Now}");
             if (input.Length != 0 && input[0] == '?')
-                return SwitchQuestion(input.Substring(1));
-           // AppendInterpData(true);
-            //_lastinvoke = AppendWithBreak($"LastInvoke: {_rawinvocation}");
-           // _rawinvocation = input;
-            _invoking = AppendWithBreak($"Invoking : {input}");
-            interpreterReturned = _navigator.Interface(input);
-            _ret = ProcessReturn(interpreterReturned);
-            AppendInterpData();
+                return Question(input.Substring(1));
+            sb.AppendLine($"Invoking : {input}");
+            navigReturnValue = _navigator.Interface(input);
+            ProcessReturn(navigReturnValue);
+            AppendNavigData();
             string output = sb.ToString();
             sb.Length = 0;
             return output;
         }
 
-        string ProcessReturn(object? ret)
+        void ProcessReturn(object? ret)
         {
-            return (ret is IEnumerable enumerable and not string) ? AppendWithBreak($"Returned: \n{new StringBuilder().AppendMany(enumerable, Environment.NewLine, enumerable is IList)}") : AppendWithBreak($"Returned: {ret?.ToString() ?? "null"}");
+            if (ret is IEnumerable enumerable and not string)
+            {
+                sb.AppendLine($"Returned: \n{enumerator.AppendMany(enumerable, Environment.NewLine, enumerable is IList)}");
+                enumerator.Length = 0;
+            }
+            else
+                sb.AppendLine($"Returned: {ret?.ToString() ?? "null"}");
         }
 
-        string SwitchQuestion(string input)
+        string Question(string input)
         {
             if (input.EqualsCaseless("vars") || input.EqualsCaseless("variables"))
                 return GetCollection(_navigator._variables, x => $"[Key: {x.Key} :: {x.Value}]", "variables");
-            if (_navigator.LoadedType == null)
+            if (_navigator._loadedType == null)
                 return "No type loaded.";
             if (input.EqualsCaseless("methods"))
                 return GetCollection(_navigator._methods, "methods");
@@ -145,7 +135,7 @@ namespace XQuinn.Runtime
             if (!collection.Any())
                 return $"No {kind} found.";
             sb.AppendLine($"Printing {kind}.");
-            sb.AppendMany<T>(collection, Environment.NewLine, false, toString);
+            sb.AppendMany(collection, Environment.NewLine, false, toString);
             string output = sb.ToString();
             sb.Length = 0;
             return output;
@@ -153,47 +143,19 @@ namespace XQuinn.Runtime
 
 
 
-        void AppendInterpData()
+        void AppendNavigData()
         {
-            string timing = "Loaded";
-            string type = AppendWithBreak($"{timing} Type: {_navigator.LoadedType}");
-          //  string method = AppendWithBreak($"{timing} Method: {Navig.LoadedMethod}");
-            string instancetype = AppendWithBreak($"{timing} Instance Type: {_navigator.InstanceType}");
-            string instanceobject = AppendWithBreak($"{timing} Instance Object: {_navigator.LoadedInstance}");
-            string cachekey = AppendWithBreak($"{timing} TypeCacheKey {_navigator.LoadedTypeKey}");
-            string variablekey = $"{timing} VariableKey {_navigator.LoadedVariable}";
-            sb.Append(variablekey);
-            //if (before)
-                sb.Append(Environment.NewLine);
-            AssignOutputs(type, instancetype, cachekey, variablekey, instanceobject);//before);
-
-
-            void AssignOutputs(string type, string instancetype, string cachekey, string variablekey, string instanceobj)//, bool before)
+            if (_navigator._loadedType != null)
             {
-                // if (before)
-                // {
-                //     // _btype = type;
-                //     // _bmethod = method;
-                //     // _binstanceType = instancetype;
-                //     // _btypeCacheKey = cachekey;
-                //     // _bvariableKey = variablekey;
-                //     // _binstanceToString = instanceobj;
-                // }
-                // else
-                // {
-                    _atype = type;
-                    _ainstanceType = instancetype;
-                    _atypeCacheKey = cachekey;
-                    _avariableKey = variablekey;
-                    _ainstanceToString = instanceobj;
-               // }
+                sb.AppendLine($"Type: {_navigator._loadedType}");
+                if (_navigator._instance != null)
+                    sb.AppendLine($"Instance Type: {_navigator._instanceType}");
+                // sb.AppendLine($"Loaded Instance Object: {_navigator._instance}");
+                if (_navigator._variable != null)
+                    sb.AppendLine($"Variable: {_navigator._variable}");
             }
+
         }
 
-        string AppendWithBreak(string strng)
-        {
-            sb.AppendLine(strng);
-            return strng;
-        }
     }
 }
