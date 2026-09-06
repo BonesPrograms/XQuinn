@@ -93,7 +93,7 @@ namespace XQuinn.Reflection
 #if NET6_0_OR_GREATER
             [new(nameof(ILReader))] = typeof(ILReader),
 #endif
-           // [new("typecache")] = typeof(TypeCache),
+            [new("typecache")] = typeof(TypeCache),
             //  ["type"] = typeof(Type),
             [new(nameof(Assembly))] = typeof(Assembly),
             [new(nameof(Activator))] = typeof(Activator),
@@ -109,20 +109,20 @@ namespace XQuinn.Reflection
 
 
             [new(nameof(Array))] = typeof(Array),
-            [TypeKey.Generate<List<_>>()] = typeof(List<>),
-            [TypeKey.Generate<IList<_>>()] = typeof(IList<>),
+            [TypeKey.Generate(typeof(List<>))] = typeof(List<>),
+            [TypeKey.Generate(typeof(IList<>))] = typeof(IList<>),
             [new(nameof(IList))] = typeof(IList),
             [new(nameof(Enumerable))] = typeof(Enumerable),
             [new(nameof(IEnumerable))] = typeof(IEnumerable),
-            [TypeKey.Generate<IEnumerable<_>>()] = typeof(IEnumerable<>),
-            [TypeKey.Generate<Dictionary<_, _>>()] = typeof(Dictionary<,>),
-            [TypeKey.Generate<IDictionary<_, _>>()] = typeof(IDictionary<,>),
+            [TypeKey.Generate(typeof(IEnumerable<>))] = typeof(IEnumerable<>),
+            [TypeKey.Generate(typeof(Dictionary<,>))] = typeof(Dictionary<,>),
+            [TypeKey.Generate(typeof(IDictionary<,>))] = typeof(IDictionary<,>),
             [new(nameof(IDictionary))] = typeof(IDictionary),
             [new("KVP", 2)] = typeof(KeyValuePair<,>),
-            [TypeKey.Generate<HashSet<_>>()] = typeof(HashSet<>),
-            [TypeKey.Generate<Collection<_>>()] = typeof(Collection<>),
+            [TypeKey.Generate(typeof(HashSet<>))] = typeof(HashSet<>),
+            [TypeKey.Generate(typeof(Collection<>))] = typeof(Collection<>),
             [new(nameof(ICollection))] = typeof(ICollection),
-            [TypeKey.Generate<ICollection<_>>()] = typeof(ICollection<>)
+            [TypeKey.Generate(typeof(ICollection<>))] = typeof(ICollection<>)
 
         };
 
@@ -199,11 +199,6 @@ namespace XQuinn.Reflection
                 return false;
             s_registry.TryAdd(trueKey, type);
             return true;
-        }
-
-        public static bool CacheType<T>()
-        {
-            return CacheType(typeof(T), nameof(T));
         }
         public static bool CacheType<T>(string key)
         {
@@ -296,7 +291,7 @@ namespace XQuinn.Reflection
                     if (!accessor && value == '.')
                         accessor = true;
                     else
-                        throw new ArgumentException($"Keys can only consist of digits, letters, underscores, [] array brackets at the end, or single periods between names. Bad Key {key}. If you are having trouble caching generics, use TypeExtensions.SnipGenericName.");
+                        throw new ArgumentException($"Keys can only consist of digits, letters, underscores, or single periods between names. Bad Key {key}. If you are having trouble caching generics, use TypeExtensions.SnipGenericName.");
                 }
                 else if (accessor)
                 {
@@ -326,7 +321,7 @@ namespace XQuinn.Reflection
                 return new(typename);
             }
 
-            public static TypeKey Generate<T>() => new(nameof(T), typeof(T));
+            public static TypeKey Generate(Type t) => new(GetCompatibleName(t, false), t);
 
             public TypeKey(string key, int args = 0)
             {
@@ -334,7 +329,7 @@ namespace XQuinn.Reflection
                 _argCount = args;
             }
 
-            public TypeKey(string key, Type t) : this(key, t.IsGenericType ? t.GetGenericArguments().Length : 0)
+            public TypeKey(string key, Type t) : this(key, t.IsGenericTypeDefinition ? t.GetGenericArguments().Length : 0)
             {
             }
 

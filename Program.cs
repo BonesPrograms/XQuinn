@@ -61,7 +61,7 @@ namespace XQuinn.Private
         {
             Assembly xquinn = Assembly.Load("XQuinn");
             TypeCache.CacheTypes(xquinn.GetTypes(), false);
-            TypeCache.CacheType<Harmony>();
+            TypeCache.CacheType<Harmony>(false);
             TypeCache.CacheType(typeof(AccessTools), false);
             TypeCache.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
             TypeCache.CacheType(typeof(BitConverter), false);
@@ -88,6 +88,10 @@ namespace XQuinn.Private
         static T? _obj;
 
         public static T Method(T obj) => obj;
+
+        public static void Test(char x, char y) {}
+
+        public static int Method(int i) => i;
     }
 
 }

@@ -268,11 +268,11 @@ namespace XQuinn.CodeAnalysis.AST
             }
         }
         List<TypeString>? _type_args;
-        internal GenericString(string nameForSnipping) : base(nameForSnipping)
+        protected GenericString(string nameForSnipping) : base(nameForSnipping)
         {
             _fullname = nameForSnipping;
         }
-        internal static T New<T>(T genericString, bool dontLex = false) where T : GenericString
+        protected static T New<T>(T genericString, bool dontLex = false) where T : GenericString
         {
             if (!dontLex)
             {

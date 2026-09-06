@@ -97,6 +97,8 @@ namespace XQuinn.Extensions
 
         public static bool ContainsCaseless(this string strng, string? txt)
         {
+            if (txt == null)
+                return false;
             return strng.IndexOf(txt, StringComparison.OrdinalIgnoreCase) >= 0;
         }
 

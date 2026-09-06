@@ -368,7 +368,7 @@ namespace XQuinn.Runtime
             }
             if (_props.TryGetValue(strng, out PropertyPair prop))
             {
-                return prop.InvokeGet(_instance, strng, _loadedType);
+                return prop.InvokeGet(_instance, strng, _loadedType!, this);
             }
             return value.Parse(paramType);
         }
@@ -390,11 +390,12 @@ namespace XQuinn.Runtime
             if (fromType == _loadedType)
             {
                 if (_props.TryGetValue(fname, out PropertyPair prop))
-                    return prop.InvokeGet(variable, fname, fromType);
+                    return prop.InvokeGet(variable, fname, fromType, this);
             }
             else
             {
-                return PropertyPair.InvokeGet(fromType, fname, variable);
+                if (PropertyPair.InvokeGet(fromType, fname, variable, this, out object? ret))
+                    return ret;
             }
             throw new MissingMemberException($"No field or property found named {fname} in {fromType}.");
 
@@ -476,8 +477,7 @@ namespace XQuinn.Runtime
                     throw new ArgumentException($"method {call} cannot accept type arguments.");
             }
             parameters ??= call.GetParameters();
-            if (!methodCached)
-                CacheMember(typeCached, methodCached, fromType, call, mthdString.NameWithGenerics);
+            CacheMember(typeCached, methodCached, fromType, call, mthdString.NameWithGenerics);
             object? obj = null;
             object?[] parsedparams = ParseParameters(parameters, mthdString);
             try
@@ -527,7 +527,7 @@ namespace XQuinn.Runtime
             }
             if (_props.TryGetValue(member.DeclaringType.NameOrValue, out PropertyPair prop))
             {
-                instance = prop.InvokeGet(_instance, member.DeclaringType.NameOrValue, _loadedType) ?? throw new ArgumentException($"Property {member.DeclaringType.NameOrValue} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
+                instance = prop.InvokeGet(_instance, member.DeclaringType.NameOrValue, _loadedType!, this) ?? throw new ArgumentException($"Property {member.DeclaringType.NameOrValue} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
                 return instance.GetType();
             }
             if (_variables.TryGetValue(member.DeclaringType.NameOrValue, out VariableBinding? variable))
@@ -603,6 +603,8 @@ namespace XQuinn.Runtime
         {
             if (Caching)
             {
+                if (memberCached)
+                    return;
                 Dictionary<string, MemberInfo> cachedMembers;
                 if (!typeCached)
                 {
@@ -610,8 +612,7 @@ namespace XQuinn.Runtime
                 }
                 else
                     cachedMembers = s_known_members[fromType];
-                if (!memberCached)
-                    cachedMembers[key] = member;
+                cachedMembers[key] = member;
                 // if (fromType == LoadedType)
                 // {
                 //     if (member is FieldInfo field) _fields.Remove(key);
@@ -1099,20 +1100,27 @@ namespace XQuinn.Runtime
             public PropertyPair(PropertyInfo info) : this(info.GetGetMethod(true), info.GetSetMethod(true))
             {
             }
-            public static object? InvokeGet(Type fromType, string fname, object? variable)
+            public static bool InvokeGet(Type fromType, string fname, object? variable, Navigator navig, out object? res)
             {
+                res = null;
                 PropertyInfo? info = fromType.GetProperty(fname, Flag);
                 if (info != null)
                 {
                     PropertyPair prop = new(info.GetGetMethod(true), null);
-                    return prop.InvokeGet(variable, fname, fromType);
+                    res = prop.InvokeGet(variable, fname, fromType, navig);
+                    return true;
                 }
-                return null;
+                return false;
             }
 
-            public object? InvokeGet(object? instance, string name, Type? type)
+            public object? InvokeGet(object? variable, string name, Type type, Navigator navig)
             {
-                return GetGetter(name, type).Invoke(instance, null);
+
+                MethodInfo getter = GetGetter(name, type);
+                object? target = variable;
+                if (target == null && getter.DeclaringType == navig._loadedType)
+                    target = navig._instance;
+                return getter.Invoke(target, null);
             }
 
 

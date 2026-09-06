@@ -214,10 +214,16 @@ namespace XQuinn.CodeAnalysis
                 return true;
             }
             else if (_value == Whitespace)
+            {
                 SkipWhitespaceTrail(ref i, invocation);
+                _readChar = false;
+                _finishedReadChar = false;
+                _readCharValue = false;
+            }
             if (_finishedReadChar)
             {
                 _finishedReadChar = false;
+                _readCharValue = false;
                 _readChar = false;
             }
             return false;
@@ -541,7 +547,7 @@ namespace XQuinn.CodeAnalysis
         void ValidIdentifier(char value, string invocation, int? i)
         {
             const string error = "Detected illegal character in identifier.";//&&value!='('
-            if (value != '<' && value != '>' && value != ',' && value != '[' && value != ']' && value != ':' && value != '|' && Illegal(value))
+            if (value != '<' && value != '>' && value != ',' && value != ':' && value != '|' && Illegal(value))
                 throw i == null ? new LexicalException(error, invocation, value, _sb) : throw new LexicalException(error, invocation, value, _sb, i.Value);
 
         }
