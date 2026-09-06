@@ -235,7 +235,7 @@ namespace XQuinn.CodeAnalysis.AST
                     utf16 = NameOrValue[1];
                     return true;
                 }
-             }
+            }
             return formatException ? throw new FormatException($"Invalid char format. Input: {NameOrValue}. Must be surrounzed by apostrophes, must be a single char.") : false;
 
 
@@ -276,18 +276,21 @@ namespace XQuinn.CodeAnalysis.AST
         {
             if (!dontLex)
             {
-                if (genericString.HasTypeArgs())
-                {
-                    StringBuilder sb = new();
-                    genericString.LexGenerics(sb);
-                    sb.Length = 0;
-                    genericString.PrintTypeArgs(sb);
-                }
+                if (HasTypeArgs(genericString.NameOrValue))
+                    genericString.UpdateForGenerics();
             }
             return genericString;
         }
 
-        bool HasTypeArgs()
+        protected void UpdateForGenerics()
+        {
+            StringBuilder sb = new();
+            LexGenerics(sb);
+            sb.Length = 0;
+            PrintTypeArgs(sb);
+        }
+
+        internal static bool HasTypeArgs(string NameOrValue)
         {
             bool genericStart = false;
             for (int i = 0; i < NameOrValue.Length; i++)
@@ -306,7 +309,7 @@ namespace XQuinn.CodeAnalysis.AST
                 for (int i = 0; i < genericArgs.Length; i++)
                 {
                     TypeString tstring = Generics[i];
-                    Type realtype = TypeCache.GetTypeOrThrow(tstring.NameOrValue, dic);
+                    Type realtype = TypeCache.GetTypeOrThrow(tstring);
                     if (realtype.IsGenericTypeDefinition) realtype = realtype.MakeGenericType(tstring.ConvertGenericArguments(dic));
                     genericArgs[i] = realtype;
                 }
@@ -415,6 +418,13 @@ namespace XQuinn.CodeAnalysis.AST
         internal static TypeString New(string name, GenericString? typeArgOf = null, bool fromLex = false)
         {
             return New<TypeString>(new(name, typeArgOf), fromLex);
+        }
+
+        internal static TypeString NewGeneric(string name)
+        {
+            TypeString tstring = new(name);
+            tstring.UpdateForGenerics();
+            return tstring;
         }
 
     }

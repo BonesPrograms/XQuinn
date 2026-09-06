@@ -18,6 +18,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
 using HarmonyLib;
+using XQuinn.Private.EqualityHelpers;
 
 namespace XQuinn.Runtime
 {
@@ -56,6 +57,8 @@ namespace XQuinn.Runtime
         internal readonly Dictionary<string, MethodBase> _methods = new(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<ResolvedOverload, MethodBase> _overloads = new();
         internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
+
+        internal readonly Dictionary<string, PropertyPair> _props = new(StringComparer.OrdinalIgnoreCase);
 
 
 
@@ -226,7 +229,7 @@ namespace XQuinn.Runtime
             _loadedType = type;
             // _loadedParams = null;
             //_loadedMethod = null;
-            MapType(_methods, _overloads, _fields, type);
+            MapType(_methods, _overloads, _fields, type, _props);
         }
 
 
@@ -325,7 +328,7 @@ namespace XQuinn.Runtime
         {
             object? obj;
             if (value is FieldString field)
-                obj = InvokeField(field);
+                obj = InvokeFieldOrProperty(field);
             else if (value is MethodString method)
                 obj = InvokeMethod(method);
             else
@@ -354,7 +357,7 @@ namespace XQuinn.Runtime
             {
                 // if (!paramType.IsAssignableFrom(variable.ObjectType))
                 //     throw new InvalidCastException($"Instance index object with key {strng} is a {variable.ObjectType} and does not cast to parameter type {paramType}");
-                 return variable.Object;
+                return variable.Object;
             }
             if (_fields.TryGetValue(strng, out FieldInfo? field))
             {
@@ -363,10 +366,14 @@ namespace XQuinn.Runtime
                 // if(!paramType.IsAssignableFrom(t))
                 return field.GetValue(_instance);
             }
+            if (_props.TryGetValue(strng, out PropertyPair prop))
+            {
+                return prop.InvokeGet(_instance, strng, _loadedType);
+            }
             return value.Parse(paramType);
         }
 
-        object? InvokeField(FieldString fieldstring)
+        object? InvokeFieldOrProperty(FieldString fieldstring)
         {
             Type fromType = FindObject(fieldstring, out object? variable);
             string fname = fieldstring.NameOrValue;
@@ -375,10 +382,22 @@ namespace XQuinn.Runtime
                 _fields.TryGetValue(fname, out field);
             else if (field == null)
                 field = fromType.GetField(fname, Flag);
-            if (field == null)
-                throw new MissingFieldException($"No field found named {fname} in {fromType}.");
-            CacheMember(typeCached, fieldCached, fromType, field, fieldstring.NameOrValue);
-            return field.GetValue(TargetInstance(fromType, variable));
+            if (field != null)
+            {
+                CacheMember(typeCached, fieldCached, fromType, field, fieldstring.NameOrValue);
+                return field.GetValue(TargetInstance(fromType, variable));
+            }
+            if (fromType == _loadedType)
+            {
+                if (_props.TryGetValue(fname, out PropertyPair prop))
+                    return prop.InvokeGet(variable, fname, fromType);
+            }
+            else
+            {
+                return PropertyPair.InvokeGet(fromType, fname, variable);
+            }
+            throw new MissingMemberException($"No field or property found named {fname} in {fromType}.");
+
         }
         object? InvokeMethod(MethodString mthdString)
         {
@@ -417,9 +436,9 @@ namespace XQuinn.Runtime
                 }
                 if (call == null || ambiguousMatch)
                 {
-                    ResolvedOverload query = ResolvedOverload.OverloadQuery(mthdString);
+                    ResolvedOverload query = ResolvedOverload.Query(mthdString);
                     List<MethodBase> methodbases = fromType.GetMethods(Flag).Cast<MethodBase>().ToList();
-                    if (query.MethodKey.EqualsCaseless("new"))
+                    if (query.Key.EqualsCaseless("new"))
                     {
                         ConstructorInfo[] ctors = fromType.GetConstructors(Flag);
                         methodbases.AddRange(ctors);
@@ -428,7 +447,7 @@ namespace XQuinn.Runtime
                     foreach (MethodBase method in methodbases)
                     {
                         string evaluatedName = method.Name == ".ctor" ? "new" : method.Name;
-                        if (evaluatedName.EqualsCaseless(query.MethodKey)) //method.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
+                        if (evaluatedName.EqualsCaseless(query.Key)) //method.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
                         {
                             ParameterInfo[] methodparams = method.GetParameters();
                             if (SupportedMember(method, methodparams))
@@ -478,8 +497,8 @@ namespace XQuinn.Runtime
         {
             return variable ?? (paramType.IsAssignableFrom(_instanceType) ? _instance : null);
         }
-       
-       
+
+
         #endregion
 
         #region Finding
@@ -499,12 +518,17 @@ namespace XQuinn.Runtime
         Type FindObject(IMemberString member, out object? instance)
         {
             //  if (string.IsNullOrWhiteSpace(member.DeclaringType?.String)) { variable = new("this", _instance); return LoadedType ?? throw new InvalidOperationException("cannot implicitly access loaded type, no type is loaded"); }
-    //        if (member.DeclaringType == null)
-      //          throw new ArgumentNullException();
+            //        if (member.DeclaringType == null)
+            //          throw new ArgumentNullException();
             if (_fields.TryGetValue(member.DeclaringType.NameOrValue, out FieldInfo? field))
             {
-                instance = field.GetValue(_instance) ?? throw new ArgumentException($"Field {field} in type {field.DeclaringType} returned null and it's member methods and fields cannot be invoked.");
+                instance = field.GetValue(_instance) ?? throw new ArgumentException($"Field {field} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
                 return instance.GetType(); //will not always be == fieldtype
+            }
+            if (_props.TryGetValue(member.DeclaringType.NameOrValue, out PropertyPair prop))
+            {
+                instance = prop.InvokeGet(_instance, member.DeclaringType.NameOrValue, _loadedType) ?? throw new ArgumentException($"Property {member.DeclaringType.NameOrValue} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
+                return instance.GetType();
             }
             if (_variables.TryGetValue(member.DeclaringType.NameOrValue, out VariableBinding? variable))
             {
@@ -533,7 +557,7 @@ namespace XQuinn.Runtime
                     throw new InvalidOperationException("Cannot get instance base, instance is null.");
                 return _instanceType.BaseType ?? throw new ArgumentException("Base type of instance is null.");
             }
-            Type t = TypeCache.GetTypeOrThrow(typename.NameOrValue, LocalCache);
+            Type t = TypeCache.GetTypeOrThrow(typename);
             if (t.IsGenericTypeDefinition)
             {
                 if (s_reified_generic_types.TryGetValue(typename.NameWithGenerics, out Type? generic))
@@ -554,7 +578,7 @@ namespace XQuinn.Runtime
             _methods?.TryGetValue(method.NameOrValue, out methodbase);
             if (methodbase == null)
             {
-                ResolvedOverload query = ResolvedOverload.OverloadQuery(method);
+                ResolvedOverload query = ResolvedOverload.Query(method);
                 _overloads.TryGetValue(query, out methodbase);
             }
             if (methodbase == null)
@@ -600,7 +624,7 @@ namespace XQuinn.Runtime
 
         TypeString ThisOrNew(string typename)
         {
-           // return _implicit_this?.NameWithGenerics.EqualsCaseless(typename) ?? false ? _implicit_this : TypeString.New(typename);
+            // return _implicit_this?.NameWithGenerics.EqualsCaseless(typename) ?? false ? _implicit_this : TypeString.New(typename);
             return typename.EqualsCaseless(_implicit_this?.NameWithGenerics) ? _implicit_this! : TypeString.New(typename);
         }
         #endregion
@@ -631,7 +655,7 @@ namespace XQuinn.Runtime
             return null; //no type name, just a member, this technically isnt allowed but i let you get away with it for instance loading 
         }
 
-        internal static void MapType(Dictionary<string, MethodBase>? _methods, Dictionary<ResolvedOverload, MethodBase>? _overloads, Dictionary<string, FieldInfo>? _fields, Type type, bool @new = true)
+        internal static void MapType(Dictionary<string, MethodBase>? _methods, Dictionary<ResolvedOverload, MethodBase>? _overloads, Dictionary<string, FieldInfo>? _fields, Type type, Dictionary<string, PropertyPair>? _props, bool @new = true)
         {
 
             if (_methods != null || _overloads != null)
@@ -666,6 +690,13 @@ namespace XQuinn.Runtime
             {
                 _fields.Clear();
                 AddBackwards(_fields, type!.GetFields(Flag));
+            }
+            if (_props != null)
+            {
+                _props.Clear();
+                PropertyInfo[] properties = type.GetProperties(Flag);
+                foreach (PropertyInfo prop in properties)
+                    _props[prop.Name] = new PropertyPair(prop);
             }
 
 
@@ -765,7 +796,7 @@ namespace XQuinn.Runtime
                     return variable;
                 TypeString declaringtype = ThisOrNew(typeName);
                 FieldString fieldStr = new(member, declaringtype);
-                return InvokeField(fieldStr);
+                return InvokeFieldOrProperty(fieldStr);
             }
 
         }
@@ -832,16 +863,23 @@ namespace XQuinn.Runtime
             }
             if (!lefthandtype.IsClass)
                 throw new NotSupportedException($"Assigning to the members of struct fields is currently unsupported due to constraints related to boxing. Loading the struct field as the Navigator's instance also will not work for assignment; changes will not be reflected in the target field. You must recreate the struct entirely with your modified values and assign it to the target field.");
-            FieldInfo assigningTo = lefthandtype.GetField(lefthand, Flag) ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
+            AssignableMember assigningTo;
+            FieldInfo? field = lefthandtype.GetField(lefthand, Flag);// ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
+            if (field != null)
+                assigningTo = AssignableMember.New(field);
+            else
+            {
+                PropertyInfo? prop = lefthandtype.GetProperty(lefthand, Flag) ?? throw new MissingMemberException($"No field or property found named {lefthand} in {lefthandtype}.");
+                assigningTo = AssignableMember.New(prop);
+            }
             string? righthandTypeName = ResolveMemberAccess(righthand, out righthand, out bool righthandfield);// ?? _key ?? throw new ArgumentException("No type loaded for implicit access on righthand side.");
-
             if (righthandTypeName != null)
             {
                 TypeString typeStr = ThisOrNew(righthandTypeName);
                 if (righthandfield)
                 {
                     FieldString fieldStr = new(righthand, typeStr);
-                    assignedValue = InvokeField(fieldStr);
+                    assignedValue = InvokeFieldOrProperty(fieldStr);
                 }
                 else
                 {
@@ -859,12 +897,13 @@ namespace XQuinn.Runtime
             else
             {
                 ValueString valueStr = new(righthand.Trim());
-                assignedValue = ParseValue(valueStr, assigningTo.FieldType);
+                assignedValue = ParseValue(valueStr, assigningTo.MemberType);
             }
 
             assigningTo.SetValue(lefthandInstance, assignedValue);
             return true;
         }
+
 
         static bool ImplicitThisMethodCall(string righthand) //makes sure that the '(' contained is not part of a string and is actually a method parameter
         {
@@ -893,8 +932,7 @@ namespace XQuinn.Runtime
             if (_instance == null)
                 throw new InvalidOperationException("No instance is loaded.");
             TypeCache.ThrowIfBadKey(key);
-            Type? typeWithConflictingKey = TypeCache.GetTypeCached(key, LocalCache);
-            if (typeWithConflictingKey != null)
+            if (TypeCache.s_registry.ContainsKey(new(key)))
                 throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
             if (_variables.TryGetValue(key, out VariableBinding? variable))
             {
@@ -936,18 +974,21 @@ namespace XQuinn.Runtime
             }
         }
 
-        internal readonly struct ResolvedOverload : IEquatable<ResolvedOverload>
+        internal readonly struct ResolvedOverload : IEquatable<ResolvedOverload>, IIndexKeyPair<ResolvedOverload>
         {
-            public readonly int Index;
-            public readonly string MethodKey;
+
+            public int Index => _index;
+            public string Key => _name;
+            readonly int _index;
+            readonly string _name;
             internal ResolvedOverload(string name, int index)
             {
-                Index = index;
+                _index = index;
                 int last = name.IndexOf(':');
-                MethodKey = last != -1 ? name.Remove(last) : name;
+                _name = last != -1 ? name.Remove(last) : name;
             }
 
-            internal static ResolvedOverload OverloadQuery(MethodString mthdString)
+            internal static ResolvedOverload Query(MethodString mthdString)
             {
                 string name = mthdString.NameOrValue;
                 string[] query = name.Split(':');
@@ -965,18 +1006,12 @@ namespace XQuinn.Runtime
             }
             public override int GetHashCode()
             {
-                unchecked
-                {
-                    int hash = 17;
-                    hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(MethodKey);//StringComparer.FromComparison(StringComparison.OrdinalIgnoreCase).GetHashCode(KeySpan);
-                    hash = hash * 31 + Index.GetHashCode();
-                    return hash;
-                }
+                return IndexKeyPair<ResolvedOverload>.HashCode(31, this);
             }
-            public override string ToString() => Index > 0 ? $"{MethodKey}:{Index}" : MethodKey;
+            public override string ToString() => _index > 0 ? $"{_name}:{_index}" : _name;
             public bool Equals(ResolvedOverload overload)
             {
-                return overload.Index == Index && overload.MethodKey.Equals(MethodKey, StringComparison.OrdinalIgnoreCase);
+                return IndexKeyPair<ResolvedOverload>.Equals(overload, this);
             }
 
             public override bool Equals(object? obj)
@@ -994,8 +1029,120 @@ namespace XQuinn.Runtime
                 return !(left == right);
             }
         }
+        readonly struct AssignableMember
+        {
+            readonly MemberInfo _member;
+
+            public readonly Type MemberType;
+
+            AssignableMember(MemberInfo member, Type memberType)
+            {
+                _member = member;
+                MemberType = memberType;
+            }
+            public static AssignableMember New(MemberInfo member)
+            {
+                if (member is PropertyInfo prop)
+                {
+                    PropertyPair pair = new(null, prop.GetSetMethod(true));
+                    MethodInfo setter = pair.GetSetter(prop.Name, prop.DeclaringType);
+                    return new(setter, prop.PropertyType);
+                }
+                if (member is FieldInfo field)
+                    return new(field, field.FieldType);
+                throw new NotSupportedException();
+
+            }
+            public readonly void SetValue(object? instance, object? value)
+            {
+                if (_member is FieldInfo field)
+                    field.SetValue(instance, value);
+                else
+                {
+                    MethodInfo setter = (MethodInfo)_member;
+                    setter.Invoke(instance, new object?[] { value });
+                }
+            }
+        }
+
+        internal readonly struct PropertyPair// : IEquatable<PropertyPair>
+        {
+
+            //  public readonly string Name;
+            readonly MethodInfo? _getter;
+            readonly MethodInfo? _setter;
+            public MethodInfo GetGetter(string name, Type? type)
+            {
+                if (_getter == null)
+                    Exception(name, type, "getter");
+                return _getter!;
+            }
+
+            public MethodInfo GetSetter(string name, Type? type)
+            {
+                if (_setter == null)
+                    Exception(name, type, "setter");
+                return _setter!;
+            }
+
+            void Exception(string name, Type? type, string kind)
+            {
+                throw new InvalidOperationException($"Property {name} in type {type} does not have a {kind}");
+            }
+
+            public PropertyPair(MethodInfo? getter, MethodInfo? setter)
+            {
+                // Name = name;
+                _getter = getter;
+                _setter = setter;
+            }
+            public PropertyPair(PropertyInfo info) : this(info.GetGetMethod(true), info.GetSetMethod(true))
+            {
+            }
+            public static object? InvokeGet(Type fromType, string fname, object? variable)
+            {
+                PropertyInfo? info = fromType.GetProperty(fname, Flag);
+                if (info != null)
+                {
+                    PropertyPair prop = new(info.GetGetMethod(true), null);
+                    return prop.InvokeGet(variable, fname, fromType);
+                }
+                return null;
+            }
+
+            public object? InvokeGet(object? instance, string name, Type? type)
+            {
+                return GetGetter(name, type).Invoke(instance, null);
+            }
 
 
+
+            // public override int GetHashCode()
+            // {
+            //     int hash = 17;
+            //     unchecked
+            //     {
+            //         hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(Name);
+            //         hash = hash * 31
+            //     }
+            // }
+
+            // bool IEquatable<PropertyPair>.Equals(PropertyPair other)
+            // {
+            //     return Equals(other);
+            // }
+
+            // public bool Equals(PropertyPair pair)
+            // {
+            //     return pair.Name.EqualsCaseless(Name) && pair.Getter == Getter && pair.Setter == Setter;
+            // }
+
+            // public override bool Equals(object obj)
+            // {
+            //     return obj is PropertyPair pair && Equals(pair);
+            // }
+
+        }
 
     }
 

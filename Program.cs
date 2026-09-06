@@ -20,6 +20,7 @@ using System.Collections;
 using XQuinn.ObjectModel;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
+using XQuinn.Private.EqualityHelpers;
 
 namespace XQuinn.Private
 {
@@ -60,10 +61,11 @@ namespace XQuinn.Private
         {
             Assembly xquinn = Assembly.Load("XQuinn");
             TypeCache.CacheTypes(xquinn.GetTypes(), false);
-            TypeCache.CacheType<Harmony>(false);
+            TypeCache.CacheType<Harmony>();
             TypeCache.CacheType(typeof(AccessTools), false);
             TypeCache.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
             TypeCache.CacheType(typeof(BitConverter), false);
+            TypeCache.CacheType(typeof(TypeCache), false);
             //@ TypeCache.CacheType(typeof(BytesLittleEndian), "bytes");
         }
 #endif
@@ -76,114 +78,17 @@ namespace XQuinn.Private
 
 
 
-
-    abstract class BaseClass
+    class Class<T>
     {
-        public static T Obj<T>(T val) => val;
+        public static T? Obj
+        {
+            get=>_obj;
+            set=>_obj=value;
+        }
+        static T? _obj;
 
-        public static T[] Prms<T>(params T[] prms) => prms;
+        public static T Method(T obj) => obj;
     }
-
-    class Static : BaseClass
-    {
-
-    }
-
-    class Instance : BaseClass
-    {
-
-        int a;
-        public bool Method(Instance x)
-        {
-            return x is Instance;
-        }
-    }
-
-
-    class Class<T> where T : new()
-    {
-        static T[] arr = Array.Empty<T>();
-        static T? obj = default;
-
-        static T Ret(T obj) => obj;
-
-        static IReadOnlyList<T> list = new List<T>()
-        {
-            new(), new(), new()
-        };
-    }
-
-    class Test
-    {
-        Dictionary<GenericKey,int> types = new();
-
-        public void Run()
-        {
-            GenericKey key = new("class", 1);
-            types[key] = 0;
-
-
-            TypeString str = TypeString.New("class<int>");
-            GenericKey query = new(str);
-
-            Console.WriteLine(types[query]);
-        }
-    }
-
-    internal readonly struct GenericKey : IEquatable<GenericKey>
-    {
-
-        public readonly string Name;
-
-        public readonly int GenericArgs;
-
-        public GenericKey(string key, int args)
-        {
-            Name = key;
-            GenericArgs = args;
-        }
-
-        public GenericKey(TypeString str)
-        {
-            Name = str.NameOrValue;
-            GenericArgs = str.Generics.Count;
-        }
-
-        public override bool Equals(object obj)
-        {
-            return obj is GenericKey key && Equals(key);
-        }
-
-        public bool Equals(GenericKey key)
-        {
-            return key.GenericArgs == GenericArgs && key.Name.EqualsCaseless(Name);
-        }
-
-        public override int GetHashCode()
-        {
-            unchecked
-            {
-                int hash = 17;
-                hash = hash * 23 + StringComparer.OrdinalIgnoreCase.GetHashCode(Name);//StringComparer.FromComparison(StringComparison.OrdinalIgnoreCase).GetHashCode(KeySpan);
-                hash = hash * 23 + GenericArgs.GetHashCode();
-                return hash;
-            }
-        }
-
-        public static bool operator ==(GenericKey left, GenericKey right)
-        {
-            return left.Equals(right);
-        }
-
-        public static bool operator !=(GenericKey left, GenericKey right)
-        {
-            return !(left == right);
-        }
-
-
-
-    }
-
 
 }
 
