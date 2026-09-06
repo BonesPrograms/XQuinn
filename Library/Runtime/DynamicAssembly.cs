@@ -39,27 +39,27 @@ namespace XQuinn.Runtime
             }
         }
 
-        readonly Monitor Monitor;
+        readonly Monitor _monitor;
         public Func<Type, string?> BookDelegate = x => TypeCache.GetCompatibleName(x, false);
         public string? DefaultLoadedTypeName;
         /// <summary>
         /// If changing DLLPath, call Reload.
         /// </summary>
         public string DLLPath;
-        DLLBox? Box;
-        Assembly? LoadedAssembly;
+        DLLBox? _box;
+        Assembly? _assembly;
 
         /// <summary>
         /// If you change this, you most certainly will want to call reload afterwards.
         /// </summary>
-        DateTime LastWrite;
+        DateTime _lastwrite;
 
         DynamicAssembly(string path, Func<Type, string?>? bookDelegate) //DynamicReloader exists purely as a base class for DynamicInvoker. It is not intended for anyone else to inherit from.
         {
             if (bookDelegate != null)
                 BookDelegate = bookDelegate;
             DLLPath = path;
-            Monitor = new(false);
+            _monitor = new(false);
         }
 
         public static DynamicAssembly New(string dllpath, Func<Type, string?> bookDelegate)
@@ -78,9 +78,9 @@ namespace XQuinn.Runtime
             Load();
             //   Module[] modules = LoadedAssembly!.GetModules();
             //  if (modules.Length > 1) throw new NotSupportedException("Only single file assemblies are supported.");
-            Monitor._navigator.LocalCache = TypeBook.New(LoadedAssembly!.ManifestModule.GetTypes(), BookDelegate, StringComparer.OrdinalIgnoreCase);
-            if (DefaultLoadedTypeName != null) Monitor._navigator.LoadTypeStatic(DefaultLoadedTypeName);
-            LastWrite = File.GetLastWriteTime(DLLPath);
+            _monitor._navigator.LocalCache = TypeBook.New(_assembly!.ManifestModule.GetTypes(), BookDelegate, StringComparer.OrdinalIgnoreCase);
+            if (DefaultLoadedTypeName != null) _monitor._navigator.LoadTypeStatic(DefaultLoadedTypeName);
+            _lastwrite = File.GetLastWriteTime(DLLPath);
         }
 
         public void Dispose()
@@ -94,19 +94,19 @@ namespace XQuinn.Runtime
         [MethodImpl(MethodImplOptions.NoInlining)]
         void Load()
         {
-            Box = new DLLBox();
+            _box = new DLLBox();
             using FileStream stream = File.OpenRead(DLLPath);
-            LoadedAssembly = Box.LoadFromStream(stream);
+            _assembly = _box.LoadFromStream(stream);
         }
         [MethodImpl(MethodImplOptions.NoInlining)]
         WeakReference? Unload()
         {
-            if (Box == null) return null;
-            Monitor._navigator.Clear();
-            LoadedAssembly = null;
-            WeakReference monitor = new(Box, trackResurrection: true);
-            Box?.Unload();
-            Box = null;
+            if (_box == null) return null;
+            _monitor._navigator.Clear();
+            _assembly = null;
+            WeakReference monitor = new(_box, trackResurrection: true);
+            _box?.Unload();
+            _box = null;
             return monitor;
         }
 
@@ -114,7 +114,7 @@ namespace XQuinn.Runtime
         {
             if (CheckForReload())
                 Reload();
-            output = Monitor.SafeInterface(invocation, out object? ret, out exception);
+            output = _monitor.SafeInterface(invocation, out object? ret, out exception);
             return ret;
         }
 
@@ -124,7 +124,7 @@ namespace XQuinn.Runtime
         bool CheckForReload()
         {
             DateTime write = File.GetLastWriteTime(DLLPath);
-            if (write != LastWrite) { Reload(); return true; }
+            if (write != _lastwrite) { Reload(); return true; }
             else return false;
         }
 

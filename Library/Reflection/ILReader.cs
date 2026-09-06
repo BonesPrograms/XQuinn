@@ -275,7 +275,7 @@ namespace XQuinn.Reflection
     /// <summary>
     /// Readable IL instruction.
     /// </summary>
-    internal readonly struct ByteCode
+    readonly struct ByteCode
     {
 
         public static bool ShowOperandType = false;

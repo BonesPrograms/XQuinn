@@ -81,7 +81,7 @@ namespace XQuinn.CodeAnalysis.AST
                 if (EnumNet20.TryParse(NameOrValue.Replace('|', ','), asType, true, out Enum? @enum))
                     return @enum;
             }
-            else if (asType.IsPrimitive || asType == typeof(object))
+            else if (asType.IsPrimitive || asType == typeof(object) || asType == typeof(decimal))
             {
                 if (ParsePrimitive(asType, out object? primitive))
                     return primitive;

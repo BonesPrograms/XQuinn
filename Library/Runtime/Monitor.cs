@@ -26,9 +26,8 @@ namespace XQuinn.Runtime
             get => _navigator.Caching;
             set => _navigator.Caching = value;
         }
-        readonly StringBuilder sb = new();
-
-        readonly StringBuilder enumerator = new();
+        readonly StringBuilder _sb = new();
+        readonly StringBuilder _collectionWriter = new();
         internal Navigator _navigator = new();
 
         public Monitor()
@@ -41,7 +40,7 @@ namespace XQuinn.Runtime
 
         public string SafeInterface(string input, out object? interpretereReturned, out bool exception)
         {
-            sb.Length = 0;
+            _sb.Length = 0;
             exception = false;
             interpretereReturned = null;
             string output;
@@ -51,10 +50,10 @@ namespace XQuinn.Runtime
             }
             catch (Exception ex)
             {
-                sb.Length = 0;
-                sb.CatchException(ex);
-                output = sb.ToString();
-                sb.Length = 0;
+                _sb.Length = 0;
+                _sb.CatchException(ex);
+                output = _sb.ToString();
+                _sb.Length = 0;
                 exception = true;
             }
             return output;
@@ -62,28 +61,28 @@ namespace XQuinn.Runtime
         string Interface(string input, out object? navigReturnValue)
         {
             navigReturnValue = null;
-            sb.AppendLine($"{Environment.NewLine}{DateTime.Now}");
+            _sb.AppendLine($"{Environment.NewLine}{DateTime.Now}");
             if (input.Length != 0 && input[0] == '?')
                 return Question(input.Substring(1));
-            sb.AppendLine($"Invoking : {input}");
+            _sb.AppendLine($"Invoking : {input}");
             navigReturnValue = _navigator.Interface(input);
             ProcessReturn(navigReturnValue);
             AppendNavigData();
-            string output = sb.ToString();
-            sb.Length = 0;
+            string output = _sb.ToString();
+            _sb.Length = 0;
             return output;
         }
 
         void ProcessReturn(object? ret)
         {
-            var c = sb[1];
+            var c = _sb[1];
             if (ret is IEnumerable enumerable and not string)
             {
-                sb.AppendLine($"Returned: \n{enumerator.AppendMany(enumerable, Environment.NewLine, true)}");
-                enumerator.Length = 0;
+                _sb.AppendLine($"Returned: \n{_collectionWriter.AppendMany(enumerable, Environment.NewLine, true)}");
+                _collectionWriter.Length = 0;
             }
             else
-                sb.AppendLine($"Returned: {ret?.ToString() ?? "null"}");
+                _sb.AppendLine($"Returned: {ret?.ToString() ?? "null"}");
         }
 
         string Question(string input)
@@ -133,10 +132,10 @@ namespace XQuinn.Runtime
         {
             if (!collection.Any())
                 return $"No {kind} found.";
-            sb.AppendLine($"Printing {kind}.");
-            sb.AppendMany(collection, Environment.NewLine, false, toString);
-            string output = sb.ToString();
-            sb.Length = 0;
+            _sb.AppendLine($"Printing {kind}.");
+            _sb.AppendMany(collection, Environment.NewLine, false, toString);
+            string output = _sb.ToString();
+            _sb.Length = 0;
             return output;
         }
 
@@ -146,12 +145,12 @@ namespace XQuinn.Runtime
         {
             if (_navigator._loadedType != null)
             {
-                sb.AppendLine($"Type: {_navigator._loadedType}");
+                _sb.AppendLine($"Type: {_navigator._loadedType}");
                 if (_navigator._instance != null)
-                    sb.AppendLine($"Instance Type: {_navigator._instanceType}");
+                    _sb.AppendLine($"Instance Type: {_navigator._instanceType}");
                 // sb.AppendLine($"Loaded Instance Object: {_navigator._instance}");
                 if (_navigator._variable != null)
-                    sb.AppendLine($"Variable: {_navigator._variable}");
+                    _sb.AppendLine($"Variable: {_navigator._variable}");
             }
 
         }

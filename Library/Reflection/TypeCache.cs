@@ -15,6 +15,7 @@ using XQuinn.ObjectModel;
 using XQuinn.IO;
 using System.Runtime.CompilerServices;
 using System.Linq;
+using XQuinn.Private;
 
 
 namespace XQuinn.Reflection
@@ -31,10 +32,10 @@ namespace XQuinn.Reflection
     public static class TypeCache
     {
 
-        public static readonly IReadOnlyDictionary<string, Type> GlobalCache;
-        public static ICollection<string> Keys => s_registry.Keys;
+        public static readonly IReadOnlyDictionary<GenericKey, Type> GlobalCache;
+        public static ICollection<GenericKey> Keys => s_registry.Keys;
         public static ICollection<Type> Values => s_registry.Values;
-        public static IEnumerable<KeyValuePair<string, Type>> Enumerate()
+        public static IEnumerable<KeyValuePair<GenericKey, Type>> Enumerate()
         {
             foreach (var obj in s_registry)
                 yield return obj;
@@ -55,7 +56,7 @@ namespace XQuinn.Reflection
         ///  If you let arraygen create the key, it will automatically be snipped using GetCompatibleName
         /// If you are caching many types at once your should filter your names through GetCompatibleName, because default generic names and nested names (Short or full) are incompatible
         /// and will throw exceptions. Rule of thumb: alphanumerics and underscores only, do not start with a digit, and [] is allowed but good practice is to reserve that for array types.
-        static readonly ConcurrentDictionary<string, Type> s_registry = new(StringComparer.OrdinalIgnoreCase)
+        static readonly ConcurrentDictionary<GenericKey, Type> s_registry = new(StringComparer.OrdinalIgnoreCase)
         {
             ["object"] = typeof(object), ///Keyword types
             ["string"] = typeof(string),
@@ -86,7 +87,7 @@ namespace XQuinn.Reflection
             ["ilreader"] = typeof(ILReader),
 #endif
             ["typecache"] = typeof(TypeCache),
-            //  ["type"] = typeof(Type),
+           //  ["type"] = typeof(Type),
             ["assembly"] = typeof(Assembly),
             ["activator"] = typeof(Activator),
             ["convert"] = typeof(Convert),
