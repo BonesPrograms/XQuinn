@@ -47,8 +47,8 @@ namespace XQuinn.Runtime
         /// </summary>
         internal Type? _loadedType;
         TypeString? _implicit_this;
-        internal readonly Dictionary<string, MethodBase> _methods = new(StringComparer.OrdinalIgnoreCase);
-        internal readonly Dictionary<MethodKey, MethodBase> _overloads = new();
+        internal readonly Dictionary<MethodKey, MethodBase> _methods = new();
+     //   internal readonly Dictionary<MethodKey, MethodBase> _overloads = new();
         internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
 
         internal readonly Dictionary<string, PropertyInfo> _props = new(StringComparer.OrdinalIgnoreCase);
@@ -123,7 +123,6 @@ namespace XQuinn.Runtime
         {
 
             _variables.Clear();
-            _overloads.Clear();
             _methods.Clear();
             _fields.Clear();
             LocalCache = null;
@@ -217,7 +216,7 @@ namespace XQuinn.Runtime
             _loadedType = type;
             // _loadedParams = null;
             //_loadedMethod = null;
-            MapType(_methods, _overloads, _fields, type, _props);
+            MapType(_methods, _fields, type, _props);
         }
 
 
@@ -573,13 +572,7 @@ namespace XQuinn.Runtime
 
         MethodBase FindMethod(MethodString method)// out ResolvedOverload? query)
         {
-            MethodBase? methodbase = null;
-            _methods?.TryGetValue(method.NameOrValue, out methodbase);
-            if (methodbase == null)
-            {
-                MethodKey query = MethodKey.Query(method);
-                _overloads.TryGetValue(query, out methodbase);
-            }
+            _methods.TryGetValue(MethodKey.Query(method), out MethodBase? methodbase);
             if (methodbase == null)
                 throw new MissingMethodException($"No method named {method.NameOrValue} found in {_loadedType}'s method or overload dictionary. It may have been removed due to having a ref return type or in/out/ref parameters.");
             if (methodbase.IsGenericMethodDefinition && methodbase is MethodInfo actualmethod)
@@ -660,7 +653,7 @@ namespace XQuinn.Runtime
         internal static void MapType(Dictionary<string, MethodBase>? _methods, Dictionary<string, FieldInfo>? _fields, Type type, Dictionary<string, PropertyInfo>? _props, bool @new = true)
         {
 
-            if (_methods != null || _overloads != null)
+            if (_methods != null)
             {
 
                 List<MethodBase> methodbases = type!.GetMethods(Flag)
