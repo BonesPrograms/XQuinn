@@ -3,7 +3,6 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using System.Reflection;
-using XQuinn.IO;
 using XQuinn.Reflection;
 using System.IO;
 
@@ -65,7 +64,7 @@ namespace XQuinn.ObjectModel
         public static InstanceReader New(string outputFilePath, bool makeFileIfNotFound, Type? loopLimit = null)
         {
             if (makeFileIfNotFound)
-                XQuinn.IO.Logger.SafetyCheck(outputFilePath);
+                IO.Logger.SafetyCheck(outputFilePath);
             return new(outputFilePath, loopLimit);
         }
 

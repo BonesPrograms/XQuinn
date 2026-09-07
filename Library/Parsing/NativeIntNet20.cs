@@ -1,6 +1,3 @@
-using System;
-using System.Diagnostics.CodeAnalysis;
-using System.Numerics;
 using static XQuinn.Parsing.NativeIntNet20;
 
 namespace XQuinn.Parsing

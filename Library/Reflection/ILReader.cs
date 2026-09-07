@@ -1,20 +1,10 @@
-#if NET6_0_OR_GREATER
 using System.Reflection.Emit;
 using System.Reflection;
-using System.Buffers.Binary;
-using static System.Buffers.Binary.BinaryPrimitives; //binaryprimitives is preferred to bitconverter cause it is more efficient and little endians for me
-using static XQuinn.Reflection.ILReader;
-using XQuinn.IO;
-using System.Collections.ObjectModel;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using HarmonyLib;
 using System.Text;
-using System.Numerics;
-using XQuinn.Extensions;
-using System.ComponentModel;
-using XQuinn.Reflection;
 using System.Linq;
 using static XQuinn.Reflection.ByteSizes;
 
@@ -179,14 +169,14 @@ namespace XQuinn.Reflection
             else if (size == x8bit)
                 return _il[i];
             else if (size == x16bit)
-                return BinaryPrimitives.ReadInt16LittleEndian(_il.AsSpan(i, x16bit));
+                return LittleEndians.Int16(_il, i);
             else if (size == x32bit)
-            {
+            { 
                 int token;
                 if (type == OperandType.ShortInlineR)
-                    return BinaryPrimitives.ReadSingleLittleEndian(_il.AsSpan(i, x32bit));
+                    return LittleEndians.Float32(_il, i);
                 else
-                    token = BinaryPrimitives.ReadInt32LittleEndian(_il.AsSpan(i, x32bit)); ;
+                    token = LittleEndians.Int32(_il, i);
                 if (type == OperandType.InlineSwitch)
                     size += token * 4;
                 return token;
@@ -194,8 +184,8 @@ namespace XQuinn.Reflection
             else if (size == x64bit)
             {
                 if (type == OperandType.InlineR)
-                    return BinaryPrimitives.ReadDoubleLittleEndian(_il.AsSpan(i, x64bit));
-                return BinaryPrimitives.ReadInt64LittleEndian(_il.AsSpan(i, x64bit));
+                    return LittleEndians.Float64(_il, i);
+                return LittleEndians.Int64(_il,i);
             }
             throw new InvalidOperationException("OperandSize(OperandType) returned an out-of-range value.");
         }
@@ -341,6 +331,53 @@ namespace XQuinn.Reflection
     }
 
 
+    static class LittleEndians
+    {
+        public static short Int16(byte[] il, int i)
+        {
+            return BitConverter.ToInt16(TruncateReverse(il, i, x16bit, out int start), start);
+        }
+        public static float Float32(byte[] il, int i)
+        {
+            return BitConverter.ToSingle(TruncateReverse(il, i, x32bit, out int start), start);
+
+        }
+
+        public static int Int32(byte[] il, int i)
+        {
+            return BitConverter.ToInt32(TruncateReverse(il, i, x32bit, out int start), start);
+        }
+
+        public static double Float64(byte[] il, int i)
+        {
+            return BitConverter.ToDouble(TruncateReverse(il, i, x64bit, out int start), start);
+        }
+
+        public static long Int64(byte[] il, int i)
+        {
+            return BitConverter.ToInt64(TruncateReverse(il, i, x64bit, out int start), start);
+        }
+
+
+        static byte[] TruncateReverse(byte[] il, int i, int size, out int start)
+        {
+            if (BitConverter.IsLittleEndian)
+            {
+                start = i;
+                return il;
+            }
+            start = 0;
+            byte[] reversed = new byte[size];
+            int cap = i + size;
+            int index = size - 1;
+            for (int x = i; x < cap; x++)
+            {
+                reversed[index] = il[x];
+                index--;
+            }
+            return reversed;
+        }
+    }
     static class ByteSizes
     {
         /// <summary>
@@ -351,141 +388,23 @@ namespace XQuinn.Reflection
         /// <summary>
         /// 1 byte.
         /// </summary>
-        public const int x8bit = 0x01;
+        public const int x8bit = sizeof(byte);
         /// <summary>
         /// 2 bytes.
         /// </summary>
-        public const int x16bit = 0x02;
+        public const int x16bit = sizeof(short);
         /// <summary>
         /// 4 bytes.
         /// </summary>
-        public const int x32bit = 0x04;
+        public const int x32bit = sizeof(int);
         /// <summary>
         /// 8 bytes.
         /// </summary>
-        public const int x64bit = 0x08;
+        public const int x64bit = sizeof(long);
 
         //  public const int x128bit = 0x16;
 
         //  public const int x256bit = 0x32;
     }
 
-
-    static class BytesLittleEndian
-    {
-
-        //Not available in net6, not supported.
-
-        // public static byte[] AsBytes(UInt128 uint128) => uint128.AsBytesInternal();
-        //public static byte[] AsBytes(Int128 sint128) => sint128.AsBytesInternal();
-        public static byte[] AsBytes(nuint uint32or64) => uint32or64.AsBytesInternal();
-        public static byte[] AsBytes(nint sint32or64) => sint32or64.AsBytesInternal();
-        public static byte[] AsBytes(ulong uint64) => uint64.AsBytesInternal();
-        public static byte[] AsBytes(uint uint32) => uint32.AsBytesInternal();
-        public static byte[] AsBytes(double float64) => float64.AsBytesInternal();
-        public static byte[] AsBytes(long sint64) => sint64.AsBytesInternal();
-        public static byte[] AsBytes(float float32) => float32.AsBytesInternal();
-        public static byte[] AsBytes(int sint32) => sint32.AsBytesInternal();
-        public static byte[] AsBytes(Half float16) => float16.AsBytesInternal();
-        public static byte[] AsBytes(ushort uint16) => uint16.AsBytesInternal();
-        public static byte[] AsBytes(short sint16) => sint16.AsBytesInternal();
-        public static byte[] AsBytes(char utf16) => utf16.AsBytesInternal();
-
-        static byte[] AsBytesInternal<T>(this T num) 
-        {
-            byte[] bytes = Array.Empty<byte>();
-
-            switch (num)
-            {
-                // case byte int8:
-                //     bytes = new byte[1];
-                //     bytes[0] = int8;
-                //     break;
-                case char utf16:
-                    bytes = new byte[sizeof(char)]; // 2 bytes
-                    WriteUInt16LittleEndian(bytes, utf16);
-                    break;
-                case short sint16:
-                    bytes = new byte[sizeof(short)]; // 2 bytes
-                    WriteInt16LittleEndian(bytes, sint16);
-                    break;
-                case ushort uint16:
-                    bytes = new byte[sizeof(ushort)]; // 2 bytes
-                    WriteUInt16LittleEndian(bytes, uint16);
-                    break;
-                case Half float16:
-                    bytes = new byte[x16bit];
-                    WriteHalfLittleEndian(bytes, float16);
-                    break;
-                case int sint32:
-                    bytes = new byte[sizeof(int)]; // 4 bytes
-                    WriteInt32LittleEndian(bytes, sint32);
-                    break;
-                case uint uint32:
-                    bytes = new byte[sizeof(uint)]; // 4 bytes
-                    WriteUInt32LittleEndian(bytes, uint32);
-                    break;
-                case float float32:
-                    bytes = new byte[sizeof(float)]; // 4 bytes
-                    WriteSingleLittleEndian(bytes, float32);
-                    break;
-                case long sint64:
-                    bytes = new byte[sizeof(long)]; // 8 bytes
-                    WriteInt64LittleEndian(bytes, sint64);
-                    break;
-                case ulong uint64:
-                    bytes = new byte[sizeof(ulong)]; // 8 bytes
-                    WriteUInt64LittleEndian(bytes, uint64);
-                    break;
-                case double float64:
-                    bytes = new byte[sizeof(double)]; // 8 bytes
-                    WriteDoubleLittleEndian(bytes, float64);
-                    break;
-                // case Int128 sint128:
-                //     bytes = new byte[x128bit]; //absolutely massive
-                //     WriteInt128LittleEndian(bytes, sint128);
-                //     break;
-                // case UInt128 uint128:
-                //     bytes = new byte[x128bit];
-                //     WriteUInt128LittleEndian(bytes, uint128);
-                //     break;
-                case nint sint32or64:
-                    if (IntPtr.Size == x32bit)
-                    {
-                        bytes = new byte[x32bit];
-                        WriteInt32LittleEndian(bytes, (int)sint32or64);
-                    }
-                    else if (IntPtr.Size == x64bit)
-                    {
-                        bytes = new byte[x64bit];
-                        WriteInt64LittleEndian(bytes, sint32or64);
-                    }
-                    else
-                        throw new PlatformNotSupportedException("Must be 32bit or 64bit process");
-                    break;
-                case nuint uint32or64:
-                    if (!Environment.Is64BitProcess)
-                    {
-                        bytes = new byte[x32bit];
-                        WriteUInt32LittleEndian(bytes, (uint)uint32or64);
-                    }
-                    else if (Environment.Is64BitProcess)
-                    {
-                        bytes = new byte[x64bit];
-                        WriteUInt64LittleEndian(bytes, uint32or64);
-                    }
-                    else
-                        throw new PlatformNotSupportedException("Must be 32bit or 64bit process");
-                    break;
-                    // case decimal float128:
-                    // bytes = new byte[x128bit];
-                    // Write
-            }
-            if (bytes.Length == 0)
-                throw new NotSupportedException("Numeric type not supported by BinaryPrimitives.");
-            return bytes;
-        }
-
-    }
 }
-#endif

@@ -4,12 +4,12 @@ using XQuinn.Extensions;
 namespace XQuinn.Private.EqualityHelpers
 {
 
-    internal interface IIndexKeyPair<T> where T : struct
+    internal interface IIndexKeyPair
     {
         public string Key { get; }
         public int Index { get; }
     }
-    internal static class IndexKeyPair<T> where T : struct, IIndexKeyPair<T>
+    internal static class IndexKeyPair<T> where T : IIndexKeyPair
     {
         public static int HashCode(int mult, T data)
         {

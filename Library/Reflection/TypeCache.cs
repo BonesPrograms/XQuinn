@@ -3,8 +3,6 @@ using System.Collections.ObjectModel;
 using System.Reflection;
 using System;
 using System.Collections.Generic;
-using HarmonyLib;
-using XQuinn.Parsing;
 using XQuinn.CodeAnalysis;
 using XQuinn.Extensions;
 using System.Text;
@@ -12,13 +10,9 @@ using System.Collections;
 using XQuinn.Runtime;
 using System.Runtime.InteropServices;
 using XQuinn.ObjectModel;
-using XQuinn.IO;
 using System.Runtime.CompilerServices;
 using System.Linq;
-using XQuinn.Private;
 using XQuinn.CodeAnalysis.AST;
-using XQuinn.Private.EqualityHelpers;
-using System.ComponentModel;
 
 
 namespace XQuinn.Reflection
@@ -94,10 +88,8 @@ namespace XQuinn.Reflection
             [new(nameof(Types))] = typeof(Types),
             // ["arraygen"] = typeof(ArrayGen),
             [new(nameof(InstanceReader))] = typeof(InstanceReader),
-#if NET6_0_OR_GREATER
             [new(nameof(ILReader))] = typeof(ILReader),
-#endif
-            [new("typecache")] = typeof(TypeCache),
+            [new(nameof(TypeCache))] = typeof(TypeCache),
             //  ["type"] = typeof(Type),
             [new(nameof(Assembly))] = typeof(Assembly),
             [new(nameof(Activator))] = typeof(Activator),
@@ -126,7 +118,7 @@ namespace XQuinn.Reflection
             [new(nameof(HashSet<_>), 1)] = typeof(HashSet<>),
             [new(nameof(Collection<_>), 1)] = typeof(Collection<>),
             [new(nameof(ICollection))] = typeof(ICollection),
-            [new(nameof(ICollection<_>), 1)] = typeof(ICollection<>)
+            [new(nameof(ICollection), 1)] = typeof(ICollection<>)
 
         };
 
@@ -165,7 +157,7 @@ namespace XQuinn.Reflection
         {
             if (s_registry.TryGetValue(key, out Type? cachedType))
                 return cachedType;
-            throw new ArgumentException($"Could not find cached type with key {key.Key}.");
+            throw new ArgumentException($"Could not find cached type with key {key.Key} and generic arg count {key.Index}.");
         }
 
         internal static Type GetTypeOrThrow(TypeString name)
@@ -525,6 +517,12 @@ namespace XQuinn.Reflection
 
 
 
-        class _ { }
+        abstract class _
+        {
+            _ ()
+            {
+                
+            }
+        }
     }
 }

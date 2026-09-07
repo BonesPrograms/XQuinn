@@ -1,15 +1,11 @@
-using System.Text.RegularExpressions;
 using System.Text;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
 using System;
 using XQuinn.Reflection;
 using HarmonyLib;
 using XQuinn.Extensions;
 using XQuinn.Parsing;
-using System.Collections.ObjectModel;
-using XQuinn;
 
 namespace XQuinn.CodeAnalysis.AST
 {
@@ -272,13 +268,10 @@ namespace XQuinn.CodeAnalysis.AST
         {
             _fullname = nameForSnipping;
         }
-        protected static T New<T>(T genericString, bool dontLex = false) where T : GenericString
+        protected static T New<T>(T genericString) where T : GenericString
         {
-            if (!dontLex)
-            {
-                if (HasTypeArgs(genericString.NameOrValue))
-                    genericString.UpdateForGenerics();
-            }
+            if (HasTypeArgs(genericString.NameOrValue))
+                genericString.UpdateForGenerics();
             return genericString;
         }
 
@@ -287,8 +280,8 @@ namespace XQuinn.CodeAnalysis.AST
             StringBuilder sb = new();
             LexGenerics(sb);
             sb.Length = 0;
-            if (this is MethodString)
-                PrintTypeArgs(sb);
+            // if (this is MethodString)
+            PrintTypeArgs(sb);
         }
 
         internal static bool HasTypeArgs(string NameOrValue)
@@ -370,7 +363,7 @@ namespace XQuinn.CodeAnalysis.AST
             string name = sb.ToString();
             sb.Length = 0;
             _type_args ??= new List<TypeString>();
-            TypeString typearg = TypeString.New(name, this, true);
+            TypeString typearg = new(name, this);
             _type_args.Add(typearg);
             return typearg;
         }
@@ -402,7 +395,7 @@ namespace XQuinn.CodeAnalysis.AST
 
         internal readonly GenericString? _typeArgOf; //mostly used for generic lexing, not really necessary to be exposed right now
         //(kind of like paramOf)
-        TypeString(string nameForSnipping, GenericString? typeArgOf = null) : base(nameForSnipping.Trim())
+        internal TypeString(string nameForSnipping, GenericString? typeArgOf = null) : base(nameForSnipping.Trim())
         {
             _typeArgOf = typeArgOf;
         }
@@ -412,9 +405,9 @@ namespace XQuinn.CodeAnalysis.AST
         }
 
 
-        internal static TypeString New(string name, GenericString? typeArgOf = null, bool fromLex = false)
+        internal static TypeString New(string name, GenericString? typeArgOf = null)
         {
-            return New<TypeString>(new(name, typeArgOf), fromLex);
+            return New<TypeString>(new(name, typeArgOf));
         }
 
         internal static TypeString NewGeneric(string name)
@@ -459,7 +452,7 @@ namespace XQuinn.CodeAnalysis.AST
             {
                 hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(NameOrValue);
                 hash = hash * 31 + Generics.Count.GetHashCode();
-                foreach(TypeString arg in Generics)
+                foreach (TypeString arg in Generics)
                     hash = hash * 31 + arg.GetHashCode();
             }
             return hash;

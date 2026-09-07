@@ -1,23 +1,16 @@
 using System.Reflection;
 using XQuinn.Extensions;
-using System.Text.RegularExpressions;
 using XQuinn.Reflection;
-using XQuinn.Parsing;
 using XQuinn.CodeAnalysis.AST;
-using System.ComponentModel;
 using System.Data;
 using System.Linq;
-using System.Collections.ObjectModel;
 using System;
 using System.Collections.Generic;
 using XQuinn.CodeAnalysis;
 using System.Text;
-using System.Diagnostics;
 using System.Collections;
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
-using HarmonyLib;
 using XQuinn.Private.EqualityHelpers;
 
 namespace XQuinn.Runtime
@@ -77,7 +70,7 @@ namespace XQuinn.Runtime
         // ParameterInfo[]? _loadedParams;
         internal static readonly Dictionary<Type, HashSet<string>> s_ambiguous_matches = new();
         internal static readonly Dictionary<Type, Dictionary<string, MemberInfo>> s_known_members = new(); //all members ever accessed by callinterp 
-        internal static readonly Dictionary<TypeString, Type> s_reified_generic_types = new(); //reified generics
+        internal static readonly Dictionary<string, Type> s_reified_generic_types = new(StringComparer.OrdinalIgnoreCase); //reified generics
 
         /// <summary>
         /// Caching adds methods and fields to a global cache as they are invoked by CallInterpreter.
@@ -89,7 +82,7 @@ namespace XQuinn.Runtime
         {
 
         }
- 
+
         public static void FlushStaticCache(bool ambiguousMatches = false, bool typeMembers = true, bool reifiedGenerics = true)
         {
             if (ambiguousMatches)
@@ -564,11 +557,11 @@ namespace XQuinn.Runtime
             t ??= TypeCache.GetTypeOrThrow(key);
             if (t.IsGenericTypeDefinition)
             {
-                if (s_reified_generic_types.TryGetValue(typename, out Type? generic))
+                if (s_reified_generic_types.TryGetValue(typename.NameWithGenerics, out Type? generic))
                     return generic;
                 t = typename.ConvertToGeneric(t, LocalCache);
                 if (Caching)
-                    s_reified_generic_types[typename] = t;
+                    s_reified_generic_types[typename.NameWithGenerics] = t;
             }
             else if (!t.IsGenericType && typename.Generics.Count > 0)
                 throw new ArgumentException($"type {t} does not accept type arguments.");
@@ -979,7 +972,7 @@ namespace XQuinn.Runtime
             }
         }
 
-        internal readonly struct ResolvedOverload : IEquatable<ResolvedOverload>, IIndexKeyPair<ResolvedOverload>
+        internal readonly struct ResolvedOverload : IEquatable<ResolvedOverload>, IIndexKeyPair
         {
 
             public int Index => _index;
@@ -989,20 +982,26 @@ namespace XQuinn.Runtime
             internal ResolvedOverload(string name, int index)
             {
                 _index = index;
-                int last = name.IndexOf(':');
-                _name = last != -1 ? name.Remove(last) : name;
+                _name = name;
+                //int last = name.IndexOf(':');
+                // _name = last != -1 ? name.Remove(last) : name;
             }
 
             internal static ResolvedOverload Query(MethodString mthdString)
             {
                 string name = mthdString.NameOrValue;
-                string[] query = name.Split(':');
+                int split = name.IndexOf(':');
+                //  string[] query = name.Split(':');
                 int index = 0;
-                if (query.Length == 2)
-                    index = int.Parse(query[1]);
-                else if (query.Length != 1)
-                    throw new FormatException($"Invalid overload query. {mthdString.NameOrValue} Proper Format: Name:Index");
-                return new(mthdString.NameOrValue, index);
+                if (split >= 0)
+                {
+                    string indexed = name.Substring(split + 1);
+                    index = int.Parse(indexed);
+                    name = name.Remove(split);
+                }
+                //  else if (query.Length != 1)
+                //    throw new FormatException($"Invalid overload query. {mthdString.NameOrValue} Proper Format: Name:Index");
+                return new(name, index);
             }
 
             bool IEquatable<ResolvedOverload>.Equals(ResolvedOverload obj)

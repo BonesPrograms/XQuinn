@@ -1,20 +1,14 @@
 using System;
 using System.Text;
 using XQuinn.Extensions;
-using XQuinn.CodeAnalysis;
 using System.Collections.Generic;
 using System.Reflection;
 using XQuinn.Reflection;
-using XQuinn.Runtime;
 using System.Linq;
 using System.Collections;
 
 namespace XQuinn.Runtime
 {
-    interface INavigator
-    {
-
-    }
 
     /// <summary>
     /// Monitor the output, activity and exceptions of a Navigator instance via strings.

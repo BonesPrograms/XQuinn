@@ -1,22 +1,15 @@
 using System.Reflection;
-using XQuinn.Reflection;
-using XQuinn.Extensions;
-using System.Collections.Concurrent;
-using Mono.Reflection;
-using System.Collections.ObjectModel;
 using System;
 using System.Collections.Generic;
 using System.Collections;
-using System.Text.RegularExpressions;
-using System.CodeDom.Compiler;
-using System.Linq;
 using System.Text;
 using XQuinn.CodeAnalysis.AST;
 using XQuinn.Private.EqualityHelpers;
+
 namespace XQuinn.Reflection
 {
 
-    internal readonly struct TypeKey : IEquatable<TypeKey>, IIndexKeyPair<TypeKey>
+    internal readonly struct TypeKey : IEquatable<TypeKey>, IIndexKeyPair
     {
         public string Key => _name;
         public int Index => _argCount;

@@ -2,7 +2,6 @@ using System.Reflection;
 using System.Text;
 using HarmonyLib;
 using System;
-using XQuinn.Runtime;
 
 namespace XQuinn.Reflection
 {
