@@ -287,7 +287,8 @@ namespace XQuinn.CodeAnalysis.AST
             StringBuilder sb = new();
             LexGenerics(sb);
             sb.Length = 0;
-            PrintTypeArgs(sb);
+            if (this is MethodString)
+                PrintTypeArgs(sb);
         }
 
         internal static bool HasTypeArgs(string NameOrValue)
@@ -301,7 +302,7 @@ namespace XQuinn.CodeAnalysis.AST
             }
             return genericStart ? throw new FormatException($"Invalid generic argument format. {NameOrValue}") : false;
         }
-        public Type[] ConvertGenericArguments(IReadOnlyDictionary<string, Type>? dic = null)
+        public Type[] ConvertGenericArguments(IReadOnlyDictionary<TypeKey, Type>? dic)
         {
             if (Generics.Count > 0)
             {
@@ -309,8 +310,11 @@ namespace XQuinn.CodeAnalysis.AST
                 for (int i = 0; i < genericArgs.Length; i++)
                 {
                     TypeString tstring = Generics[i];
-                    Type realtype = TypeCache.GetTypeOrThrow(tstring);
-                    if (realtype.IsGenericTypeDefinition) realtype = realtype.MakeGenericType(tstring.ConvertGenericArguments(dic));
+                    Type? realtype = null;
+                    dic?.TryGetValue(new(tstring), out realtype);
+                    realtype ??= TypeCache.GetTypeOrThrow(tstring);
+                    if (realtype.IsGenericTypeDefinition)
+                        realtype = realtype.MakeGenericType(tstring.ConvertGenericArguments(dic));
                     genericArgs[i] = realtype;
                 }
                 return genericArgs;
@@ -390,7 +394,7 @@ namespace XQuinn.CodeAnalysis.AST
 
     }
 
-    internal sealed class TypeString : GenericString
+    internal sealed class TypeString : GenericString, IEquatable<TypeString>
     {
 
         internal static readonly TypeString s_this = new("this");
@@ -401,18 +405,10 @@ namespace XQuinn.CodeAnalysis.AST
         {
             _typeArgOf = typeArgOf;
         }
-        public Type ConvertToGeneric(Type genericTypeDef, IReadOnlyDictionary<string, Type>? types = null)
+        public Type ConvertToGeneric(Type genericTypeDef, IReadOnlyDictionary<TypeKey, Type>? types = null)
         {
-            //Type t;
             return genericTypeDef.MakeGenericType(ConvertGenericArguments(types));
         }
-        // catch
-        // {
-        //     StringBuilder sb = new();
-        //     sb.AppendMany(_generics, ", ");
-        //     throw;
-        // }
-        // return t;
 
 
         internal static TypeString New(string name, GenericString? typeArgOf = null, bool fromLex = false)
@@ -427,6 +423,46 @@ namespace XQuinn.CodeAnalysis.AST
             return tstring;
         }
 
+        bool IEquatable<TypeString>.Equals(TypeString? other)
+        {
+            return Equals(other);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is TypeString t && Equals(t);
+        }
+
+        public bool Equals(TypeString? compareTo)
+        {
+            if (compareTo == null)
+                return false;
+            if (compareTo.Generics.Count != Generics.Count)
+                return false;
+            if (!compareTo.NameOrValue.EqualsCaseless(NameOrValue))
+                return false;
+            for (int i = 0; i < Generics.Count; i++)
+            {
+                TypeString myArg = Generics[i];
+                TypeString theirArg = compareTo.Generics[i];
+                if (!myArg.Equals(theirArg))
+                    return false;
+            }
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            int hash = 17;
+            unchecked
+            {
+                hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(NameOrValue);
+                hash = hash * 31 + Generics.Count.GetHashCode();
+                foreach(TypeString arg in Generics)
+                    hash = hash * 31 + arg.GetHashCode();
+            }
+            return hash;
+        }
     }
     internal sealed class MethodString : GenericString, IMemberString
     {
@@ -451,7 +487,7 @@ namespace XQuinn.CodeAnalysis.AST
             _type = type;
         }
 
-        public MethodInfo ConvertToGeneric(MethodInfo genericMethodDef, IReadOnlyDictionary<string, Type>? types = null)
+        public MethodInfo ConvertToGeneric(MethodInfo genericMethodDef, IReadOnlyDictionary<TypeKey, Type>? types = null)
         {
             //  Console.WriteLine("TConversion");
             //MethodInfo m;

@@ -10,10 +10,99 @@ using System.Collections;
 using System.Text.RegularExpressions;
 using System.CodeDom.Compiler;
 using System.Linq;
+using System.Text;
+using XQuinn.CodeAnalysis.AST;
+using XQuinn.Private.EqualityHelpers;
 namespace XQuinn.Reflection
 {
 
+    internal readonly struct TypeKey : IEquatable<TypeKey>, IIndexKeyPair<TypeKey>
+    {
+        public string Key => _name;
+        public int Index => _argCount;
+        readonly string _name;
+        readonly int _argCount;
+        public static TypeKey Query(string typename)
+        {
+            if (GenericString.HasTypeArgs(typename))
+            {
+                TypeString query = TypeString.NewGeneric(typename);
+                TypeKey key = new(query);
+                return key;
+            }
+            return new(typename);
+        }
 
+        //  public static TypeKey Generate(Type t) => new(GetCompatibleName(t, false), t);
+
+        public TypeKey(string key, int args = 0)
+        {
+            _name = key;
+            _argCount = args;
+        }
+
+        public TypeKey(string key, Type t) : this(key, t.IsGenericTypeDefinition ? t.GetGenericArguments().Length : 0)
+        {
+        }
+
+
+        internal TypeKey(TypeString str) : this(str.NameOrValue, str.Generics.Count)
+        {
+        }
+
+        bool IEquatable<TypeKey>.Equals(TypeKey other)
+        {
+            return Equals(other);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is TypeKey key && Equals(key);
+        }
+
+        public bool Equals(TypeKey key)
+        {
+            return IndexKeyPair<TypeKey>.Equals(this, key);
+        }
+
+        public override int GetHashCode()
+        {
+            return IndexKeyPair<TypeKey>.HashCode(23, this);
+        }
+
+        public static bool operator ==(TypeKey left, TypeKey right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(TypeKey left, TypeKey right)
+        {
+            return !(left == right);
+        }
+
+        public override string ToString()
+        {
+            if (_argCount > 0)
+            {
+                if (_argCount == 1)
+                    return $"{_name}<T>";
+                StringBuilder sb = new(_name);
+                sb.Append("<T1, ");
+                for (int i = 1; i < _argCount; i++)
+                {
+                    sb.Append($"T{i + 1}");
+                    if (For.NeedsDelimiter(_argCount, i))
+                    {
+                        sb.Append(", ");
+                    }
+                }
+                sb.Append('>');
+                return sb.ToString();
+            }
+            return _name;
+        }
+
+    }
 
 
     // 
@@ -25,36 +114,36 @@ namespace XQuinn.Reflection
     /// /// A case-insensitive readonly wrapper for a dictionary of type names for quick string lookup and caching. This isnt much more special than a dictionary, the only 
     /// difference is it simplifies creation.
     /// </summary>
-    public sealed class TypeBook : IReadOnlyDictionary<string, Type>
+    internal sealed class TypeBook : IReadOnlyDictionary<TypeKey, Type>
     {
         //readonly ConcurrentDictionary<string, Type> _book;
-        readonly Dictionary<string, Type> _book;
+        readonly Dictionary<TypeKey, Type> _book;
         public int Count => _book.Count;
-        public IEnumerable<string> Keys => _book.Keys;
+        public IEnumerable<TypeKey> Keys => _book.Keys;
         public IEnumerable<Type> Values => _book.Values;
 
-        public Type this[string key] => _book[key];
-        TypeBook(Dictionary<string, Type> book)
+        public Type this[TypeKey key] => _book[key];
+        TypeBook(Dictionary<TypeKey, Type> book)
         {
             //_book = book;
             _book = book;
         }
         IEnumerator IEnumerable.GetEnumerator() => _book.GetEnumerator();
-        public IEnumerator<KeyValuePair<string, Type>> GetEnumerator() => _book.GetEnumerator();
+        public IEnumerator<KeyValuePair<TypeKey, Type>> GetEnumerator() => _book.GetEnumerator();
 
 #pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
-        public bool TryGetValue(string key, out Type? value) => _book.TryGetValue(key, out value);
+        public bool TryGetValue(TypeKey key, out Type? value) => _book.TryGetValue(key, out value);
 #pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
         // public bool TryAdd(string key, Type value) => _book.TryAdd(key, value);
-        public bool ContainsKey(string key) => _book.ContainsKey(key);
+        public bool ContainsKey(TypeKey key) => _book.ContainsKey(key);
 
         //ToString here is for custom filtering, ie. maybe one of your shortnames are already taken, you can have your filter pre-check if one of your types are already cached
         //and then return a different name, you can also return null and it will *skip* adding that type to the typebook. Using a ToString will also completely override
         //the default procedure for choosing keys.
 
-        public static TypeBook New(IEnumerable<Type> types, Func<Type, string?> toString, StringComparer? comp = null)
+        public static TypeBook New(IEnumerable<Type> types, Func<Type, string?> toString)
         {
-            Dictionary<string, Type> book = new(comp);
+            Dictionary<TypeKey, Type> book = new();
             foreach (Type type in types)
             {
                 if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute))
@@ -68,9 +157,10 @@ namespace XQuinn.Reflection
                     string? key = toString(type);
                     if (key == null)
                         continue;
-                    if (book.TryGetValue(key, out Type? cached))
+                    TypeKey realKey = new(key, type);
+                    if (book.TryGetValue(realKey, out Type? cached))
                         throw new DuplicateKeyException(cached, type, key);
-                    book[key] = type;
+                    book[realKey] = type;
                 }
             }
             return new(book);
@@ -119,9 +209,9 @@ namespace XQuinn.Reflection
         //         return attribute != null && attribute.FeatureName == "FileLocalTypes";
         //     }
         // }
-        public static TypeBook New(IEnumerable<Type> types, bool fullname, StringComparer? comp = null, bool excludeFileScoped = true)
+        public static TypeBook New(IEnumerable<Type> types, bool fullname, bool excludeFileScoped = true)
         {
-            Dictionary<string, Type> book = new(comp);
+            Dictionary<TypeKey, Type> book = new();
             foreach (Type type in types)
             {
                 if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute)))
@@ -129,9 +219,10 @@ namespace XQuinn.Reflection
                     if (excludeFileScoped && IsFileType(type))
                         continue;
                     string key = fullname == false ? type.Name : type.FullName ?? throw new ArgumentNullException();
-                    if (book.TryGetValue(key, out Type? cached))
+                    TypeKey realKey = new(key, type);
+                    if (book.TryGetValue(realKey, out Type? cached))
                         throw new DuplicateKeyException(cached, type, key);
-                    book[key] = type;
+                    book[realKey] = type;
                 }
             }
             return new(book);

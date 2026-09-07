@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text;
 using System.Collections.Generic;
 using System;
+using Mono.Reflection;
 
 
 
@@ -41,7 +42,27 @@ namespace XQuinn.Reflection
             }
             return sb.ToString();
         }
-
+        static StringBuilder PropertyToString(StringBuilder sb, PropertyInfo p)
+        {
+            sb.Append("Property ");
+            sb.Append(p.Name);
+            sb.Append(' ');
+            MethodInfo? getter = p.GetGetMethod(true);
+            if(getter!=null)
+            {
+                AccessModifiers modifiers = new(getter);
+                sb.Append(modifiers.ToString());
+                sb.Append(" get; ");
+            }
+            MethodInfo? setter = p.GetSetMethod(true);
+            if(setter!=null)
+            {
+                AccessModifiers modifiers = new(setter);
+                sb.Append(modifiers.ToString());
+                sb.Append(" set; ");
+            }
+            return sb;
+        }
         static void MetadataTypeToString(StringBuilder sb, MemberInfo info)
         {
             if (info is Type t)
@@ -50,6 +71,8 @@ namespace XQuinn.Reflection
                 MethodToString(sb, m);
             else if (info is FieldInfo f)
                 FieldToString(sb, f);
+            else if (info is PropertyInfo p)
+            PropertyToString(sb, p);
 
         }
 

@@ -13,7 +13,7 @@ namespace XQuinn.Runtime
 {
     interface INavigator
     {
-        
+
     }
 
     /// <summary>
@@ -91,6 +91,8 @@ namespace XQuinn.Runtime
                 return GetCollection(_navigator._variables, x => $"[Key: {x.Key} :: {x.Value}]", "variables");
             if (_navigator._loadedType == null)
                 return "No type loaded.";
+            if (input.EqualsCaseless("props") || input.EqualsCaseless("properties"))
+                return GetCollection(_navigator._props, "properties");
             if (input.EqualsCaseless("methods"))
                 return GetCollection(_navigator._methods, "methods");
             if (input.EqualsCaseless("fields"))
@@ -105,6 +107,8 @@ namespace XQuinn.Runtime
 
         string Search(int startint, string[] arr)
         {
+            if (arr[startint].EqualsCaseless("props") || arr[startint].EqualsCaseless("Properties") || arr[startint].EqualsCaseless("prop") || arr[startint].EqualsCaseless("props"))
+                return Extract(_navigator._props, "properties", arr[startint + 1]);
             if (arr[startint].EqualsCaseless("overloads") || arr[startint].EqualsCaseless("overload"))
                 return Extract(_navigator._overloads, "overloads", arr[startint + 1]);
             else if (arr[startint].EqualsCaseless("method") || arr[startint].EqualsCaseless("methods"))
@@ -114,7 +118,7 @@ namespace XQuinn.Runtime
             return "Invalid query.";
         }
 
-        string Extract<K,V>(IEnumerable<KeyValuePair<K, V>> extract, string kind, string containing) where V : MemberInfo
+        string Extract<K, V>(IEnumerable<KeyValuePair<K, V>> extract, string kind, string containing) where V : MemberInfo
         {
             extract = extract.Where(x => x.Key!.ToString()!.ContainsCaseless(containing));
             return GetCollection(extract, kind, containing);

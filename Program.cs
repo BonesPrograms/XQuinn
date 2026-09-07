@@ -76,16 +76,23 @@ namespace XQuinn.Private
 
     }
 
-
-
-    class Class<T>
+    class Prop
     {
+        public string Method() => "Invoked";
+
+        public Prop This() => this;
+    }
+
+
+    class Class<T> where T : new()
+    {
+
         public static T? Obj
         {
             get=>_obj;
             set=>_obj=value;
         }
-        static T? _obj;
+        static T? _obj = new();
 
         public static T Method(T obj) => obj;
 

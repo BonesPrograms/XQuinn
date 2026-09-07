@@ -39,7 +39,7 @@ namespace XQuinn.Runtime
             }
         }
 
-        readonly Monitor _monitor;
+        readonly Monitor _monitor = new();
         public Func<Type, string?> BookDelegate = x => TypeCache.GetCompatibleName(x, false);
         public string? DefaultLoadedTypeName;
         /// <summary>
@@ -59,7 +59,6 @@ namespace XQuinn.Runtime
             if (bookDelegate != null)
                 BookDelegate = bookDelegate;
             DLLPath = path;
-            _monitor = new(false);
         }
 
         public static DynamicAssembly New(string dllpath, Func<Type, string?> bookDelegate)
@@ -78,7 +77,7 @@ namespace XQuinn.Runtime
             Load();
             //   Module[] modules = LoadedAssembly!.GetModules();
             //  if (modules.Length > 1) throw new NotSupportedException("Only single file assemblies are supported.");
-            _monitor._navigator.LocalCache = TypeBook.New(_assembly!.ManifestModule.GetTypes(), BookDelegate, StringComparer.OrdinalIgnoreCase);
+            _monitor._navigator.LocalCache = TypeBook.New(_assembly!.ManifestModule.GetTypes(), BookDelegate);
             if (DefaultLoadedTypeName != null) _monitor._navigator.LoadTypeStatic(DefaultLoadedTypeName);
             _lastwrite = File.GetLastWriteTime(DLLPath);
         }
@@ -103,6 +102,7 @@ namespace XQuinn.Runtime
         {
             if (_box == null) return null;
             _monitor._navigator.Clear();
+            Navigator.FlushStaticCache();
             _assembly = null;
             WeakReference monitor = new(_box, trackResurrection: true);
             _box?.Unload();

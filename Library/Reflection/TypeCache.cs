@@ -26,12 +26,16 @@ namespace XQuinn.Reflection
 
     public class DuplicateKeyException : Exception
     {
+        internal DuplicateKeyException(Type type, Type insert, TypeKey name) :this(type,insert,name.ToString())
+        {
 
-        internal DuplicateKeyException(Type type, Type insert, TypeCache.TypeKey name) : base($"Conflict detected when trying to cache {insert.FullName} with key {name}. Key has already been used for type {type.FullName}. Key names are not case sensitive.")
+        }
+        internal DuplicateKeyException(Type type, Type insert, string name) : base($"Conflict detected when trying to cache {insert.FullName} with key {name}. Key has already been used for type {type.FullName}. Key names are not case sensitive.")
         {
 
         }
     }
+    
     public static class TypeCache
     {
 
@@ -109,20 +113,20 @@ namespace XQuinn.Reflection
 
 
             [new(nameof(Array))] = typeof(Array),
-            [TypeKey.Generate(typeof(List<>))] = typeof(List<>),
-            [TypeKey.Generate(typeof(IList<>))] = typeof(IList<>),
+            [new(nameof(List<_>), 1)] = typeof(List<>),
+            [new(nameof(IList), 1)] = typeof(IList<>),
             [new(nameof(IList))] = typeof(IList),
             [new(nameof(Enumerable))] = typeof(Enumerable),
             [new(nameof(IEnumerable))] = typeof(IEnumerable),
-            [TypeKey.Generate(typeof(IEnumerable<>))] = typeof(IEnumerable<>),
-            [TypeKey.Generate(typeof(Dictionary<,>))] = typeof(Dictionary<,>),
-            [TypeKey.Generate(typeof(IDictionary<,>))] = typeof(IDictionary<,>),
+            [new(nameof(IEnumerable<_>), 1)] = typeof(IEnumerable<>),
+            [new(nameof(Dictionary<_, _>), 2)] = typeof(Dictionary<,>),
+            [new(nameof(IDictionary<_, _>), 2)] = typeof(IDictionary<,>),
             [new(nameof(IDictionary))] = typeof(IDictionary),
             [new("KVP", 2)] = typeof(KeyValuePair<,>),
-            [TypeKey.Generate(typeof(HashSet<>))] = typeof(HashSet<>),
-            [TypeKey.Generate(typeof(Collection<>))] = typeof(Collection<>),
+            [new(nameof(HashSet<_>), 1)] = typeof(HashSet<>),
+            [new(nameof(Collection<_>), 1)] = typeof(Collection<>),
             [new(nameof(ICollection))] = typeof(ICollection),
-            [TypeKey.Generate(typeof(ICollection<>))] = typeof(ICollection<>)
+            [new(nameof(ICollection<_>), 1)] = typeof(ICollection<>)
 
         };
 
@@ -173,23 +177,9 @@ namespace XQuinn.Reflection
         ///
 
 
-
-        internal static bool IsFileType(Type t)
-        {
-            if (!t.IsPublic && !t.IsNested)
-                return t.Name.StartsWith("<");
-            else return false;
-        }
-
-        static bool CheckDuplicateOrCached(Type type, TypeKey key)
-        {
-            if (s_registry.TryGetValue(key, out Type? cachedtype))
-                return type == cachedtype ? true : throw new DuplicateKeyException(cachedtype!, type, key);
-            return false;
-        }
         public static bool CacheType(Type type, string key)
         {
-            if (type.IsDefined(typeof(CompilerGeneratedAttribute), true) || IsFileType(type))
+            if (type.IsDefined(typeof(CompilerGeneratedAttribute), true) || TypeBook.IsFileType(type))
                 return false;
             if (type.IsGenericType && !type.IsGenericTypeDefinition)
                 throw new NotSupportedException($"Generic type {type} with key {key} cannot be cached. Only generic type definitions and nongeneric types can be cached.");
@@ -304,92 +294,12 @@ namespace XQuinn.Reflection
 
         }
 
-        internal readonly struct TypeKey : IEquatable<TypeKey>, IIndexKeyPair<TypeKey>
+     
+        static bool CheckDuplicateOrCached(Type type, TypeKey key)
         {
-            public string Key => _name;
-            public int Index => _argCount;
-            readonly string _name;
-            readonly int _argCount;
-            public static TypeKey Query(string typename)
-            {
-                if (GenericString.HasTypeArgs(typename))
-                {
-                    TypeString query = TypeString.NewGeneric(typename);
-                    TypeKey key = new(query);
-                    return key;
-                }
-                return new(typename);
-            }
-
-            public static TypeKey Generate(Type t) => new(GetCompatibleName(t, false), t);
-
-            public TypeKey(string key, int args = 0)
-            {
-                _name = key;
-                _argCount = args;
-            }
-
-            public TypeKey(string key, Type t) : this(key, t.IsGenericTypeDefinition ? t.GetGenericArguments().Length : 0)
-            {
-            }
-
-
-            internal TypeKey(TypeString str) : this(str.NameOrValue, str.Generics.Count)
-            {
-            }
-
-            bool IEquatable<TypeKey>.Equals(TypeKey other)
-            {
-                return Equals(other);
-            }
-
-            public override bool Equals(object? obj)
-            {
-                return obj is TypeKey key && Equals(key);
-            }
-
-            public bool Equals(TypeKey key)
-            {
-                return IndexKeyPair<TypeKey>.Equals(this, key);
-            }
-
-            public override int GetHashCode()
-            {
-                return IndexKeyPair<TypeKey>.HashCode(23, this);
-            }
-
-            public static bool operator ==(TypeKey left, TypeKey right)
-            {
-                return left.Equals(right);
-            }
-
-            public static bool operator !=(TypeKey left, TypeKey right)
-            {
-                return !(left == right);
-            }
-
-            public override string ToString()
-            {
-                if (_argCount > 0)
-                {
-                    if (_argCount == 1)
-                        return $"{_name}<T>";
-                    StringBuilder sb = new(_name);
-                    sb.Append("<T1, ");
-                    for (int i = 1; i < _argCount; i++)
-                    {
-                        sb.Append($"T{i + 1}");
-                        if (For.NeedsDelimiter(_argCount, i))
-                        {
-                            sb.Append(", ");
-                        }
-                    }
-                    sb.Append('>');
-                    return sb.ToString();
-                }
-                return _name;
-            }
-
+            if (s_registry.TryGetValue(key, out Type? cachedtype))
+                return type == cachedtype ? true : throw new DuplicateKeyException(cachedtype!, type, key);
+            return false;
         }
 
 
@@ -412,14 +322,14 @@ namespace XQuinn.Reflection
 
             ///Send GetType as your Type Parameter if your instance's type is not in the cache
             /// 
-            public static IEnumerable<string> Properties(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
+            public static IEnumerable<string> Properties(Type t, string? contains = null)//BindingFlags search = Navigator.Flag)
             {
-                throw new NotImplementedException();
+                IEnumerable<KeyValuePair<string, PropertyInfo>> props = t.GetProperties(Navigator.Flag).Select(x => new KeyValuePair<string, PropertyInfo>(x.Name, x));
+                return ReadMembers(props, contains, Navigator.Flag);
             }
             public static IEnumerable<string> Fields(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
             {
-                Dictionary<string, FieldInfo> fields = new();
-                Navigator.MapType(null, null, fields, t, null);
+                IEnumerable<KeyValuePair<string, FieldInfo>> fields = t.GetFields(Navigator.Flag).Select(x => new KeyValuePair<string, FieldInfo>(x.Name, x));
                 return ReadMembers(fields, contains, search);
             }
             public static IEnumerable<string> Overloads(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
@@ -507,7 +417,11 @@ namespace XQuinn.Reflection
 
                 public static bool ProcessSearch(MemberInfo inf, BindingFlags flags)
                 {
-                    return inf is MethodBase mthd ? new SearchModifiers(mthd).ProcessSearch(flags) : new SearchModifiers((FieldInfo)inf).ProcessSearch(flags);
+                    if (inf is MethodBase mthd)
+                        return new SearchModifiers(mthd).ProcessSearch(flags);
+                    if (inf is FieldInfo field)
+                        return new SearchModifiers(field).ProcessSearch(flags);
+                    return true;
                 }
 
                 public readonly bool ProcessSearch(BindingFlags flags)
@@ -540,18 +454,26 @@ namespace XQuinn.Reflection
                 {
                     _static = method.IsStatic;
                     _public = method.IsPublic;
-                    _inherited = false;
-                    if (method.DeclaringType != null && method is MethodInfo mthd)
-                        _inherited = mthd.ReflectedType != mthd.DeclaringType;
+                    _inherited = Inherited(method);
                 }
 
                 public SearchModifiers(FieldInfo field)
                 {
                     _static = field.IsStatic;
                     _public = field.IsPublic;
-                    _inherited = false;
-                    if (field.DeclaringType != null)
-                        _inherited = field.ReflectedType != field.DeclaringType;
+                    _inherited = Inherited(field);
+                }
+
+//                  public SearchModifiers(PropertyInfo prop)
+//                 {
+//                     _static = prop.GetGetMethod(true) is {IsStatic:true};
+//                     _inherited = Inherited(prop);
+//                 }
+                static bool Inherited(MemberInfo obj)
+                {
+                    if (obj.DeclaringType != null)
+                        return obj.ReflectedType != obj.DeclaringType;
+                    return false;
                 }
 
             }

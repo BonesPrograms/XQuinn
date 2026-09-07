@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text;
 using HarmonyLib;
 using System;
+using XQuinn.Runtime;
 
 namespace XQuinn.Reflection
 {
@@ -23,10 +24,12 @@ namespace XQuinn.Reflection
                 ConstructorToString(sb, ctor);
             else if (Object is Type t)
                 TypeToString(sb, t);
-            else
+            else if(Object is not PropertyInfo)
                 MemberToString(sb, Object);
             return sb;
         }
+
+
 
         static StringBuilder MemberToString(StringBuilder sb, MemberInfo member)
         {

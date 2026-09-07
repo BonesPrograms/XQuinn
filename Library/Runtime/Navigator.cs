@@ -33,7 +33,7 @@ namespace XQuinn.Runtime
         /// <summary>
         /// Optional, primarily for use with dynamicinvoker so you do not need to use the typecache.
         /// </summary>
-        public IReadOnlyDictionary<string, Type>? LocalCache;  ///This is not an actual read only wrapper, it is only a cast so that it can support being passed an IReadOnlyDictionary.
+        internal IReadOnlyDictionary<TypeKey, Type>? LocalCache;  ///This is not an actual read only wrapper, it is only a cast so that it can support being passed an IReadOnlyDictionary.
         readonly InvokeLexer _lexer = new();
 
         /// <summary>
@@ -58,7 +58,7 @@ namespace XQuinn.Runtime
         internal readonly Dictionary<ResolvedOverload, MethodBase> _overloads = new();
         internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
 
-        internal readonly Dictionary<string, PropertyPair> _props = new(StringComparer.OrdinalIgnoreCase);
+        internal readonly Dictionary<string, PropertyInfo> _props = new(StringComparer.OrdinalIgnoreCase);
 
 
 
@@ -77,7 +77,7 @@ namespace XQuinn.Runtime
         // ParameterInfo[]? _loadedParams;
         internal static readonly Dictionary<Type, HashSet<string>> s_ambiguous_matches = new();
         internal static readonly Dictionary<Type, Dictionary<string, MemberInfo>> s_known_members = new(); //all members ever accessed by callinterp 
-        internal static readonly Dictionary<string, Type> s_reified_generic_types = new(StringComparer.OrdinalIgnoreCase); //reified generics
+        internal static readonly Dictionary<TypeString, Type> s_reified_generic_types = new(); //reified generics
 
         /// <summary>
         /// Caching adds methods and fields to a global cache as they are invoked by CallInterpreter.
@@ -89,12 +89,7 @@ namespace XQuinn.Runtime
         {
 
         }
-        public Navigator(IReadOnlyDictionary<string, Type> localCache)
-        {
-            LocalCache = localCache;
-            //   Overloads = new ReadOnlyDictionary<string, MethodInfo>(_overloads);
-            //Variables = new ReadOnlyDictionary<string, Variable>(_variables);
-        }
+ 
         public static void FlushStaticCache(bool ambiguousMatches = false, bool typeMembers = true, bool reifiedGenerics = true)
         {
             if (ambiguousMatches)
@@ -366,9 +361,9 @@ namespace XQuinn.Runtime
                 // if(!paramType.IsAssignableFrom(t))
                 return field.GetValue(_instance);
             }
-            if (_props.TryGetValue(strng, out PropertyPair prop))
+            if (_props.TryGetValue(strng, out PropertyInfo? prop))
             {
-                return prop.InvokeGet(_instance, strng, _loadedType!, this);
+                return prop.GetValue(_instance, Flag, null, null, null);
             }
             return value.Parse(paramType);
         }
@@ -377,25 +372,31 @@ namespace XQuinn.Runtime
         {
             Type fromType = FindObject(fieldstring, out object? variable);
             string fname = fieldstring.NameOrValue;
-            FieldInfo? field = CheckGlobalCache<FieldInfo>(fieldstring.NameOrValue, fromType, out bool typeCached, out bool fieldCached);
-            if (field == null && fromType == _loadedType)
-                _fields.TryGetValue(fname, out field);
-            else if (field == null)
-                field = fromType.GetField(fname, Flag);
-            if (field != null)
+            MemberInfo? fieldOrProp = CheckGlobalCache<MemberInfo>(fieldstring.NameOrValue, fromType, out bool typeCached, out bool memberCached);
+            if (fieldOrProp == null && fromType == _loadedType)
             {
-                CacheMember(typeCached, fieldCached, fromType, field, fieldstring.NameOrValue);
+                if (_fields.TryGetValue(fname, out FieldInfo? fieldMember))
+                    fieldOrProp = fieldMember;
+            }
+            else if (fieldOrProp == null)
+                fieldOrProp = fromType.GetField(fname, Flag);
+            if (fieldOrProp is FieldInfo field)
+            {
+                CacheMember(typeCached, memberCached, fromType, fieldOrProp, fieldstring.NameOrValue);
                 return field.GetValue(TargetInstance(fromType, variable));
             }
-            if (fromType == _loadedType)
+
+            if (fieldOrProp == null && fromType == _loadedType)
             {
-                if (_props.TryGetValue(fname, out PropertyPair prop))
-                    return prop.InvokeGet(variable, fname, fromType, this);
+                if (_props.TryGetValue(fname, out PropertyInfo? propMember))
+                    fieldOrProp = propMember;
             }
-            else
+            else if (fieldOrProp == null)
+                fieldOrProp = fromType.GetProperty(fname, Flag);
+            if (fieldOrProp is PropertyInfo prop)
             {
-                if (PropertyPair.InvokeGet(fromType, fname, variable, this, out object? ret))
-                    return ret;
+                CacheMember(typeCached, memberCached, fromType, fieldOrProp, fieldstring.NameOrValue);
+                return prop.GetValue(TargetInstance(fromType, variable), Flag, null, null, null);
             }
             throw new MissingMemberException($"No field or property found named {fname} in {fromType}.");
 
@@ -525,9 +526,9 @@ namespace XQuinn.Runtime
                 instance = field.GetValue(_instance) ?? throw new ArgumentException($"Field {field} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
                 return instance.GetType(); //will not always be == fieldtype
             }
-            if (_props.TryGetValue(member.DeclaringType.NameOrValue, out PropertyPair prop))
+            if (_props.TryGetValue(member.DeclaringType.NameOrValue, out PropertyInfo? prop))
             {
-                instance = prop.InvokeGet(_instance, member.DeclaringType.NameOrValue, _loadedType!, this) ?? throw new ArgumentException($"Property {member.DeclaringType.NameOrValue} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
+                instance = prop.GetValue(_instance, Flag, null, null, null) ?? throw new ArgumentException($"Property {member.DeclaringType.NameOrValue} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
                 return instance.GetType();
             }
             if (_variables.TryGetValue(member.DeclaringType.NameOrValue, out VariableBinding? variable))
@@ -557,14 +558,16 @@ namespace XQuinn.Runtime
                     throw new InvalidOperationException("Cannot get instance base, instance is null.");
                 return _instanceType.BaseType ?? throw new ArgumentException("Base type of instance is null.");
             }
-            Type t = TypeCache.GetTypeOrThrow(typename);
+            Type? t = null;
+            LocalCache?.TryGetValue(new(typename), out t);
+            t ??= TypeCache.GetTypeOrThrow(typename);
             if (t.IsGenericTypeDefinition)
             {
-                if (s_reified_generic_types.TryGetValue(typename.NameWithGenerics, out Type? generic))
+                if (s_reified_generic_types.TryGetValue(typename, out Type? generic))
                     return generic;
                 t = typename.ConvertToGeneric(t, LocalCache);
                 if (Caching)
-                    s_reified_generic_types[typename.NameWithGenerics] = t;
+                    s_reified_generic_types[typename] = t;
             }
             else if (!t.IsGenericType && typename.Generics.Count > 0)
                 throw new ArgumentException($"type {t} does not accept type arguments.");
@@ -656,7 +659,7 @@ namespace XQuinn.Runtime
             return null; //no type name, just a member, this technically isnt allowed but i let you get away with it for instance loading 
         }
 
-        internal static void MapType(Dictionary<string, MethodBase>? _methods, Dictionary<ResolvedOverload, MethodBase>? _overloads, Dictionary<string, FieldInfo>? _fields, Type type, Dictionary<string, PropertyPair>? _props, bool @new = true)
+        internal static void MapType(Dictionary<string, MethodBase>? _methods, Dictionary<ResolvedOverload, MethodBase>? _overloads, Dictionary<string, FieldInfo>? _fields, Type type, Dictionary<string, PropertyInfo>? _props, bool @new = true)
         {
 
             if (_methods != null || _overloads != null)
@@ -697,7 +700,7 @@ namespace XQuinn.Runtime
                 _props.Clear();
                 PropertyInfo[] properties = type.GetProperties(Flag);
                 foreach (PropertyInfo prop in properties)
-                    _props[prop.Name] = new PropertyPair(prop);
+                    _props[prop.Name] = prop;
             }
 
 
@@ -898,7 +901,7 @@ namespace XQuinn.Runtime
             else
             {
                 ValueString valueStr = new(righthand.Trim());
-                assignedValue = ParseValue(valueStr, assigningTo.MemberType);
+                assignedValue = ParseValue(valueStr, assigningTo.MembersType);
             }
 
             assigningTo.SetValue(lefthandInstance, assignedValue);
@@ -1034,21 +1037,17 @@ namespace XQuinn.Runtime
         {
             readonly MemberInfo _member;
 
-            public readonly Type MemberType;
+            public readonly Type MembersType;
 
             AssignableMember(MemberInfo member, Type memberType)
             {
                 _member = member;
-                MemberType = memberType;
+                MembersType = memberType;
             }
             public static AssignableMember New(MemberInfo member)
             {
                 if (member is PropertyInfo prop)
-                {
-                    PropertyPair pair = new(null, prop.GetSetMethod(true));
-                    MethodInfo setter = pair.GetSetter(prop.Name, prop.DeclaringType);
-                    return new(setter, prop.PropertyType);
-                }
+                    return new(prop, prop.PropertyType);
                 if (member is FieldInfo field)
                     return new(field, field.FieldType);
                 throw new NotSupportedException();
@@ -1056,101 +1055,14 @@ namespace XQuinn.Runtime
             }
             public readonly void SetValue(object? instance, object? value)
             {
-                if (_member is FieldInfo field)
-                    field.SetValue(instance, value);
-                else
-                {
-                    MethodInfo setter = (MethodInfo)_member;
-                    setter.Invoke(instance, new object?[] { value });
-                }
+                if (_member is PropertyInfo prop)
+                    prop.SetValue(instance, value, Flag, null, null, null);
+                else if (_member is FieldInfo field)
+                    field.SetValue(instance, value, Flag, null, null);
             }
         }
 
-        internal readonly struct PropertyPair// : IEquatable<PropertyPair>
-        {
 
-            //  public readonly string Name;
-            readonly MethodInfo? _getter;
-            readonly MethodInfo? _setter;
-            public MethodInfo GetGetter(string name, Type? type)
-            {
-                if (_getter == null)
-                    Exception(name, type, "getter");
-                return _getter!;
-            }
-
-            public MethodInfo GetSetter(string name, Type? type)
-            {
-                if (_setter == null)
-                    Exception(name, type, "setter");
-                return _setter!;
-            }
-
-            void Exception(string name, Type? type, string kind)
-            {
-                throw new InvalidOperationException($"Property {name} in type {type} does not have a {kind}");
-            }
-
-            public PropertyPair(MethodInfo? getter, MethodInfo? setter)
-            {
-                // Name = name;
-                _getter = getter;
-                _setter = setter;
-            }
-            public PropertyPair(PropertyInfo info) : this(info.GetGetMethod(true), info.GetSetMethod(true))
-            {
-            }
-            public static bool InvokeGet(Type fromType, string fname, object? variable, Navigator navig, out object? res)
-            {
-                res = null;
-                PropertyInfo? info = fromType.GetProperty(fname, Flag);
-                if (info != null)
-                {
-                    PropertyPair prop = new(info.GetGetMethod(true), null);
-                    res = prop.InvokeGet(variable, fname, fromType, navig);
-                    return true;
-                }
-                return false;
-            }
-
-            public object? InvokeGet(object? variable, string name, Type type, Navigator navig)
-            {
-
-                MethodInfo getter = GetGetter(name, type);
-                object? target = variable;
-                if (target == null && getter.DeclaringType == navig._loadedType)
-                    target = navig._instance;
-                return getter.Invoke(target, null);
-            }
-
-
-
-            // public override int GetHashCode()
-            // {
-            //     int hash = 17;
-            //     unchecked
-            //     {
-            //         hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(Name);
-            //         hash = hash * 31
-            //     }
-            // }
-
-            // bool IEquatable<PropertyPair>.Equals(PropertyPair other)
-            // {
-            //     return Equals(other);
-            // }
-
-            // public bool Equals(PropertyPair pair)
-            // {
-            //     return pair.Name.EqualsCaseless(Name) && pair.Getter == Getter && pair.Setter == Setter;
-            // }
-
-            // public override bool Equals(object obj)
-            // {
-            //     return obj is PropertyPair pair && Equals(pair);
-            // }
-
-        }
 
     }
 
