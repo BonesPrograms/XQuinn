@@ -447,7 +447,7 @@ namespace XQuinn.Runtime
                             ParameterInfo[] methodparams = method.GetParameters();
                             if (SupportedMember(method, methodparams))
                             {
-                                if (i == query.Index)
+                                if (i == query.OverloadIndex)
                                 {
                                     parameters = methodparams;
                                     call = method;
@@ -968,11 +968,11 @@ namespace XQuinn.Runtime
 
         internal readonly struct MethodKey : IEquatable<MethodKey>
         {
-            public readonly int Index;
+            public readonly int OverloadIndex;
             public readonly GenericKey GenericKey;
             internal MethodKey(int index, GenericKey key)
             {
-                Index = index;
+                OverloadIndex = index;
                 GenericKey = key;
             }
 
@@ -1001,22 +1001,22 @@ namespace XQuinn.Runtime
                 int hash = 17;
                 unchecked
                 {
-                    hash = hash * 31 + Index.GetHashCode();
+                    hash = hash * 31 + OverloadIndex.GetHashCode();
                     hash = hash * 31 + GenericKey.GetHashCode();
                 }
                 return hash;
             }
 
-            string? ArgsIfGeneric()
+            public override string ToString()
             {
-                if (GenericKey.Args > 0)
-                return GenericKey.Args == 1 ? "<T>" : GenericKey.ArgsToString(new());
-                return null;
+                StringBuilder sb = new(GenericKey.Key);
+                if (OverloadIndex > 0)
+                    sb.Append($":{OverloadIndex}");
+                return GenericKey.Args == 0 ? sb.ToString() : GenericKey.Args == 1 ? sb.Append("<T>").ToString() : GenericKey.ArgsToString(sb);
             }
-            public override string ToString() => Index > 0 ? $"{GenericKey.Key}:{Index}{ArgsIfGeneric()}" : GenericKey.ToString();
             public bool Equals(MethodKey overload)
             {
-                return overload.Index == Index && overload.GenericKey == GenericKey;
+                return overload.OverloadIndex == OverloadIndex && overload.GenericKey == GenericKey;
             }
 
             public override bool Equals(object? obj)

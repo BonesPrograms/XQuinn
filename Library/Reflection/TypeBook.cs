@@ -95,9 +95,7 @@ namespace XQuinn.Reflection
             {
                 sb.Append($"T{i + 1}");
                 if (For.NeedsDelimiter(Args, i))
-                {
                     sb.Append(", ");
-                }
             }
             sb.Append('>');
             return sb.ToString();
@@ -109,8 +107,7 @@ namespace XQuinn.Reflection
             {
                 if (Args == 1)
                     return $"{Key}<T>";
-                StringBuilder sb = new(Key);
-                ArgsToString(sb);
+               return ArgsToString(new(Key));
 
             }
             return Key;

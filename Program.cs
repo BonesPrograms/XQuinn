@@ -93,6 +93,11 @@ namespace XQuinn.Private
         {
             return obj;
         }
+
+        public static void Method<T,K>()
+        {
+            
+        }
     }
 
     class Class<T> //where T : new()
