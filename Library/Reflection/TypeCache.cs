@@ -26,7 +26,7 @@ namespace XQuinn.Reflection
 
     public class DuplicateKeyException : Exception
     {
-        internal DuplicateKeyException(Type type, Type insert, TypeKey name) :this(type,insert,name.ToString())
+        internal DuplicateKeyException(Type type, Type insert, TypeKey name) : this(type, insert, name.ToString())
         {
 
         }
@@ -35,7 +35,7 @@ namespace XQuinn.Reflection
 
         }
     }
-    
+
     public static class TypeCache
     {
 
@@ -161,11 +161,16 @@ namespace XQuinn.Reflection
             return GetTypeCached(name) ?? throw new ArgumentException($"Could not find cached type with key {name}.");
         }
 
+        internal static Type GetTypeOrThrow(TypeKey key)
+        {
+            if (s_registry.TryGetValue(key, out Type? cachedType))
+                return cachedType;
+            throw new ArgumentException($"Could not find cached type with key {key.Key}.");
+        }
+
         internal static Type GetTypeOrThrow(TypeString name)
         {
-            if (s_registry.TryGetValue(new(name), out Type? cachedType))
-                return cachedType;
-            throw new ArgumentException($"Could not find cached type with key {name}.");
+            return GetTypeOrThrow(new TypeKey(name));
 
         }
         /// <summary>
@@ -294,7 +299,7 @@ namespace XQuinn.Reflection
 
         }
 
-     
+
         static bool CheckDuplicateOrCached(Type type, TypeKey key)
         {
             if (s_registry.TryGetValue(key, out Type? cachedtype))
@@ -464,11 +469,11 @@ namespace XQuinn.Reflection
                     _inherited = Inherited(field);
                 }
 
-//                  public SearchModifiers(PropertyInfo prop)
-//                 {
-//                     _static = prop.GetGetMethod(true) is {IsStatic:true};
-//                     _inherited = Inherited(prop);
-//                 }
+                //                  public SearchModifiers(PropertyInfo prop)
+                //                 {
+                //                     _static = prop.GetGetMethod(true) is {IsStatic:true};
+                //                     _inherited = Inherited(prop);
+                //                 }
                 static bool Inherited(MemberInfo obj)
                 {
                     if (obj.DeclaringType != null)

@@ -33,7 +33,7 @@ namespace XQuinn.Runtime
         /// <summary>
         /// Optional, primarily for use with dynamicinvoker so you do not need to use the typecache.
         /// </summary>
-        internal IReadOnlyDictionary<TypeKey, Type>? LocalCache;  ///This is not an actual read only wrapper, it is only a cast so that it can support being passed an IReadOnlyDictionary.
+        internal TypeBook? LocalCache;  ///This is not an actual read only wrapper, it is only a cast so that it can support being passed an IReadOnlyDictionary.
         readonly InvokeLexer _lexer = new();
 
         /// <summary>
@@ -559,8 +559,9 @@ namespace XQuinn.Runtime
                 return _instanceType.BaseType ?? throw new ArgumentException("Base type of instance is null.");
             }
             Type? t = null;
-            LocalCache?.TryGetValue(new(typename), out t);
-            t ??= TypeCache.GetTypeOrThrow(typename);
+            TypeKey key = new(typename);
+            LocalCache?.TryGetValue(key, out t);
+            t ??= TypeCache.GetTypeOrThrow(key);
             if (t.IsGenericTypeDefinition)
             {
                 if (s_reified_generic_types.TryGetValue(typename, out Type? generic))

@@ -302,7 +302,7 @@ namespace XQuinn.CodeAnalysis.AST
             }
             return genericStart ? throw new FormatException($"Invalid generic argument format. {NameOrValue}") : false;
         }
-        public Type[] ConvertGenericArguments(IReadOnlyDictionary<TypeKey, Type>? dic)
+        public Type[] ConvertGenericArguments(TypeBook? dic)
         {
             if (Generics.Count > 0)
             {
@@ -311,8 +311,9 @@ namespace XQuinn.CodeAnalysis.AST
                 {
                     TypeString tstring = Generics[i];
                     Type? realtype = null;
-                    dic?.TryGetValue(new(tstring), out realtype);
-                    realtype ??= TypeCache.GetTypeOrThrow(tstring);
+                    TypeKey key = new(tstring);
+                    dic?.TryGetValue(key, out realtype);
+                    realtype ??= TypeCache.GetTypeOrThrow(key);
                     if (realtype.IsGenericTypeDefinition)
                         realtype = realtype.MakeGenericType(tstring.ConvertGenericArguments(dic));
                     genericArgs[i] = realtype;
@@ -405,7 +406,7 @@ namespace XQuinn.CodeAnalysis.AST
         {
             _typeArgOf = typeArgOf;
         }
-        public Type ConvertToGeneric(Type genericTypeDef, IReadOnlyDictionary<TypeKey, Type>? types = null)
+        public Type ConvertToGeneric(Type genericTypeDef, TypeBook? types = null)
         {
             return genericTypeDef.MakeGenericType(ConvertGenericArguments(types));
         }
@@ -487,7 +488,7 @@ namespace XQuinn.CodeAnalysis.AST
             _type = type;
         }
 
-        public MethodInfo ConvertToGeneric(MethodInfo genericMethodDef, IReadOnlyDictionary<TypeKey, Type>? types = null)
+        public MethodInfo ConvertToGeneric(MethodInfo genericMethodDef, TypeBook? types = null)
         {
             //  Console.WriteLine("TConversion");
             //MethodInfo m;
