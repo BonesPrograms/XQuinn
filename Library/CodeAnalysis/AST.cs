@@ -304,7 +304,7 @@ namespace XQuinn.CodeAnalysis.AST
                 {
                     TypeString tstring = Generics[i];
                     Type? realtype = null;
-                    TypeKey key = new(tstring);
+                    GenericKey key = new(tstring);
                     dic?.TryGetValue(key, out realtype);
                     realtype ??= TypeCache.GetTypeOrThrow(key);
                     if (realtype.IsGenericTypeDefinition)

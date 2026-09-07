@@ -1,5 +1,4 @@
 Types not available in NetStandard2.0 edition:
 
 Entire XQuinn.IO.Finders namespace (uses EnumerationOptions // win64)
-ILReader from XQuinn.Reflection
 DynamicInvoker (relies on assemblyloadcontext from net6) from XQuinn.Runtime

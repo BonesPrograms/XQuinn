@@ -20,7 +20,6 @@ using System.Collections;
 using XQuinn.ObjectModel;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
-using XQuinn.Private.EqualityHelpers;
 using static System.Buffers.Binary.BinaryPrimitives;
 using static XQuinn.Reflection.ByteSizes;
 
@@ -67,24 +66,34 @@ namespace XQuinn.Private
             TypeCache.CacheType(typeof(AccessTools), false);
             TypeCache.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
             TypeCache.CacheType(typeof(BitConverter), false);
-            TypeCache.CacheType(typeof(TypeCache), false);
             //@ TypeCache.CacheType(typeof(BytesLittleEndian), "bytes");
         }
 #endif
 
-
-
-
-
     }
 
-    class Prop
+    class Class
     {
-        public string Method() => "Invoked";
+        public static void Method()
+        {
+            
+        }
 
-        public Prop This() => this;
+        public static int Method(int i)
+        {
+            return i;
+        }
+
+        public static T Method<T>() where T : new()
+        {
+            return new();
+        }
+
+        public static T Method<T>(T obj)
+        {
+            return obj;
+        }
     }
-
 
     class Class<T> //where T : new()
     {

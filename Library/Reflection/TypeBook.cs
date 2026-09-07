@@ -4,23 +4,23 @@ using System.Collections.Generic;
 using System.Collections;
 using System.Text;
 using XQuinn.CodeAnalysis.AST;
-using XQuinn.Private.EqualityHelpers;
+using System.Runtime.CompilerServices;
+using System.CodeDom.Compiler;
+using XQuinn.Extensions;
 
 namespace XQuinn.Reflection
 {
 
-    internal readonly struct TypeKey : IEquatable<TypeKey>, IIndexKeyPair
+    internal readonly struct GenericKey : IEquatable<GenericKey>
     {
-        public string Key => _name;
-        public int Index => _argCount;
-        readonly string _name;
-        readonly int _argCount;
-        public static TypeKey Query(string typename)
+        public readonly string Key;
+        public readonly int Args;
+        public static GenericKey TypeKey(string typename)
         {
             if (GenericString.HasTypeArgs(typename))
             {
                 TypeString query = TypeString.NewGeneric(typename);
-                TypeKey key = new(query);
+                GenericKey key = new(query);
                 return key;
             }
             return new(typename);
@@ -28,63 +28,78 @@ namespace XQuinn.Reflection
 
         //  public static TypeKey Generate(Type t) => new(GetCompatibleName(t, false), t);
 
-        public TypeKey(string key, int args = 0)
+        public GenericKey(MethodString m) : this(m.NameOrValue, m.Generics.Count)
         {
-            _name = key;
-            _argCount = args;
+
         }
 
-        public TypeKey(string key, Type t) : this(key, t.IsGenericTypeDefinition ? t.GetGenericArguments().Length : 0)
-        {
-        }
-
-
-        internal TypeKey(TypeString str) : this(str.NameOrValue, str.Generics.Count)
+        public GenericKey(string key, MethodBase m) : this(key, m.IsGenericMethodDefinition ? m.GetGenericArguments().Length : 0)
         {
         }
 
-        bool IEquatable<TypeKey>.Equals(TypeKey other)
+        public GenericKey(string key, int args = 0)
+        {
+            Key = key;
+            Args = args;
+        }
+
+        public GenericKey(string key, Type t) : this(key, t.IsGenericTypeDefinition ? t.GetGenericArguments().Length : 0)
+        {
+        }
+
+
+        internal GenericKey(TypeString str) : this(str.NameOrValue, str.Generics.Count)
+        {
+        }
+
+        bool IEquatable<GenericKey>.Equals(GenericKey other)
         {
             return Equals(other);
         }
 
         public override bool Equals(object? obj)
         {
-            return obj is TypeKey key && Equals(key);
+            return obj is GenericKey key && Equals(key);
         }
 
-        public bool Equals(TypeKey key)
+        public bool Equals(GenericKey key)
         {
-            return IndexKeyPair<TypeKey>.Equals(this, key);
+            return Args == key.Args && Key.EqualsCaseless(key.Key);
         }
 
         public override int GetHashCode()
         {
-            return IndexKeyPair<TypeKey>.HashCode(23, this);
+            int hash = 17;
+            unchecked
+            {
+                hash = hash * 23 + StringComparer.OrdinalIgnoreCase.GetHashCode(Key);
+                hash = hash * 23 + Args.GetHashCode();
+            }
+            return hash;
         }
 
-        public static bool operator ==(TypeKey left, TypeKey right)
+        public static bool operator ==(GenericKey left, GenericKey right)
         {
             return left.Equals(right);
         }
 
-        public static bool operator !=(TypeKey left, TypeKey right)
+        public static bool operator !=(GenericKey left, GenericKey right)
         {
             return !(left == right);
         }
 
         public override string ToString()
         {
-            if (_argCount > 0)
+            if (Args > 0)
             {
-                if (_argCount == 1)
-                    return $"{_name}<T>";
-                StringBuilder sb = new(_name);
+                if (Args == 1)
+                    return $"{Key}<T>";
+                StringBuilder sb = new(Key);
                 sb.Append("<T1, ");
-                for (int i = 1; i < _argCount; i++)
+                for (int i = 1; i < Args; i++)
                 {
                     sb.Append($"T{i + 1}");
-                    if (For.NeedsDelimiter(_argCount, i))
+                    if (For.NeedsDelimiter(Args, i))
                     {
                         sb.Append(", ");
                     }
@@ -92,7 +107,7 @@ namespace XQuinn.Reflection
                 sb.Append('>');
                 return sb.ToString();
             }
-            return _name;
+            return Key;
         }
 
     }
@@ -107,28 +122,28 @@ namespace XQuinn.Reflection
     /// /// A case-insensitive readonly wrapper for a dictionary of type names for quick string lookup and caching. This isnt much more special than a dictionary, the only 
     /// difference is it simplifies creation.
     /// </summary>
-    internal sealed class TypeBook : IReadOnlyDictionary<TypeKey, Type>
+    internal sealed class TypeBook : IReadOnlyDictionary<GenericKey, Type>
     {
         //readonly ConcurrentDictionary<string, Type> _book;
-        readonly Dictionary<TypeKey, Type> _book;
+        readonly Dictionary<GenericKey, Type> _book;
         public int Count => _book.Count;
-        public IEnumerable<TypeKey> Keys => _book.Keys;
+        public IEnumerable<GenericKey> Keys => _book.Keys;
         public IEnumerable<Type> Values => _book.Values;
 
-        public Type this[TypeKey key] => _book[key];
-        TypeBook(Dictionary<TypeKey, Type> book)
+        public Type this[GenericKey key] => _book[key];
+        TypeBook(Dictionary<GenericKey, Type> book)
         {
             //_book = book;
             _book = book;
         }
         IEnumerator IEnumerable.GetEnumerator() => _book.GetEnumerator();
-        public IEnumerator<KeyValuePair<TypeKey, Type>> GetEnumerator() => _book.GetEnumerator();
+        public IEnumerator<KeyValuePair<GenericKey, Type>> GetEnumerator() => _book.GetEnumerator();
 
 #pragma warning disable CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
-        public bool TryGetValue(TypeKey key, out Type? value) => _book.TryGetValue(key, out value);
+        public bool TryGetValue(GenericKey key, out Type? value) => _book.TryGetValue(key, out value);
 #pragma warning restore CS8767 // Nullability of reference types in type of parameter doesn't match implicitly implemented member (possibly because of nullability attributes).
         // public bool TryAdd(string key, Type value) => _book.TryAdd(key, value);
-        public bool ContainsKey(TypeKey key) => _book.ContainsKey(key);
+        public bool ContainsKey(GenericKey key) => _book.ContainsKey(key);
 
         //ToString here is for custom filtering, ie. maybe one of your shortnames are already taken, you can have your filter pre-check if one of your types are already cached
         //and then return a different name, you can also return null and it will *skip* adding that type to the typebook. Using a ToString will also completely override
@@ -136,7 +151,7 @@ namespace XQuinn.Reflection
 
         public static TypeBook New(IEnumerable<Type> types, Func<Type, string?> toString)
         {
-            Dictionary<TypeKey, Type> book = new();
+            Dictionary<GenericKey, Type> book = new();
             foreach (Type type in types)
             {
                 if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute))
@@ -150,7 +165,7 @@ namespace XQuinn.Reflection
                     string? key = toString(type);
                     if (key == null)
                         continue;
-                    TypeKey realKey = new(key, type);
+                    GenericKey realKey = new(key, type);
                     if (book.TryGetValue(realKey, out Type? cached))
                         throw new DuplicateKeyException(cached, type, key);
                     book[realKey] = type;
@@ -204,7 +219,7 @@ namespace XQuinn.Reflection
         // }
         public static TypeBook New(IEnumerable<Type> types, bool fullname, bool excludeFileScoped = true)
         {
-            Dictionary<TypeKey, Type> book = new();
+            Dictionary<GenericKey, Type> book = new();
             foreach (Type type in types)
             {
                 if (!type.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute)))
@@ -212,7 +227,7 @@ namespace XQuinn.Reflection
                     if (excludeFileScoped && IsFileType(type))
                         continue;
                     string key = fullname == false ? type.Name : type.FullName ?? throw new ArgumentNullException();
-                    TypeKey realKey = new(key, type);
+                    GenericKey realKey = new(key, type);
                     if (book.TryGetValue(realKey, out Type? cached))
                         throw new DuplicateKeyException(cached, type, key);
                     book[realKey] = type;

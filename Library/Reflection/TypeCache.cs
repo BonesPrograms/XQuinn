@@ -18,9 +18,9 @@ using XQuinn.CodeAnalysis.AST;
 namespace XQuinn.Reflection
 {
 
-    public class DuplicateKeyException : Exception
+    internal class DuplicateKeyException : Exception
     {
-        internal DuplicateKeyException(Type type, Type insert, TypeKey name) : this(type, insert, name.ToString())
+        internal DuplicateKeyException(Type type, Type insert, GenericKey name) : this(type, insert, name.ToString())
         {
 
         }
@@ -36,13 +36,13 @@ namespace XQuinn.Reflection
         //    public static readonly IReadOnlyDictionary<GenericKey, Type> GlobalCache;
         public static IEnumerable<string> Keys()
         {
-            foreach (TypeKey key in s_registry.Keys)
+            foreach (GenericKey key in s_registry.Keys)
                 yield return key.ToString();
         }
         public static ICollection<Type> Values => s_registry.Values;
         public static IEnumerable<KeyValuePair<string, Type>> Enumerate()
         {
-            foreach (KeyValuePair<TypeKey, Type> obj in s_registry)
+            foreach (KeyValuePair<GenericKey, Type> obj in s_registry)
                 yield return new(obj.Key.ToString(), obj.Value);
         }
 
@@ -61,7 +61,7 @@ namespace XQuinn.Reflection
         ///  If you let arraygen create the key, it will automatically be snipped using GetCompatibleName
         /// If you are caching many types at once your should filter your names through GetCompatibleName, because default generic names and nested names (Short or full) are incompatible
         /// and will throw exceptions. Rule of thumb: alphanumerics and underscores only, do not start with a digit, and [] is allowed but good practice is to reserve that for array types.
-        internal static readonly ConcurrentDictionary<TypeKey, Type> s_registry = new()
+        internal static readonly ConcurrentDictionary<GenericKey, Type> s_registry = new()
         {
             [new("object")] = typeof(object), ///Keyword types
             [new("string")] = typeof(string),
@@ -137,8 +137,8 @@ namespace XQuinn.Reflection
                                                          //     s_registry[$"{keyword}[]"] = s_registry[keyword].MakeArrayType();
         }
 
-        public static bool Contains(string name) => s_registry.ContainsKey(TypeKey.Query(name));
-        public static bool TryGetType(string name, out Type? cachedtype) => s_registry.TryGetValue(TypeKey.Query(name), out cachedtype);
+        public static bool Contains(string name) => s_registry.ContainsKey(GenericKey.TypeKey(name));
+        public static bool TryGetType(string name, out Type? cachedtype) => s_registry.TryGetValue(GenericKey.TypeKey(name), out cachedtype);
 
         public static Type? GetTypeCached(string name)//IReadOnlyDictionary<string, Type>? book = null)
         {
@@ -153,16 +153,16 @@ namespace XQuinn.Reflection
             return GetTypeCached(name) ?? throw new ArgumentException($"Could not find cached type with key {name}.");
         }
 
-        internal static Type GetTypeOrThrow(TypeKey key)
+        internal static Type GetTypeOrThrow(GenericKey key)
         {
             if (s_registry.TryGetValue(key, out Type? cachedType))
                 return cachedType;
-            throw new ArgumentException($"Could not find cached type with key {key.Key} and generic arg count {key.Index}.");
+            throw new ArgumentException($"Could not find cached type with key {key.Key} and generic arg count {key.Args}.");
         }
 
         internal static Type GetTypeOrThrow(TypeString name)
         {
-            return GetTypeOrThrow(new TypeKey(name));
+            return GetTypeOrThrow(new GenericKey(name));
 
         }
         /// <summary>
@@ -181,7 +181,7 @@ namespace XQuinn.Reflection
             if (type.IsGenericType && !type.IsGenericTypeDefinition)
                 throw new NotSupportedException($"Generic type {type} with key {key} cannot be cached. Only generic type definitions and nongeneric types can be cached.");
             ThrowIfBadKey(key);
-            TypeKey trueKey = new(key, type);
+            GenericKey trueKey = new(key, type);
             if (CheckDuplicateOrCached(type, trueKey))
                 return false;
             s_registry.TryAdd(trueKey, type);
@@ -292,7 +292,7 @@ namespace XQuinn.Reflection
         }
 
 
-        static bool CheckDuplicateOrCached(Type type, TypeKey key)
+        static bool CheckDuplicateOrCached(Type type, GenericKey key)
         {
             if (s_registry.TryGetValue(key, out Type? cachedtype))
                 return type == cachedtype ? true : throw new DuplicateKeyException(cachedtype!, type, key);
@@ -331,7 +331,7 @@ namespace XQuinn.Reflection
             }
             public static IEnumerable<string> Overloads(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
             {
-                Dictionary<Navigator.ResolvedOverload, MethodBase> overloads = new();
+                Dictionary<Navigator.MethodKey, MethodBase> overloads = new();
                 Navigator.MapType(null, overloads, null, t, null, contains?.EqualsCaseless("new") ?? true);
                 return ReadMembers(overloads, contains, search);
             }

@@ -369,11 +369,11 @@ namespace XQuinn.Reflection
             start = 0;
             byte[] reversed = new byte[size];
             int cap = i + size;
-            int index = size - 1;
+            int insert = size - 1;
             for (int x = i; x < cap; x++)
             {
-                reversed[index] = il[x];
-                index--;
+                reversed[insert] = il[x];
+                insert--;
             }
             return reversed;
         }

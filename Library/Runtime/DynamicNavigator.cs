@@ -23,7 +23,7 @@ namespace XQuinn.Runtime
     /// Only supports single-file assemblies. Loads an assembly into the runtime and dynamically reloads it if it detects any updates to the file.
     /// </summary>
     /// 
-    public sealed class DynamicAssembly : IDisposable
+    public sealed class DynamicNavigator : IDisposable
     {
 
         sealed class DLLBox : AssemblyLoadContext
@@ -49,18 +49,18 @@ namespace XQuinn.Runtime
         /// </summary>
         DateTime _lastwrite;
 
-        DynamicAssembly(string path, Func<Type, string?>? bookDelegate) //DynamicReloader exists purely as a base class for DynamicInvoker. It is not intended for anyone else to inherit from.
+        DynamicNavigator(string path, Func<Type, string?>? bookDelegate) //DynamicReloader exists purely as a base class for DynamicInvoker. It is not intended for anyone else to inherit from.
         {
             if (bookDelegate != null)
                 BookDelegate = bookDelegate;
             DLLPath = path;
         }
 
-        public static DynamicAssembly New(string dllpath, Func<Type, string?> bookDelegate)
+        public static DynamicNavigator New(string dllpath, Func<Type, string?> bookDelegate)
         {
             if (!File.Exists(dllpath)) throw new FileNotFoundException(dllpath);
             if (Path.GetExtension(dllpath) != ".dll") throw new ArgumentException("only .dll is supported by DynamicReloader");
-            DynamicAssembly invoker = new(dllpath, bookDelegate);
+            DynamicNavigator invoker = new(dllpath, bookDelegate);
             invoker.Reload();
             return invoker;
         }

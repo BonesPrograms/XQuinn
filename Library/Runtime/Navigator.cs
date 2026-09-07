@@ -11,7 +11,7 @@ using System.Text;
 using System.Collections;
 using System.Runtime.ExceptionServices;
 using System.Runtime.CompilerServices;
-using XQuinn.Private.EqualityHelpers;
+using System.Diagnostics.Tracing;
 
 namespace XQuinn.Runtime
 {
@@ -48,7 +48,7 @@ namespace XQuinn.Runtime
         internal Type? _loadedType;
         TypeString? _implicit_this;
         internal readonly Dictionary<string, MethodBase> _methods = new(StringComparer.OrdinalIgnoreCase);
-        internal readonly Dictionary<ResolvedOverload, MethodBase> _overloads = new();
+        internal readonly Dictionary<MethodKey, MethodBase> _overloads = new();
         internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
 
         internal readonly Dictionary<string, PropertyInfo> _props = new(StringComparer.OrdinalIgnoreCase);
@@ -365,7 +365,7 @@ namespace XQuinn.Runtime
         {
             Type fromType = FindObject(fieldstring, out object? variable);
             string fname = fieldstring.NameOrValue;
-            MemberInfo? fieldOrProp = CheckGlobalCache<MemberInfo>(fieldstring.NameOrValue, fromType, out bool typeCached, out bool memberCached);
+            MemberInfo? fieldOrProp = FromCache<MemberInfo>(fieldstring.NameOrValue, fromType, out bool typeCached, out bool memberCached);
             if (fieldOrProp == null && fromType == _loadedType)
             {
                 if (_fields.TryGetValue(fname, out FieldInfo? fieldMember))
@@ -397,7 +397,7 @@ namespace XQuinn.Runtime
         object? InvokeMethod(MethodString mthdString)
         {
             Type fromType = FindObject(mthdString, out object? variable);
-            MethodBase? call = CheckGlobalCache<MethodBase>(mthdString.NameWithGenerics, fromType, out bool typeCached, out bool methodCached);
+            MethodBase? call = FromCache<MethodBase>(mthdString.NameWithGenerics, fromType, out bool typeCached, out bool methodCached);
             ParameterInfo[]? parameters = null;
             if (call == null && fromType != _loadedType)
             {
@@ -431,9 +431,9 @@ namespace XQuinn.Runtime
                 }
                 if (call == null || ambiguousMatch)
                 {
-                    ResolvedOverload query = ResolvedOverload.Query(mthdString);
+                    MethodKey query = MethodKey.Query(mthdString);
                     List<MethodBase> methodbases = fromType.GetMethods(Flag).Cast<MethodBase>().ToList();
-                    if (query.Key.EqualsCaseless("new"))
+                    if (query.GenericKey.Key.EqualsCaseless("new"))
                     {
                         ConstructorInfo[] ctors = fromType.GetConstructors(Flag);
                         methodbases.AddRange(ctors);
@@ -442,7 +442,8 @@ namespace XQuinn.Runtime
                     foreach (MethodBase method in methodbases)
                     {
                         string evaluatedName = method.Name == ".ctor" ? "new" : method.Name;
-                        if (evaluatedName.EqualsCaseless(query.Key)) //method.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
+                        GenericKey key = new(evaluatedName, method);
+                        if (key == query.GenericKey) //method.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
                         {
                             ParameterInfo[] methodparams = method.GetParameters();
                             if (SupportedMember(method, methodparams))
@@ -534,6 +535,7 @@ namespace XQuinn.Runtime
             return FindType(member.DeclaringType, false);
         }
 
+
         Type FindType(TypeString typename, bool staticLoadOrCasting)
         {
             if (!staticLoadOrCasting)
@@ -552,7 +554,7 @@ namespace XQuinn.Runtime
                 return _instanceType.BaseType ?? throw new ArgumentException("Base type of instance is null.");
             }
             Type? t = null;
-            TypeKey key = new(typename);
+            GenericKey key = new(typename);
             LocalCache?.TryGetValue(key, out t);
             t ??= TypeCache.GetTypeOrThrow(key);
             if (t.IsGenericTypeDefinition)
@@ -575,7 +577,7 @@ namespace XQuinn.Runtime
             _methods?.TryGetValue(method.NameOrValue, out methodbase);
             if (methodbase == null)
             {
-                ResolvedOverload query = ResolvedOverload.Query(method);
+                MethodKey query = MethodKey.Query(method);
                 _overloads.TryGetValue(query, out methodbase);
             }
             if (methodbase == null)
@@ -585,14 +587,15 @@ namespace XQuinn.Runtime
             return methodbase;
         }
 
-        static T? CheckGlobalCache<T>(string key, Type fromType, out bool typeCached, out bool memberCached) where T : MemberInfo
+        static T? FromCache<T>(string key, Type fromType, out bool typeCached, out bool memberCached) where T : MemberInfo
         {
             memberCached = false;
             typeCached = s_known_members.TryGetValue(fromType, out var cachedMembers);
             if (typeCached)
             {
                 memberCached = cachedMembers!.TryGetValue(key, out MemberInfo? member);
-                if (memberCached) return (T)member!;
+                if (memberCached)
+                    return (T)member!;
             }
             return null;
         }
@@ -603,12 +606,13 @@ namespace XQuinn.Runtime
                 if (memberCached)
                     return;
                 Dictionary<string, MemberInfo> cachedMembers;
-                if (!typeCached)
-                {
-                    cachedMembers = new(StringComparer.OrdinalIgnoreCase); s_known_members[fromType] = cachedMembers;
-                }
-                else
+                if (typeCached)
                     cachedMembers = s_known_members[fromType];
+                else
+                {
+                    cachedMembers = new(StringComparer.OrdinalIgnoreCase);
+                    s_known_members[fromType] = cachedMembers;
+                }
                 cachedMembers[key] = member;
                 // if (fromType == LoadedType)
                 // {
@@ -653,7 +657,7 @@ namespace XQuinn.Runtime
             return null; //no type name, just a member, this technically isnt allowed but i let you get away with it for instance loading 
         }
 
-        internal static void MapType(Dictionary<string, MethodBase>? _methods, Dictionary<ResolvedOverload, MethodBase>? _overloads, Dictionary<string, FieldInfo>? _fields, Type type, Dictionary<string, PropertyInfo>? _props, bool @new = true)
+        internal static void MapType(Dictionary<string, MethodBase>? _methods, Dictionary<string, FieldInfo>? _fields, Type type, Dictionary<string, PropertyInfo>? _props, bool @new = true)
         {
 
             if (_methods != null || _overloads != null)
@@ -665,23 +669,17 @@ namespace XQuinn.Runtime
                 .ToList();
                 if (@new == true) //we always get methods even if new == true, because methods can also be named new of course
                 {
-                    ConstructorInfo[] ctors = type!.GetConstructors(Flag)
+                    ConstructorInfo[] ctors = type.GetConstructors(Flag)
                     .Where(x => SupportedMember(x, x.GetParameters()) && x.GetCustomAttribute<CompilerGeneratedAttribute>(true) == null).ToArray();
                     methodbases.AddRange(ctors);
                 }
                 if (_methods != null)
                 {
                     _methods.Clear();
-                    AddBackwards(_methods, methodbases);
-                }
-                if (_overloads != null)
-                {
-                    _overloads.Clear();
-                    IEnumerable<string> names = methodbases
-                    .Select(x => x.Name == ".ctor" ? "new" : x.Name)
-                    .Distinct(StringComparer.OrdinalIgnoreCase);
-                    foreach (string name in names)
-                        CompareNames(methodbases, name, _methods, _overloads);
+                    //    AddBackwards(_methods, methodbases);
+                    IEnumerable<GenericKey> names = methodbases.Select(x => new GenericKey(x.Name == ".ctor" ? "new" : x.Name, x)).Distinct();
+                    foreach (GenericKey key in names)
+                        CompareKeys(methodbases, key, _methods);
                 }
             }
             if (_fields != null)
@@ -719,33 +717,36 @@ namespace XQuinn.Runtime
 
         //Also dictionary overwiting helps get rid of every overload except the first declared overload
 
-        static void CompareNames(List<MethodBase> methods, string name, Dictionary<string, MethodBase>? _methods, Dictionary<ResolvedOverload, MethodBase> _overloads)
+        static void CompareKeys(List<MethodBase> methods, GenericKey key, Dictionary<MethodKey, MethodBase> _methods)
         {
             int count = 0;
-            MethodBase? first = null;
-            string? firstEvaluatedName = null;
+            // MethodBase? first = null;
+            // string? firstEvaluatedName = null;
             foreach (MethodBase method in methods)
             {
                 string evaluatedName = method.Name == ".ctor" ? "new" : method.Name;
-                if (name.Equals(evaluatedName, StringComparison.OrdinalIgnoreCase))
+
+                GenericKey resolved = new(evaluatedName, method);
+                if (resolved == key)
                 {
                     count++;
-                    if (count == 1)
-                    {
-                        first = method;
-                        firstEvaluatedName = evaluatedName;
-                    }
-                    else
-                    {
-                        if (first != null)
-                        {
-                            _overloads[new(firstEvaluatedName!, 0)] = first;
-                            _methods?.Remove(firstEvaluatedName!);
-                            first = null;
-                            firstEvaluatedName = null;
-                        }
-                        _overloads[new(evaluatedName, count - 1)] = method;
-                    }
+                    _methods[new(count - 1, key)] = method;
+                    // if (count == 1)
+                    // {
+                    //     first = method;
+                    //     firstEvaluatedName = evaluatedName;
+                    // }
+                    // else
+                    // {
+                    //     // if (first != null)
+                    //     // {
+                    //     //     _overloads[new(0, key)] = first;
+                    //     //     _methods?.Remove(firstEvaluatedName!);
+                    //     //     first = null;
+                    //     //     firstEvaluatedName = null;
+                    //     // }
+                    //     _overloads[new(count - 1, key)] = method;
+                    // }
 
                 }
 
@@ -972,22 +973,18 @@ namespace XQuinn.Runtime
             }
         }
 
-        internal readonly struct ResolvedOverload : IEquatable<ResolvedOverload>, IIndexKeyPair
+        internal readonly struct MethodKey : IEquatable<MethodKey>
         {
 
-            public int Index => _index;
-            public string Key => _name;
-            readonly int _index;
-            readonly string _name;
-            internal ResolvedOverload(string name, int index)
+            public readonly int Index;
+            public readonly GenericKey GenericKey;
+            internal MethodKey(int index, GenericKey key)
             {
-                _index = index;
-                _name = name;
-                //int last = name.IndexOf(':');
-                // _name = last != -1 ? name.Remove(last) : name;
+                Index = index;
+                GenericKey = key;
             }
 
-            internal static ResolvedOverload Query(MethodString mthdString)
+            internal static MethodKey Query(MethodString mthdString)
             {
                 string name = mthdString.NameOrValue;
                 int split = name.IndexOf(':');
@@ -999,36 +996,41 @@ namespace XQuinn.Runtime
                     index = int.Parse(indexed);
                     name = name.Remove(split);
                 }
-                //  else if (query.Length != 1)
-                //    throw new FormatException($"Invalid overload query. {mthdString.NameOrValue} Proper Format: Name:Index");
-                return new(name, index);
+                GenericKey key = new(name, mthdString.Generics.Count);
+                return new(index, key);
             }
 
-            bool IEquatable<ResolvedOverload>.Equals(ResolvedOverload obj)
+            bool IEquatable<MethodKey>.Equals(MethodKey obj)
             {
                 return Equals(obj);
             }
             public override int GetHashCode()
             {
-                return IndexKeyPair<ResolvedOverload>.HashCode(31, this);
+                int hash = 17;
+                unchecked
+                {
+                    hash = hash * 31 + Index.GetHashCode();
+                    hash = hash * 31 + GenericKey.GetHashCode();
+                }
+                return hash;
             }
-            public override string ToString() => _index > 0 ? $"{_name}:{_index}" : _name;
-            public bool Equals(ResolvedOverload overload)
+            public override string ToString() => Index > 0 ? $"{GenericKey.Key}:{Index}" : GenericKey.Key;
+            public bool Equals(MethodKey overload)
             {
-                return IndexKeyPair<ResolvedOverload>.Equals(overload, this);
+                return overload.Index == Index && overload.GenericKey == GenericKey;
             }
 
             public override bool Equals(object? obj)
             {
-                return obj is ResolvedOverload overload && Equals(overload);
+                return obj is MethodKey overload && Equals(overload);
             } //obj is Overload overload && ((IEquatable<Overload>)this).Equals(overload);
 
-            public static bool operator ==(ResolvedOverload left, ResolvedOverload right)
+            public static bool operator ==(MethodKey left, MethodKey right)
             {
                 return left.Equals(right);
             }
 
-            public static bool operator !=(ResolvedOverload left, ResolvedOverload right)
+            public static bool operator !=(MethodKey left, MethodKey right)
             {
                 return !(left == right);
             }
