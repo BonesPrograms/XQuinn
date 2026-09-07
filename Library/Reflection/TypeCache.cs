@@ -110,9 +110,9 @@ namespace XQuinn.Reflection
             [new(nameof(IList))] = typeof(IList),
             [new(nameof(Enumerable))] = typeof(Enumerable),
             [new(nameof(IEnumerable))] = typeof(IEnumerable),
-            [new(nameof(IEnumerable<_>), 1)] = typeof(IEnumerable<>),
+            [new(nameof(IEnumerable), 1)] = typeof(IEnumerable<>),
             [new(nameof(Dictionary<_, _>), 2)] = typeof(Dictionary<,>),
-            [new(nameof(IDictionary<_, _>), 2)] = typeof(IDictionary<,>),
+            [new(nameof(IDictionary), 2)] = typeof(IDictionary<,>),
             [new(nameof(IDictionary))] = typeof(IDictionary),
             [new("KVP", 2)] = typeof(KeyValuePair<,>),
             [new(nameof(HashSet<_>), 1)] = typeof(HashSet<>),
@@ -315,17 +315,18 @@ namespace XQuinn.Reflection
         {
             public static IEnumerable<string> Fields<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Fields(typeof(T), contains, search);
             public static IEnumerable<string> Methods<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Methods(typeof(T), contains, search);
+            public static IEnumerable<string> Properties<T>(string? contains = null) => Properties(typeof(T), contains);
 
             ///Send GetType as your Type Parameter if your instance's type is not in the cache
             /// 
             public static IEnumerable<string> Properties(Type t, string? contains = null)//BindingFlags search = Navigator.Flag)
             {
-                IEnumerable<KeyValuePair<string, PropertyInfo>> props = t.GetProperties(Navigator.Flag).Select(x => new KeyValuePair<string, PropertyInfo>(x.Name, x));
+                IEnumerable<KeyValuePair<string, PropertyInfo>> props = Selection(t.GetProperties(Navigator.Flag));
                 return ReadMembers(props, contains, Navigator.Flag);
             }
             public static IEnumerable<string> Fields(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
             {
-                IEnumerable<KeyValuePair<string, FieldInfo>> fields = t.GetFields(Navigator.Flag).Select(x => new KeyValuePair<string, FieldInfo>(x.Name, x));
+                IEnumerable<KeyValuePair<string, FieldInfo>> fields = Selection(t.GetFields(Navigator.Flag));
                 return ReadMembers(fields, contains, search);
             }
 
@@ -334,6 +335,12 @@ namespace XQuinn.Reflection
                 Dictionary<Navigator.MethodKey, MethodBase> methods = new();
                 Navigator.MapType(methods, null, t, null, contains?.EqualsCaseless("new") ?? true);
                 return ReadMembers(methods, contains, search);
+            }
+
+            static IEnumerable<KeyValuePair<string, T>> Selection<T>(T[] arr) where T : MemberInfo
+            {
+                foreach (T obj in arr)
+                    yield return new(obj.Name, obj);
             }
 
 
@@ -509,9 +516,9 @@ namespace XQuinn.Reflection
 
         abstract class _
         {
-            _ ()
+            _()
             {
-                
+
             }
         }
     }

@@ -88,6 +88,21 @@ namespace XQuinn.Reflection
             return !(left == right);
         }
 
+        internal string ArgsToString(StringBuilder sb)
+        {
+            sb.Append("<T1, ");
+            for (int i = 1; i < Args; i++)
+            {
+                sb.Append($"T{i + 1}");
+                if (For.NeedsDelimiter(Args, i))
+                {
+                    sb.Append(", ");
+                }
+            }
+            sb.Append('>');
+            return sb.ToString();
+        }
+
         public override string ToString()
         {
             if (Args > 0)
@@ -95,17 +110,8 @@ namespace XQuinn.Reflection
                 if (Args == 1)
                     return $"{Key}<T>";
                 StringBuilder sb = new(Key);
-                sb.Append("<T1, ");
-                for (int i = 1; i < Args; i++)
-                {
-                    sb.Append($"T{i + 1}");
-                    if (For.NeedsDelimiter(Args, i))
-                    {
-                        sb.Append(", ");
-                    }
-                }
-                sb.Append('>');
-                return sb.ToString();
+                ArgsToString(sb);
+
             }
             return Key;
         }

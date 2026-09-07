@@ -48,7 +48,7 @@ namespace XQuinn.Runtime
         internal Type? _loadedType;
         TypeString? _implicit_this;
         internal readonly Dictionary<MethodKey, MethodBase> _methods = new();
-     //   internal readonly Dictionary<MethodKey, MethodBase> _overloads = new();
+        //   internal readonly Dictionary<MethodKey, MethodBase> _overloads = new();
         internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
 
         internal readonly Dictionary<string, PropertyInfo> _props = new(StringComparer.OrdinalIgnoreCase);
@@ -1006,7 +1006,14 @@ namespace XQuinn.Runtime
                 }
                 return hash;
             }
-            public override string ToString() => Index > 0 ? $"{GenericKey}:{Index}" : GenericKey.ToString();
+
+            string? ArgsIfGeneric()
+            {
+                if (GenericKey.Args > 0)
+                return GenericKey.Args == 1 ? "<T>" : GenericKey.ArgsToString(new());
+                return null;
+            }
+            public override string ToString() => Index > 0 ? $"{GenericKey.Key}:{Index}{ArgsIfGeneric()}" : GenericKey.ToString();
             public bool Equals(MethodKey overload)
             {
                 return overload.Index == Index && overload.GenericKey == GenericKey;
