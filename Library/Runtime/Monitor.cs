@@ -91,8 +91,6 @@ namespace XQuinn.Runtime
                 return GetCollection(_navigator._methods, "methods");
             if (input.EqualsCaseless("fields"))
                 return GetCollection(_navigator._fields, "fields");
-            if (input.EqualsCaseless("overloads"))
-                return GetCollection(_navigator._overloads, "overloads");
             string[] arr = input.Split(':'); //type;argument;name or argument;name
             if (arr.Length >= 2)
                 return Search(0, arr);
@@ -103,8 +101,6 @@ namespace XQuinn.Runtime
         {
             if (arr[startint].EqualsCaseless("props") || arr[startint].EqualsCaseless("Properties") || arr[startint].EqualsCaseless("prop") || arr[startint].EqualsCaseless("props"))
                 return Extract(_navigator._props, "properties", arr[startint + 1]);
-            if (arr[startint].EqualsCaseless("overloads") || arr[startint].EqualsCaseless("overload"))
-                return Extract(_navigator._overloads, "overloads", arr[startint + 1]);
             else if (arr[startint].EqualsCaseless("method") || arr[startint].EqualsCaseless("methods"))
                 return Extract(_navigator._methods, "methods", arr[startint + 1]);
             else if (arr[startint].EqualsCaseless("field") || arr[startint].EqualsCaseless("fields"))

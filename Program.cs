@@ -74,19 +74,19 @@ namespace XQuinn.Private
 
     class Class
     {
-        public static void Method()
+        public static string Method()
         {
-            
+            return "Method ()";
         }
 
-        public static int Method(int i)
+        public static string Method(int i)
         {
-            return i;
+            return "Method (int)";
         }
 
         public static T Method<T>() where T : new()
         {
-            return new();
+            return new T();
         }
 
         public static T Method<T>(T obj)

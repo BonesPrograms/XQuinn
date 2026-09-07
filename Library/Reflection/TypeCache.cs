@@ -314,7 +314,6 @@ namespace XQuinn.Reflection
         static class Types
         {
             public static IEnumerable<string> Fields<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Fields(typeof(T), contains, search);
-            public static IEnumerable<string> Overloads<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Overloads(typeof(T), contains, search);
             public static IEnumerable<string> Methods<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Methods(typeof(T), contains, search);
 
             ///Send GetType as your Type Parameter if your instance's type is not in the cache
@@ -329,18 +328,11 @@ namespace XQuinn.Reflection
                 IEnumerable<KeyValuePair<string, FieldInfo>> fields = t.GetFields(Navigator.Flag).Select(x => new KeyValuePair<string, FieldInfo>(x.Name, x));
                 return ReadMembers(fields, contains, search);
             }
-            public static IEnumerable<string> Overloads(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
-            {
-                Dictionary<Navigator.MethodKey, MethodBase> overloads = new();
-                Navigator.MapType(null, overloads, null, t, null, contains?.EqualsCaseless("new") ?? true);
-                return ReadMembers(overloads, contains, search);
-            }
-
 
             public static IEnumerable<string> Methods(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
             {
-                Dictionary<string, MethodBase> methods = new();
-                Navigator.MapType(methods, null, null, t, null, contains?.EqualsCaseless("new") ?? true);
+                Dictionary<Navigator.MethodKey, MethodBase> methods = new();
+                Navigator.MapType(methods, null, t, null, contains?.EqualsCaseless("new") ?? true);
                 return ReadMembers(methods, contains, search);
             }
 
@@ -403,8 +395,6 @@ namespace XQuinn.Reflection
                         if (SearchModifiers.ProcessSearch(member.Value, flags))
                             yield return $"[Key: {member.Key} :: {ReflectionPrinter.Print(member.Value)}]";
             }
-
-
 
             readonly struct SearchModifiers
             {

@@ -650,7 +650,7 @@ namespace XQuinn.Runtime
             return null; //no type name, just a member, this technically isnt allowed but i let you get away with it for instance loading 
         }
 
-        internal static void MapType(Dictionary<string, MethodBase>? _methods, Dictionary<string, FieldInfo>? _fields, Type type, Dictionary<string, PropertyInfo>? _props, bool @new = true)
+        internal static void MapType(Dictionary<MethodKey, MethodBase>? _methods, Dictionary<string, FieldInfo>? _fields, Type type, Dictionary<string, PropertyInfo>? _props, bool @new = true)
         {
 
             if (_methods != null)
@@ -968,7 +968,6 @@ namespace XQuinn.Runtime
 
         internal readonly struct MethodKey : IEquatable<MethodKey>
         {
-
             public readonly int Index;
             public readonly GenericKey GenericKey;
             internal MethodKey(int index, GenericKey key)
@@ -1007,7 +1006,7 @@ namespace XQuinn.Runtime
                 }
                 return hash;
             }
-            public override string ToString() => Index > 0 ? $"{GenericKey.Key}:{Index}" : GenericKey.Key;
+            public override string ToString() => Index > 0 ? $"{GenericKey}:{Index}" : GenericKey.ToString();
             public bool Equals(MethodKey overload)
             {
                 return overload.Index == Index && overload.GenericKey == GenericKey;
@@ -1031,7 +1030,6 @@ namespace XQuinn.Runtime
         readonly struct AssignableMember
         {
             readonly MemberInfo _member;
-
             public readonly Type MembersType;
 
             AssignableMember(MemberInfo member, Type memberType)
