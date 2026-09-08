@@ -6,25 +6,32 @@ Runtime Navigator: Load static types, load instances, invoke methods, fields and
 pass fields, properties, the loaded instance, and variables as arguments to method parameters, or assignment.
 All inputs are case insensitive, including values, member names, and type names.
 
+
+
+
+
 Using the Navigator: Syntax/Basic Use
 
 Syntax has the same rules as you see in C#, with a few restrictions.
 Invoking a method and assignment looks the same as it would in normal code. IE. "MethodName(22, true, variable)" or "IntField = 15"
 When a type or instance is loaded, you have implicit access to it's methods, fields and properties, and do not need to qualify them with a typename.
-When you enter the name of a field, property, the value is returned, IE. "PropertyName" returns the propertys value
+When you enter the name of a field, property, or variable, the value is returned, IE. "PropertyName" returns the propertys value. You can return
+values directly from members/variables by simply typing the name, or pass them by name as parameters to methods/assignment.
 
-Member access is the primary restriction. Member access must be a TypeName.MemberName pair. For members that you have implicit access to,
-you can acess their members as if they were a type. IE. PropertyName.Method()
+Member access is the primary restriction. Member access must be a TypeName.MemberName pair. For fields and properties that you have implicit access to,
+you can acess their members as if they were a type. IE. PropertyName.Method(). This also works for variables.
 
 You do not need to reload the current type or instance to invoke members from outside the current type or instance.
 You can lead with a typename, IE. StaticType.Method() or VariableName.Field or FieldName.Method() etc
-You can also use this to cast the current instance without changing the loaded type. IE. BaseType.PrivateField or BaseType.PrivateMethod() its not only for
+You can also use this to cast the current instance without changing the loaded type. IE. BaseType.BasePrivateField or BaseType.BasePrivateMethod() its not only for
 private members but that's what it's most useful for. You can also use the typename 'base' to access the instance type's immediate base type.
+Casting still follows standard C# polymorphism, even if you cast to a base type, invocations will use the instance type's overrides.
+
+You can return the current tostring value of this by simply typing 'this', and you can pass 'this' as a parameter to methods to return the loaded instance
+by value.
 
 You can also explicitly declare accessing from the current instance using 'this', ie this.fieldname, however this is not usually necessary due to implicit access.
 Note, if you have casted your instance into a base, accessing 'this' will return members from the currently loaded base type, not the instance type.
-You can return the current tostring value of this by simply typing 'this', and you can pass 'this' as a parameter to methods to return the loaded instance
-by value.
 
 Enumerable values are automatically enumerated and printed for your viewing upon return, either from a method, field, property, or this.
 
@@ -32,16 +39,20 @@ Member access is restricted for method return values. IE. You cannot do Method()
 
 Methods with in/out/ref parameters and ref returntype are not supported.
 
+
+
+
+
 Using the Navigator: Controllers
 
 Use controllers to invoke specific operations that interface with the Navigator.
 Controllers are one character long and must be placed at the beginning of an instruction.
 
 @ - Load Static: loads a type's static methods, fields and properties and gain implicit access to them.
-* - Load Instance: load an instance from any variable, method, field or property that you can access.
-^ - Cast Instance: cast an instance to a base type, interface, or inhertor if possible. This changes the loaded/implicitly available members to that of the casted type.
+* - Load Instance: load an instance from any variable, method, field or property that you can access either implicitly, or by type/member/variable name.
+^ - Cast Instance: cast an instance to a base type, interface, or inheritor if possible. This changes the loaded type and implicitly available members to that of the casted type.
 
-+ - Add Variable: Add the current instance as a variable by name. You can load this variable using load.
++ - Add Variable: Add the current instance as a variable by name. You can load this variable using Load Instance.
 - - Remove Variabie: Remove a variable by name.
 
 ~ - Chain Invoke: Chain multiple operations together, including operations with controllers. Example below.
@@ -62,6 +73,11 @@ Chain Invocation Example:
 
 When an enumerable value is returned as part of an invocation in a chain, it is not enumerated. It must be returned individually to be viewed.
 
+
+
+
+
+
 Using the Navigator: Overloads/Query
 
 Method overloads are resolved with alternative names, due to lack of implicit overload resolution in the system.
@@ -80,8 +96,14 @@ with nongeneric alternatives
 Fields(Type,string,BindingFlags), Methods(Type,string,BindingFlags), Properties(Type,string)
 
 You can pass a "containing" string just like ?Query, in addition, for methods and fields,
-you can use BindingFlags to insert search options, such as instance, static, public, nonpublic, flattenhiearchy, or declared only.
-By default, it uses the same search options as the navigator, which returns all members.
+you can use BindingFlags to insert search options, such as instance, static, public, nonpublic, flattenhierarchy, or declared only.
+By default, it uses the same search options as the navigator, which returns members of all access modifiers, and all inherited members including
+flattening the hierarchy.
+
+
+
+
+
 
 
 Using the Navigator: Helper Class - Types
@@ -100,6 +122,7 @@ LateCache(string assemblyName, string targetTypeName, string keyForCache) - If y
 Using the Navigator: TypeCache
 
 The navigator relies on the TypeCache to access any type. You can cache your types using the public CacheType and CacheTypes methods in TypeCache.
+This is the simplest way to do it.
 
             Assembly xquinn = Assembly.Load("XQuinn");
             TypeCache.CacheTypes(xquinn.GetTypes(), false);
@@ -110,7 +133,8 @@ If you return a null key using this delegate, the paired type will be skipped an
 
 If you are using your own custom cache names, it is recommended that you first use TypeCache.GetCompatibleName(Type,bool) before appending any
 extra data to your customized name. Type names have specific rules:
-You should follow the exact same naming rules for class names as you would in normal C#. Note: Do not cache generic types with generic identifiers in the name like Class<T>. The system internally handles generic arguments
-separately outisde of the string key. If you are curious on the specifics, check out TypeCache.ThrowIfBadKey(string)
+you should follow the exact same naming rules for class names as you would in normal C#. Note: Do not cache generic type definitions with generic 
+identifiers in the name like Class<T>. The system internally handles generic arguments separately outisde of the string key. 
+If you are curious on the specifics, check out TypeCache.ThrowIfBadKey(string)
 
 
