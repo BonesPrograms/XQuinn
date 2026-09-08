@@ -137,20 +137,18 @@ namespace XQuinn.Reflection
                                                          //     s_registry[$"{keyword}[]"] = s_registry[keyword].MakeArrayType();
         }
 
-        public static bool Contains(string name) => s_registry.ContainsKey(GenericKey.TypeKey(name));
-        public static bool TryGetType(string name, out Type? cachedtype) => s_registry.TryGetValue(GenericKey.TypeKey(name), out cachedtype);
-
-        public static Type? GetTypeCached(string name)//IReadOnlyDictionary<string, Type>? book = null)
+        public static bool Contains(string name) => s_registry.ContainsKey(GenericKey.TypeQuery(name));
+        public static bool TryGetType(string name, out Type? cachedtype) => s_registry.TryGetValue(GenericKey.TypeQuery(name), out cachedtype);
+        public static Type? GetTypeCached(string name)
         {
-            // if (book?.TryGetValue(name, out Type? booktype) ?? false)
-            //   return booktype;
             if (TryGetType(name, out Type? cachedtype))
                 return cachedtype;
             return null;
         }
         public static Type GetTypeOrThrow(string name)//ReadOnlyDictionary<string, Type>? book = null)
         {
-            return GetTypeCached(name) ?? throw new ArgumentException($"Could not find cached type with key {name}.");
+            GenericKey key = GenericKey.TypeQuery(name);
+            return GetTypeOrThrow(key);
         }
 
         internal static Type GetTypeOrThrow(GenericKey key)

@@ -15,7 +15,7 @@ namespace XQuinn.Reflection
     {
         public readonly string Key;
         public readonly int Args;
-        public static GenericKey TypeKey(string typename)
+        public static GenericKey TypeQuery(string typename)
         {
             if (GenericString.HasTypeArgs(typename))
             {

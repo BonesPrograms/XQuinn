@@ -430,7 +430,7 @@ namespace XQuinn.Runtime
                 }
                 if (call == null || ambiguousMatch)
                 {
-                    MethodKey query = MethodKey.Query(mthdString);
+                    MethodKey query = MethodKey.MethodQuery(mthdString);
                     List<MethodBase> methodbases = fromType.GetMethods(Flag).Cast<MethodBase>().ToList();
                     if (query.GenericKey.Key.EqualsCaseless("new"))
                     {
@@ -459,7 +459,7 @@ namespace XQuinn.Runtime
                     }
                 }
             }
-            call ??= fromType == _loadedType ? FindMethod(mthdString) : throw new MissingMethodException($"No method named {mthdString.NameOrValue} found in {fromType}'s methods or overload resolutions.");
+            call ??= fromType == _loadedType ? FindMethod(mthdString) : throw new MissingMethodException($"No method named {mthdString.NameOrValue} with generic arg count {mthdString.Generics.Count} found in {fromType}'s methods or overload resolutions.");
             if (call is MethodInfo mthd)
             {
                 if (mthd.IsGenericMethodDefinition)
@@ -572,9 +572,9 @@ namespace XQuinn.Runtime
 
         MethodBase FindMethod(MethodString method)// out ResolvedOverload? query)
         {
-            _methods.TryGetValue(MethodKey.Query(method), out MethodBase? methodbase);
+            _methods.TryGetValue(MethodKey.MethodQuery(method), out MethodBase? methodbase);
             if (methodbase == null)
-                throw new MissingMethodException($"No method named {method.NameOrValue} found in {_loadedType}'s method or overload dictionary. It may have been removed due to having a ref return type or in/out/ref parameters.");
+                throw new MissingMethodException($"No method named {method.NameOrValue}  with generic arg count {method.Generics.Count} found in {_loadedType}'s method dictionary. It may have been removed due to having a ref return type or in/out/ref parameters.");
             if (methodbase.IsGenericMethodDefinition && methodbase is MethodInfo actualmethod)
                 methodbase = method.ConvertToGeneric(actualmethod, LocalCache);
             return methodbase;
@@ -976,7 +976,7 @@ namespace XQuinn.Runtime
                 GenericKey = key;
             }
 
-            internal static MethodKey Query(MethodString mthdString)
+            internal static MethodKey MethodQuery(MethodString mthdString)
             {
                 string name = mthdString.NameOrValue;
                 int split = name.IndexOf(':');
