@@ -16,13 +16,13 @@ Syntax has the same rules as you see in C#, with a few restrictions.
 Invoking a method and assignment looks the same as it would in normal code. IE. "MethodName(22, true, variable)" or "IntField = 15"
 When a type or instance is loaded, you have implicit access to it's methods, fields and properties, and do not need to qualify them with a typename.
 When you enter the name of a field, property, or variable, the value is returned, IE. "PropertyName" returns the propertys value. You can return
-values directly from members/variables by simply typing the name, or pass them by name as parameters to methods/assignment.
+values directly from fields, properties and variables by simply typing the name, or pass them by name as parameters to methods/assignment.
 
 Member access is the primary restriction. Member access must be a TypeName.MemberName pair. For fields and properties that you have implicit access to,
 you can acess their members as if they were a type. IE. PropertyName.Method(). This also works for variables.
 
 You do not need to reload the current type or instance to invoke members from outside the current type or instance.
-You can lead with a typename, IE. StaticType.Method() or VariableName.Field or FieldName.Method() etc
+You can lead with a typename, member name, or variable name, IE. StaticType.Method() or VariableName.Field or FieldName.Method() etc
 You can also use this to cast the current instance without changing the loaded type. IE. BaseType.BasePrivateField or BaseType.BasePrivateMethod() its not only for
 private members but that's what it's most useful for. You can also use the typename 'base' to access the instance type's immediate base type.
 Casting still follows standard C# polymorphism, even if you cast to a base type, invocations will use the instance type's overrides.
@@ -37,7 +37,9 @@ Enumerable values are automatically enumerated and printed for your viewing upon
 
 Member access is restricted for method return values. IE. You cannot do Method().Field this is restricted.
 
-Methods with in/out/ref parameters and ref returntype are not supported.
+Methods with in/out/ref parameters and ref returntype are not supported. You cannot yet pass methods as arguments for delegates, but you may be able to later.
+
+Expressions are not supported. You cannot do math, you cannot create lambda expressions, the only available expression is assignment.
 
 
 
@@ -48,11 +50,11 @@ Using the Navigator: Controllers
 Use controllers to invoke specific operations that interface with the Navigator.
 Controllers are one character long and must be placed at the beginning of an instruction.
 
-@ - Load Static: loads a type's static methods, fields and properties and gain implicit access to them.
+@ - Load Static: loads a type's static methods, fields and properties and gain implicit access to them. This will reset the instance to null.
 * - Load Instance: load an instance from any variable, method, field or property that you can access either implicitly, or by type/member/variable name.
 ^ - Cast Instance: cast an instance to a base type, interface, or inheritor if possible. This changes the loaded type and implicitly available members to that of the casted type.
 
-+ - Add Variable: Add the current instance as a variable by name. You can load this variable using Load Instance.
++ - Add Variable: Add the current instance as a variable by name. You can load this variable by name using Load Instance.
 - - Remove Variabie: Remove a variable by name.
 
 ~ - Chain Invoke: Chain multiple operations together, including operations with controllers. Example below.
@@ -65,7 +67,7 @@ Chain Invocation Example:
 
 ~ *class.new(13, "Hello World"); BoolField = Evaluate(); +var_class; @someType; *method(var_class.Method());
 
-[1] Loading an instance of class by calling a constructor
+[1] Loading the current instance as an instance of type "Class", by calling a constructor
 [2] Assigning a value to an instance field using an instance method
 [3] Adding the current instance as a variable
 [4] Loading a type's static members
@@ -117,6 +119,10 @@ Enum<T>(T) - return an enum value == the parameter values
 String(string) - return a string == the parameter values
 Array<T>(params T[]) and Array<T>(int) - create an array using params, or create a presized array
 LateCache(string assemblyName, string targetTypeName, string keyForCache) - If you forgot to cache a specific type, you can cache it at runtime. Requires full type name with naemspace.
+
+
+
+
 
 
 Using the Navigator: TypeCache
