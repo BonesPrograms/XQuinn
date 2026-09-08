@@ -3,7 +3,8 @@ Explicit Invocation for Explicit Implementations
 Publci API Doc
 
 Runtime Navigator: Load static types, load instances, invoke methods, fields and properties at runtime. Create variables,
-pass fields, properties, the loaded instance, and variables as arguments to method parameters, or assignment.
+pass fields, properties, the loaded instance, and variables as arguments to method parameters, or assignment. Access members of fields, properties
+and variables for invocation.
 All inputs are case insensitive, including values, member names, and type names.
 
 
@@ -22,8 +23,9 @@ Member access is the primary restriction. Member access must be a TypeName.Membe
 you can acess their members as if they were a type. IE. PropertyName.Method(). This also works for variables.
 
 You do not need to reload the current type or instance to invoke members from outside the current type or instance.
-You can lead with a typename, member name, or variable name, IE. StaticType.Method() or VariableName.Field or FieldName.Method() etc
-You can also use this to cast the current instance without changing the loaded type. IE. BaseType.BasePrivateField or BaseType.BasePrivateMethod() its not only for
+You can lead with a typename, member name, or variable name, IE. StaticType.Method() or VariableName.Field or FieldName.Method() or FieldName = StaticType.Method() etc
+You can also use leading with a typename to cast the current instance without changing the loaded type, gaining explicit access to members of the casted type for that
+invocation - IE. BaseType.BasePrivateField or BaseType.BasePrivateMethod() its not only for
 private members but that's what it's most useful for. You can also use the typename 'base' to access the instance type's immediate base type.
 Casting still follows standard C# polymorphism, even if you cast to a base type, invocations will use the instance type's overrides.
 
@@ -50,12 +52,13 @@ Using the Navigator: Controllers
 Use controllers to invoke specific operations that interface with the Navigator.
 Controllers are one character long and must be placed at the beginning of an instruction.
 
-@ - Load Static: loads a type's static methods, fields and properties and gain implicit access to them. This will reset the instance to null.
-* - Load Instance: load an instance from any variable, method, field or property that you can access either implicitly, or by type/member/variable name.
+@ - Load Static: loads a type's static methods, fields and properties and gain implicit access to them. This will reset the instance to null. ex. @TypeName
+* - Load Instance: load an instance from any variable, method, field or property that you can access either implicitly, or by type/member/variable name. ex. *Field
 ^ - Cast Instance: cast an instance to a base type, interface, or inheritor if possible. This changes the loaded type and implicitly available members to that of the casted type.
+    ex. ^baseType 
 
-+ - Add Variable: Add the current instance as a variable by name. You can load this variable by name using Load Instance.
-- - Remove Variabie: Remove a variable by name.
++ - Add Variable: Add the current instance as a variable by name. You can load this variable by name using Load Instance. ex. +varName
+- - Remove Variabie: Remove a variable by name. ex. -varName
 
 ~ - Chain Invoke: Chain multiple operations together, including operations with controllers. Example below.
 
@@ -120,7 +123,7 @@ String(string) - return a string == the parameter values
 Array<T>(params T[]) and Array<T>(int) - create an array using params, or create a presized array
 LateCache(string assemblyName, string targetTypeName, string keyForCache) - If you forgot to cache a specific type, you can cache it at runtime. Requires full type name with naemspace.
 
-
+There are various other classes pre-cached which can be viewed in the TypeCache itself.
 
 
 
