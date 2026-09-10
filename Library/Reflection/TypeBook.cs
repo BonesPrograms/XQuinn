@@ -101,6 +101,8 @@ namespace XQuinn.Reflection
             return sb.ToString();
         }
 
+        static char Normalize(char c) => c is >= 'a' and <= 'z' ? (char)(c - ('a' - 'A')) : c;
+
         public override string ToString()
         {
             if (Args > 0)

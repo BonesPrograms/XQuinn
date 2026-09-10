@@ -13,7 +13,7 @@ namespace XQuinn.Runtime
     /// <summary>
     /// Monitor the output, activity and exceptions of a Navigator instance via strings.
     /// </summary>
-    public class Monitor
+    public sealed class Monitor
     {
         public bool Caching
         {

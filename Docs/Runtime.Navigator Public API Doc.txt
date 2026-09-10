@@ -2,7 +2,7 @@ Explicit Invocation for Explicit Implementations
 
 Publci API Doc
 
-Runtime Navigator: Load static types, load instances, invoke methods, fields and properties at runtime. Create variables,
+Runtime Navigator: Reify generic types and methods, load static types, load instances, invoke methods, fields and properties at runtime. Create variables,
 pass fields, properties, the loaded instance, and variables as arguments to method parameters, or assignment. Access members of fields, properties
 and variables for invocation.
 All inputs are case insensitive, including values, member names, and type names.
@@ -35,7 +35,8 @@ by value.
 You can also explicitly declare accessing from the current instance using 'this', ie this.fieldname, however this is not usually necessary due to implicit access.
 Note, if you have casted your instance into a base, accessing 'this' will return members from the currently loaded base type, not the instance type.
 
-Enumerable values are automatically enumerated and printed for your viewing upon return, either from a method, field, property, or this.
+Enumerable values are automatically enumerated and printed for your viewing upon return, either from a method, field, property, or this. Variables that store
+enumerable values are not read automatically when returned, they must be loaded as an instance first.
 
 Member access is restricted for method return values. IE. You cannot do Method().Field this is restricted.
 
@@ -52,15 +53,18 @@ Using the Navigator: Controllers
 Use controllers to invoke specific operations that interface with the Navigator.
 Controllers are one character long and must be placed at the beginning of an instruction.
 
-@ - Load Static: loads a type's static methods, fields and properties and gain implicit access to them. This will reset the instance to null. ex. @TypeName
-* - Load Instance: load an instance from any variable, method, field or property that you can access either implicitly, or by type/member/variable name. ex. *Field
+@ - Load Static: loads a type's static methods, fields and properties and gain implicit access to them. This will reset the instance to null. ex. @TypeName<int>
+* - Load Instance: load an instance from any variable, method, field or property that you can access either implicitly, or by type/member/variable name. 
+	Simply put, Load Instance assigns the return value of a field, property, method or variable as the currently loaded instance. ex. *Field or *Type.Method()
 ^ - Cast Instance: cast an instance to a base type, interface, or inheritor if possible. This changes the loaded type and implicitly available members to that of the casted type.
     ex. ^baseType 
 
 + - Add Variable: Add the current instance as a variable by name. You can load this variable by name using Load Instance. ex. +varName
 - - Remove Variabie: Remove a variable by name. ex. -varName
 
-~ - Chain Invoke: Chain multiple operations together, including operations with controllers. Example below.
+~ - Chain Invoke: Chain multiple operations together, including operations with controllers. Each operation is delimited by a ; semicolon.
+	This is done in a sloppier manner compared to everything else - avoid using semicolons in char and string values, or they will be broken up at the semicolon.
+ 	Example below.
 
 
 ? - Query: Query the currently loaded type for data. Query cannot be used as part of chains. More information below.
@@ -68,10 +72,10 @@ Controllers are one character long and must be placed at the beginning of an ins
 
 Chain Invocation Example:
 
-~ *class.new(13, "Hello World"); BoolField = Evaluate(); +var_class; @someType; *method(var_class.Method());
+~ *class.new(13, "Hello World"); BoolField = base.Evaluate(); +var_class; @someType; method(var_class.Method());
 
 [1] Loading the current instance as an instance of type "Class", by calling a constructor
-[2] Assigning a value to an instance field using an instance method
+[2] Assigning a value to an instance field using a base method
 [3] Adding the current instance as a variable
 [4] Loading a type's static members
 [5] Invoking a static method from that type, passing our variable, and invoking a method from the variable to be returned as our parameter value
@@ -90,7 +94,9 @@ To view a type's resolved method names you have two options, one being Query:
 
 Query:
 
-Query has three possible options. "fields", "props" and "methods". You can also insert a string, and query checks if the member's name contains that string.
+Query has four possible options. "fields", "props"/"properties" and "methods". You can also insert a string, and query checks if the member's name contains that string.
+The fourth option is "vars" or "variables", which returns a list of the currently stored variables. Variables cannot be searched using contains, they are all printed
+on query.
 Format for ?Query is as follows:
 ?Option or ?Option:Containing
 
@@ -102,7 +108,7 @@ Fields(Type,string,BindingFlags), Methods(Type,string,BindingFlags), Properties(
 
 You can pass a "containing" string just like ?Query, in addition, for methods and fields,
 you can use BindingFlags to insert search options, such as instance, static, public, nonpublic, flattenhierarchy, or declared only.
-By default, it uses the same search options as the navigator, which returns members of all access modifiers, and all inherited members including
+By default, it uses the same search options as the navigator, which returns declared members of all access modifiers, and all public/protected inherited members including
 flattening the hierarchy.
 
 
@@ -131,19 +137,22 @@ There are various other classes pre-cached which can be viewed in the TypeCache 
 Using the Navigator: TypeCache
 
 The navigator relies on the TypeCache to access any type. You can cache your types using the public CacheType and CacheTypes methods in TypeCache.
-This is the simplest way to do it.
+This is the simplest way to do it, here is an example of me caching only public types with a short name.
 
             Assembly xquinn = Assembly.Load("XQuinn");
-            TypeCache.CacheTypes(xquinn.GetTypes(), false);
+            TypeCache.CacheTypes(xquinn.GetTypes().Where(x => x.IsPublic), false);
 
-CacheTypes(IEnumerable<Types>,bool) by default returns a cache-compatible name for your type, either fullname, or shortname. There is an overload that uses
+CacheTypes(IEnumerable<Type>,bool) by default returns a cache-compatible name for your type, either fullname, or shortname. There is an overload that uses
 a delegate to allow you to input custom logic for returning string names from types. 
 If you return a null key using this delegate, the paired type will be skipped and not cached.
 
 If you are using your own custom cache names, it is recommended that you first use TypeCache.GetCompatibleName(Type,bool) before appending any
 extra data to your customized name. Type names have specific rules:
-you should follow the exact same naming rules for class names as you would in normal C#. Note: Do not cache generic type definitions with generic 
-identifiers in the name like Class<T>. The system internally handles generic arguments separately outisde of the string key. 
-If you are curious on the specifics, check out TypeCache.ThrowIfBadKey(string)
+you should follow the exact same naming rules for class names as you would in normal C#. The system supports namespaces in names as well.
+
+Note: Do not attempt to create string keys such as "Class<T>". The system internally handles generic arguments separately outisde of the string key. 
+Class<T> should be cached with string key "Class", it will not cause conflicts with a nongeneric "Class" of the same name, 
+or other generic types with the same name and a different number of args.
+If you are curious on the specific rules, check out TypeCache.ThrowIfBadKey(string)
 
 

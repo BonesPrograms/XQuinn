@@ -35,12 +35,12 @@ namespace XQuinn.Private
         {
 #if IAPP_BUILD
             XQuinn.NetConsole.Apps.IApp.RunApp(args);
-#elif DEBUG_BUILD
+#else
             Cache();
             RunNavigator();
 #endif
         }
-#if DEBUG_BUILD
+
 
 
         static class BitConv
@@ -68,7 +68,7 @@ namespace XQuinn.Private
             TypeCache.CacheType(typeof(BitConverter), false);
             //@ TypeCache.CacheType(typeof(BytesLittleEndian), "bytes");
         }
-#endif
+
 
     }
 
