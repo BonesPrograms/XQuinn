@@ -20,7 +20,7 @@ namespace XQuinn.Private.NavigatorEngine
     {
         TypeString? _implicit_this => _navig._implicit_this;
         Dictionary<MethodKey, MethodBase> _methods => _navig._methods;
-        public Reflector(Navigator navig) : base(navig)
+        public Reflector(NavigatorCore navig) : base(navig)
         {
 
         }
@@ -44,7 +44,7 @@ namespace XQuinn.Private.NavigatorEngine
             }
             if (_props.TryGetValue(member.DeclaringType.StringID, out PropertyInfo? prop))
             {
-                instance = prop.GetValue(_instance, Navigator.Flag, null, null, null) ?? throw new ArgumentException($"Property {member.DeclaringType.NameOrValue} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
+                instance = prop.GetValue(_instance, NavigatorCore.Flag, null, null, null) ?? throw new ArgumentException($"Property {member.DeclaringType.NameOrValue} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
                 return instance.GetType();
             }
             if (_variables.TryGetValue(member.DeclaringType.StringID, out VariableBinding? variable))
@@ -120,9 +120,9 @@ namespace XQuinn.Private.NavigatorEngine
             public readonly void SetValue(object? instance, object? value)
             {
                 if (_member is PropertyInfo prop)
-                    prop.SetValue(instance, value, Navigator.Flag, null, null, null);
+                    prop.SetValue(instance, value, NavigatorCore.Flag, null, null, null);
                 else if (_member is FieldInfo field)
-                    field.SetValue(instance, value, Navigator.Flag, null, null);
+                    field.SetValue(instance, value, NavigatorCore.Flag, null, null);
             }
         }
     }

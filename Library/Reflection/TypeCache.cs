@@ -304,23 +304,23 @@ namespace XQuinn.Reflection
         static class Types
         {
             public static IEnumerable<string> Props<T>(string? contains = null) => Props(typeof(T), contains);
-            public static IEnumerable<string> Methods<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Methods(typeof(T), contains, search);
-            public static IEnumerable<string> Fields<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Fields(typeof(T), contains, search);
+            public static IEnumerable<string> Methods<T>(string? contains = null, BindingFlags search = NavigatorCore.Flag) => Methods(typeof(T), contains, search);
+            public static IEnumerable<string> Fields<T>(string? contains = null, BindingFlags search = NavigatorCore.Flag) => Fields(typeof(T), contains, search);
             public static IEnumerable<string> Props(Type t, string? contains = null)
             {
                 Dictionary<string, PropertyInfo> props = new();
                 TypeMap.MapType(null, null, t, props, false);
-                return ReadMembers(props, contains, Navigator.Flag);
+                return ReadMembers(props, contains, NavigatorCore.Flag);
             }
 
-            public static IEnumerable<string> Fields(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
+            public static IEnumerable<string> Fields(Type t, string? contains = null, BindingFlags search = NavigatorCore.Flag)
             {
                 Dictionary<string, FieldInfo> fields = new();
                 TypeMap.MapType(null, fields, t, null, false);
                 return ReadMembers(fields, contains, search);
             }
 
-            public static IEnumerable<string> Methods(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
+            public static IEnumerable<string> Methods(Type t, string? contains = null, BindingFlags search = NavigatorCore.Flag)
             {
                 Dictionary<MethodKey, MethodBase> methods = new();
                 TypeMap.MapType(methods, null, t, null, contains?.EqualsCaseless("new") ?? true);
@@ -330,7 +330,7 @@ namespace XQuinn.Reflection
 
             public static void FlushStaticCache(bool ambiguousMatches, bool accessedMembers, bool reifiedGenerics)
             {
-                Navigator.FlushStaticCache(ambiguousMatches, accessedMembers, reifiedGenerics);
+                NavigatorCore.FlushStaticCache(ambiguousMatches, accessedMembers, reifiedGenerics);
             }
 
             // public static T Cast<T>(object obj)

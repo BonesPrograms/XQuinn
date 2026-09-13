@@ -15,7 +15,7 @@ namespace XQuinn.Runtime
 {
 
 
-    internal sealed class Navigator
+    internal sealed class NavigatorCore
     {
         ///.This is for the DynamicNavigator.
         internal TypeBook? LocalCache;
@@ -35,7 +35,7 @@ namespace XQuinn.Runtime
         public bool Caching = true;
         internal const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
-        public Navigator()
+        public NavigatorCore()
         {
             _parser = new(this);
             _reflector = new(this);
@@ -167,20 +167,17 @@ namespace XQuinn.Runtime
             return t;
         }
 
+
         bool Assignment(string invocation, out object? assignedValue)
         {
             assignedValue = null;
-            string[] assignment = invocation.Split('=');
-            if (assignment.Length == 1)
+            if (!MiniLexer.AssignmentSubstring(invocation, out string? left, out string? right))
                 return false;
-            if (assignment.Length != 2)
-                throw new ArgumentException($"Invalid assignment, can only contain left hand and right hand. Bad assignment: {invocation}");
-
-            string lefthand = assignment[0];
-            string righthand = assignment[1];
+            string lefthand = left!;
+            string righthand = right!;
             string? lefthandTypeName = MiniLexer.ResolveMemberAccess(lefthand, out lefthand, out bool lefthandfield);
             if (!lefthandfield)
-                throw new ArgumentException($"Can only assign to fields. Bad input: {lefthand}");
+                throw new ArgumentException($"Can only assign to fields or properties. Bad input: {lefthand}");
 
             Type lefthandtype;
             object? lefthandInstance;

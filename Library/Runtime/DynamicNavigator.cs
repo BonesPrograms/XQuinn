@@ -34,7 +34,7 @@ namespace XQuinn.Runtime
             }
         }
 
-        readonly Monitor _monitor = new();
+        readonly NavigationFeed _monitor = new();
         public Func<Type, string?> BookDelegate = x => TypeCache.GetCompatibleName(x, false);
         public string? DefaultLoadedTypeName;
         /// <summary>
@@ -97,7 +97,7 @@ namespace XQuinn.Runtime
         {
             if (_box == null) return null;
             _monitor._navigator.Clear();
-            Navigator.FlushStaticCache();
+            NavigatorCore.FlushStaticCache();
             _assembly = null;
             WeakReference monitor = new(_box, trackResurrection: true);
             _box?.Unload();

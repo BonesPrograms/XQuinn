@@ -49,7 +49,7 @@ namespace XQuinn.Private
 
         static void RunNavigator()
         {
-            Monitor monitor = new();
+            NavigationFeed monitor = new();
             while (true)
             {
                 string? msg = Console.ReadLine();

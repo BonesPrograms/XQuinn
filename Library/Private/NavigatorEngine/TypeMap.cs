@@ -1,7 +1,7 @@
 using System;
 using System.Reflection;
 using System.Collections.Generic;
-using static XQuinn.Runtime.Navigator;
+using static XQuinn.Runtime.NavigatorCore;
 using System.Runtime.CompilerServices;
 using XQuinn.Reflection;
 using System.Linq;

@@ -19,7 +19,7 @@ namespace XQuinn.Private.NavigatorEngine
         sealed class Parser : CoreObject
         {
             Invoker _invoker => _navig._invoker;
-            public Parser(Navigator navig) : base(navig)
+            public Parser(NavigatorCore navig) : base(navig)
             {
             }
 
@@ -140,7 +140,7 @@ namespace XQuinn.Private.NavigatorEngine
                 }
                 if (_props.TryGetValue(strng, out PropertyInfo? prop))
                 {
-                    return prop.GetValue(_instance, Navigator.Flag, null, null, null);
+                    return prop.GetValue(_instance, NavigatorCore.Flag, null, null, null);
                 }
                 return value.Parse(paramType);
             }
