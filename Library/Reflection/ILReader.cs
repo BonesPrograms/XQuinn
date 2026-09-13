@@ -5,6 +5,7 @@ using System.Collections.Generic;
 using System.IO;
 using HarmonyLib;
 using System.Text;
+using XQuinn.IO;
 using System.Linq;
 using static XQuinn.Reflection.ByteSizes;
 
@@ -22,7 +23,7 @@ namespace XQuinn.Reflection
     /// <summary>
     /// Converts a method into readable IL instructions. 
     /// </summary>
-    public sealed class ILReader : IDisposable
+    public sealed class ILReader : IOStream
     {
 
         IList<LocalVariableInfo> _localvars = null!;
@@ -37,11 +38,8 @@ namespace XQuinn.Reflection
         const byte PrefixBit = 0xFE;
         Type[]? _generic_method_args;
         Type[]? _generic_type_args;
-
-        readonly StreamWriter _writer;
-        ILReader(string path)
+        ILReader()
         {
-            _writer = new(path);
         }
         public static void PrintIL(MethodBase method, string outputFilePath, bool makeFileIfNotFound)
         {
@@ -53,9 +51,7 @@ namespace XQuinn.Reflection
 
         public static ILReader New(string outputFilePath, bool makeFileIfNotFound)
         {
-            if (makeFileIfNotFound)
-                XQuinn.IO.Logger.SafetyCheck(outputFilePath);
-            ILReader reader = new(outputFilePath);
+            ILReader reader = IOStream.New<ILReader>(new(), outputFilePath, makeFileIfNotFound);
             return reader;
         }
 
@@ -88,34 +84,29 @@ namespace XQuinn.Reflection
         {
             if (_methodbase == null)
                 throw new ArgumentNullException(nameof(_methodbase));
-            _writer.WriteLine("method");
-            _writer.Write("  ");
+            Writer.WriteLine("method");
+            Writer.Write("  ");
             string methodstring;
             if (_methodbase is MethodInfo mthdinfo)
                 methodstring = MetadataPrinter.MethodToString(new(), mthdinfo, true).ToString();
             else
                 methodstring = MetadataPrinter.ConstructorToString(new(), (ConstructorInfo)_methodbase).ToString();
-            _writer.WriteLine($"  {methodstring}");//,maybe should edit the stringbuilder to slip in parameter names
-            _writer.WriteLine("");
+            Writer.WriteLine($"  {methodstring}");//,maybe should edit the stringbuilder to slip in parameter names
+            Writer.WriteLine("");
             //  writer.WriteLine("	.maxstack 1");
-            _writer.WriteLine("Locals");
+            Writer.WriteLine("Locals");
             for (int i = 0; i < _localvars.Count; i++)
             {
                 bool needcomma = For.NeedsDelimiter(_localvars.Count, i);
                 char? comma = needcomma ? ',' : null;
-                _writer.WriteLine($"		[{i}] {_localvars[i].LocalType.Name}{comma}");
+                Writer.WriteLine($"		[{i}] {_localvars[i].LocalType.Name}{comma}");
 
             }
-            _writer.WriteLine("");
+            Writer.WriteLine("");
             List<ByteCode> codes = GetIL();
             foreach (ByteCode code in codes)
-                _writer.WriteLine("	" + code.ToString());
-        }
-
-        public void Dispose()
-        {
-            _writer.Close();
-            GC.SuppressFinalize(this);
+                Writer.WriteLine("	" + code.ToString());
+            Flush();
         }
 
         /// <summary>
@@ -171,7 +162,7 @@ namespace XQuinn.Reflection
             else if (size == x16bit)
                 return LittleEndians.Int16(_il, i);
             else if (size == x32bit)
-            { 
+            {
                 int token;
                 if (type == OperandType.ShortInlineR)
                     return LittleEndians.Float32(_il, i);
@@ -185,7 +176,7 @@ namespace XQuinn.Reflection
             {
                 if (type == OperandType.InlineR)
                     return LittleEndians.Float64(_il, i);
-                return LittleEndians.Int64(_il,i);
+                return LittleEndians.Int64(_il, i);
             }
             throw new InvalidOperationException("OperandSize(OperandType) returned an out-of-range value.");
         }
@@ -273,18 +264,18 @@ namespace XQuinn.Reflection
         readonly int Offset; //this is kind of fucking useless to end users right now, since this isnt really part of some sort of reflection.emit system. emit.label?
         public readonly OpCode OpCode;
         public readonly object? Operand;
-       // public readonly int? Token;
+        // public readonly int? Token;
         internal ByteCode(OpCode opcode, object? operand, int offset)
         {
             Operand = operand;
             OpCode = opcode;
             Offset = offset;
-          //  Token = null;
-           // if (operand is not null and not LocalVariableInfo and not ParameterInfo and not ValueType)
-           // {
-           //     if (token is int integer)
-             //       Token = integer;
-           // }
+            //  Token = null;
+            // if (operand is not null and not LocalVariableInfo and not ParameterInfo and not ValueType)
+            // {
+            //     if (token is int integer)
+            //       Token = integer;
+            // }
 
         }
 

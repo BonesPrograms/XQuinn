@@ -21,6 +21,7 @@ values directly from fields, properties and variables by simply typing the name,
 
 Member access is the primary restriction. Member access must be a TypeName.MemberName pair. For fields and properties that you have implicit access to,
 you can acess their members as if they were a type. IE. PropertyName.Method(). This also works for variables.
+namespaces in type names ex. Namespace.Type.Member will not interfere with this feature.
 
 You do not need to reload the current type or instance to invoke members from outside the current type or instance.
 You can lead with a typename, member name, or variable name, IE. StaticType.Method() or VariableName.Field or FieldName.Method() or FieldName = StaticType.Method() etc
@@ -35,6 +36,8 @@ by value.
 You can also explicitly declare accessing from the current instance using 'this', ie this.fieldname, however this is not usually necessary due to implicit access.
 Note, if you have casted your instance into a base, accessing 'this' will return members from the currently loaded base type, not the instance type.
 
+Furthermore, the values 'default' and 'null' have been included.
+
 Enumerable values are automatically enumerated and printed for your viewing upon return, either from a method, field, property, or this. Variables that store
 enumerable values are not read automatically when returned, they must be loaded as an instance first.
 
@@ -43,6 +46,16 @@ Member access is restricted for method return values. IE. You cannot do Method()
 Methods with in/out/ref parameters and ref returntype are not supported. You cannot yet pass methods as arguments for delegates, but you may be able to later.
 
 Expressions are not supported. You cannot do math, you cannot create lambda expressions, the only available expression is assignment.
+
+Indexers are not supported. You must invoke the backing get_item() method.
+
+You cannot pass methodgroups as parameters for delegate arguments.
+
+Additional Tips:
+
+Enum OR is supported, but avoid placing whitespace. Send values like|this.
+Strings and chars should be declared just like C#.
+Again, nothing is case sensitive.
 
 
 
@@ -63,8 +76,9 @@ Controllers are one character long and must be placed at the beginning of an ins
 - - Remove Variabie: Remove a variable by name. ex. -varName
 
 ~ - Chain Invoke: Chain multiple operations together, including operations with controllers. Each operation is delimited by a ; semicolon.
-	This is done in a sloppier manner compared to everything else - avoid using semicolons in char and string values, or they will be broken up at the semicolon.
- 	Example below.
+	Warning - This is done with a lot less poise than type argument and method parameter analysis.
+    Your chain is split into multiple strings directly at it's semicolons - DO NOT use semicolons in char and string values, or they will be broken up and your
+    invocation will throw an exception.
 
 
 ? - Query: Query the currently loaded type for data. Query cannot be used as part of chains. More information below.
@@ -87,14 +101,25 @@ When an enumerable value is returned as part of an invocation in a chain, it is 
 
 
 
-Using the Navigator: Overloads/Query
+Using the Navigator: Constructors/Overloads/Query
 
 Method overloads are resolved with alternative names, due to lack of implicit overload resolution in the system.
+Constructors are treated as overload methods named new. Constructors are called like static methods.
+ie. Class<int>.new()
+
+Overload keys are given a tag with a number. It will resemble this
+
+key      value
+Method:1 void Method()
+Methox:2 void Method(int)
+
+Use these custom keys to access specific overloads.
+
 To view a type's resolved method names you have two options, one being Query:
 
 Query:
 
-Query has four possible options. "fields", "props"/"properties" and "methods". You can also insert a string, and query checks if the member's name contains that string.
+Query has four possible options. "fields", "props" and "methods". You can also insert a string, and query checks if the member's name contains that string.
 The fourth option is "vars" or "variables", which returns a list of the currently stored variables. Variables cannot be searched using contains, they are all printed
 on query.
 Format for ?Query is as follows:
@@ -102,9 +127,9 @@ Format for ?Query is as follows:
 
 There are also helper query methods, which you will read more about below, in the static class "Types":
 
-Fields<T>(string,BindingFlags), Methods<T>(string,BindingFlags) and Properties<T>(string)
+Fields<T>(string,BindingFlags), Methods<T>(string,BindingFlags) and Props<T>(string)
 with nongeneric alternatives
-Fields(Type,string,BindingFlags), Methods(Type,string,BindingFlags), Properties(Type,string)
+Fields(Type,string,BindingFlags), Methods(Type,string,BindingFlags), Props(Type,string)
 
 You can pass a "containing" string just like ?Query, in addition, for methods and fields,
 you can use BindingFlags to insert search options, such as instance, static, public, nonpublic, flattenhierarchy, or declared only.
@@ -122,12 +147,12 @@ Using the Navigator: Helper Class - Types
 The Navigator comes with a static helper class called Types. It provides various methods, including the previously
 mentioned alternative/static query methods. Here is a list of Types' additional helper methods:
 
-Of(string) and Of<T> - return a type object, either with a key matching the string, or typeof(T)
+Of<T> and Of(string) - return a type object, either with a key matching the string, or typeof(T). String variant is mainly for obtaining generic definitions
 Struct<T>(T) - return an unmanaged struct == the parameter values
 Enum<T>(T) - return an enum value == the parameter values
 String(string) - return a string == the parameter values
 Array<T>(params T[]) and Array<T>(int) - create an array using params, or create a presized array
-LateCache(string assemblyName, string targetTypeName, string keyForCache) - If you forgot to cache a specific type, you can cache it at runtime. Requires full type name with naemspace.
+LateCache overloads - Cache a specific type from an assembly by type name.
 
 There are various other classes pre-cached which can be viewed in the TypeCache itself.
 
@@ -148,11 +173,12 @@ If you return a null key using this delegate, the paired type will be skipped an
 
 If you are using your own custom cache names, it is recommended that you first use TypeCache.GetCompatibleName(Type,bool) before appending any
 extra data to your customized name. Type names have specific rules:
-you should follow the exact same naming rules for class names as you would in normal C#. The system supports namespaces in names as well.
+you should follow the exact same naming rules for class names as you would in normal C#. 
+If you are curious on the specific rules, check out TypeCache.ThrowIfBadKey(string).
 
-Note: Do not attempt to create string keys such as "Class<T>". The system internally handles generic arguments separately outisde of the string key. 
+Note: Do not attempt to create string keys such as "Class<T>" for generic definitions. The system internally handles generic arguments separately outisde of the string key. 
 Class<T> should be cached with string key "Class", it will not cause conflicts with a nongeneric "Class" of the same name, 
 or other generic types with the same name and a different number of args.
-If you are curious on the specific rules, check out TypeCache.ThrowIfBadKey(string)
+
 
 

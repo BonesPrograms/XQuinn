@@ -29,6 +29,8 @@ the IDE won't do that automatically, it is manual. Also, if you're calling the b
 
 MAJOR NOTE: Covariant return types do not work on Net Standard 2.0 (This may not be true I heard it from AI, verify later)
 
+Arrays support covariance in parameters! MethodBase[] works for a MethodInfo[]
+
 
 Ref:
 I made the mistake of passing a null local variable to a method and then assigning to it within that method, expecting it to assign the value to the variable in the original method
@@ -66,3 +68,128 @@ you need to cast it to object, then T
 
 
 If an IEnumerables underlying type is an ICollection, Count() is optimized
+
+
+
+
+
+    internal readonly struct GenericKey : IEquatable<GenericKey>
+    {
+
+        static readonly Dictionary<long,string> _ids = new();
+        public string Key => _ids[_id];
+        public readonly int Args;
+        readonly long _id;
+        public static GenericKey TypeQuery(string typename)
+        {
+            if (GenericString.HasTypeArgs(typename))
+            {
+                TypeString query = TypeString.NewGeneric(typename);
+                GenericKey key = new(query);
+                return key;
+            }
+            return new(typename);
+        }
+
+        static long IDGenerator(string key)
+        {
+            long ID = long.MinValue;
+            for(int i = 0; i < key.Length; i++)
+            {
+                char c = Normalize(key[i]);
+                ID += c;
+            }
+            return ID;
+        }
+
+        //  public static TypeKey Generate(Type t) => new(GetCompatibleName(t, false), t);
+
+        public GenericKey(MethodString m) : this(m.NameOrValue, m.Generics.Count)
+        {
+
+        }
+
+        public GenericKey(string key, MethodBase m) : this(key, m.IsGenericMethodDefinition ? m.GetGenericArguments().Length : 0)
+        {
+        }
+
+        public GenericKey(string key, int args = 0)
+        {
+            _id = IDGenerator(key);
+            Args = args;
+            _ids[_id] = key;
+        }
+
+        public GenericKey(string key, Type t) : this(key, t.IsGenericTypeDefinition ? t.GetGenericArguments().Length : 0)
+        {
+        }
+
+
+        internal GenericKey(TypeString str) : this(str.NameOrValue, str.Generics.Count)
+        {
+        }
+
+        bool IEquatable<GenericKey>.Equals(GenericKey other)
+        {
+            return Equals(other);
+        }
+
+        public override bool Equals(object? obj)
+        {
+            return obj is GenericKey key && Equals(key);
+        }
+
+        public bool Equals(GenericKey key)
+        {
+            return Args == key.Args && _id == key._id;
+        }
+
+        public override int GetHashCode()
+        {
+            int hash = 17;
+            unchecked
+            {
+                hash = hash * 23 + _id.GetHashCode();//StringComparer.OrdinalIgnoreCase.GetHashCode(_id);
+                hash = hash * 23 + Args.GetHashCode();
+            }
+            return hash;
+        }
+
+        public static bool operator ==(GenericKey left, GenericKey right)
+        {
+            return left.Equals(right);
+        }
+
+        public static bool operator !=(GenericKey left, GenericKey right)
+        {
+            return !(left == right);
+        }
+
+        internal string ArgsToString(StringBuilder sb)
+        {
+            sb.Append("<T1, ");
+            for (int i = 1; i < Args; i++)
+            {
+                sb.Append($"T{i + 1}");
+                if (For.NeedsDelimiter(Args, i))
+                    sb.Append(", ");
+            }
+            sb.Append('>');
+            return sb.ToString();
+        }
+
+        static char Normalize(char c) => c is >= 'a' and <= 'z' ? (char)(c - ('a' - 'A')) : c;
+
+        public override string ToString()
+        {
+            if (Args > 0)
+            {
+                if (Args == 1)
+                    return $"{_id}<T>";
+               return ArgsToString(new(_ids[_id]));
+
+            }
+            return _ids[_id];
+        }
+
+    }

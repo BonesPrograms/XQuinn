@@ -13,6 +13,7 @@ using XQuinn.ObjectModel;
 using System.Runtime.CompilerServices;
 using System.Linq;
 using XQuinn.CodeAnalysis.AST;
+using XQuinn.Private.NavigatorEngine;
 
 
 namespace XQuinn.Reflection
@@ -122,6 +123,7 @@ namespace XQuinn.Reflection
 
         };
 
+        readonly static string[] _illegalKeys = new string[] { "null", "default", "base", "this" };
 
         static TypeCache()
         {
@@ -252,8 +254,9 @@ namespace XQuinn.Reflection
                 throw new ArgumentException($"Keys cannot begin with a period. Bad Key {key}");
             bool accessor = false;
             // int? skip = null;
-            if (key.EqualsCaseless("base") || key.EqualsCaseless("this"))
-                throw new ArgumentException($"This key is restricted and cannot be registered. Bad Key {key}.");
+            for (int i = 0; i < _illegalKeys.Length; i++)
+                if (_illegalKeys[i].EqualsCaseless(key))
+                    throw new ArgumentException($"This key is restricted and cannot be registered. Bad Key {key}.");
             // if (key.Length >= 2)
             // {
 
@@ -298,47 +301,30 @@ namespace XQuinn.Reflection
         }
 
 
-
-        /// <summary>
-        /// Make a nested or generic name compatible with the cache.
-        /// </summary>
-        /// <param name="type"></param>
-        /// <param name="fullname"></param>
-        /// <param name="snipgenerics"></param>
-        /// <returns></returns>
-
-
-
         static class Types
         {
-            public static IEnumerable<string> Fields<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Fields(typeof(T), contains, search);
+            public static IEnumerable<string> Props<T>(string? contains = null) => Props(typeof(T), contains);
             public static IEnumerable<string> Methods<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Methods(typeof(T), contains, search);
-            public static IEnumerable<string> Properties<T>(string? contains = null) => Properties(typeof(T), contains);
-
-            ///Send GetType as your Type Parameter if your instance's type is not in the cache
-            /// 
-            public static IEnumerable<string> Properties(Type t, string? contains = null)//BindingFlags search = Navigator.Flag)
+            public static IEnumerable<string> Fields<T>(string? contains = null, BindingFlags search = Navigator.Flag) => Fields(typeof(T), contains, search);
+            public static IEnumerable<string> Props(Type t, string? contains = null)
             {
-                IEnumerable<KeyValuePair<string, PropertyInfo>> props = Selection(t.GetProperties(Navigator.Flag));
+                Dictionary<string, PropertyInfo> props = new();
+                TypeMap.MapType(null, null, t, props, false);
                 return ReadMembers(props, contains, Navigator.Flag);
             }
+
             public static IEnumerable<string> Fields(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
             {
-                IEnumerable<KeyValuePair<string, FieldInfo>> fields = Selection(t.GetFields(Navigator.Flag));
+                Dictionary<string, FieldInfo> fields = new();
+                TypeMap.MapType(null, fields, t, null, false);
                 return ReadMembers(fields, contains, search);
             }
 
             public static IEnumerable<string> Methods(Type t, string? contains = null, BindingFlags search = Navigator.Flag)
             {
-                Dictionary<Navigator.MethodKey, MethodBase> methods = new();
-                Navigator.MapType(methods, null, t, null, contains?.EqualsCaseless("new") ?? true);
+                Dictionary<MethodKey, MethodBase> methods = new();
+                TypeMap.MapType(methods, null, t, null, contains?.EqualsCaseless("new") ?? true);
                 return ReadMembers(methods, contains, search);
-            }
-
-            static IEnumerable<KeyValuePair<string, T>> Selection<T>(T[] arr) where T : MemberInfo
-            {
-                foreach (T obj in arr)
-                    yield return new(obj.Name, obj);
             }
 
 
@@ -358,26 +344,21 @@ namespace XQuinn.Reflection
             public static string String(string txt) => txt; //only way to instantiate an isolated new string using the navigator
             public static T[] Array<T>(params T[] arr) => arr.Length == 0 ? System.Array.Empty<T>() : arr;
             public static T[] Array<T>(int i) => i == 0 ? System.Array.Empty<T>() : new T[i];
+            // public static bool LateCache(Type type, string keyForCaching)
+            // {
+            //     return CacheType(type, keyForCaching);
+            // }
             public static bool LateCache(string assemblyName, string targetTypeName, string keyForCaching)
             {
                 Assembly assembly = Assembly.Load(assemblyName);
-                Type targetType = assembly.GetType(targetTypeName, false, true) ?? throw new ArgumentException($"No type found in assembly {assembly.FullName} named {targetTypeName}. Requires full name.");
-                return CacheType(targetType, keyForCaching);
+                return LateCache(assembly, targetTypeName, keyForCaching);
 
             }
-            // public static bool LateCache<T>(string targetTypeName, string keyForCaching)
-            // {
-            //     return LateCache(typeof(T), targetTypeName, keyForCaching);
-            // }
-            // public static bool LateCache(Type cachedType, string targetTypeName, string keyForCaching)
-            // {
-            //     return LateCache(cachedType.Assembly, targetTypeName, keyForCaching);
-            // }
-            // public static bool LateCache(Assembly assembly, string targetTypeName, string keyForCaching)
-            // {
-            //     Type targetType = assembly.GetType(targetTypeName, false, true) ?? throw new ArgumentException($"No type found in assembly {assembly.FullName} named {targetTypeName}. Requires full name.");
-            //     return CacheType(keyForCaching, targetType);
-            // }
+            public static bool LateCache(Assembly assembly, string targetTypeName, string keyForCaching)
+            {
+                Type targetType = assembly.GetType(targetTypeName, false, true) ?? throw new ArgumentException($"No type found in assembly {assembly.FullName} named {targetTypeName}. Requires full name.");
+                return CacheType(targetType, keyForCaching);
+            }
 
             static IEnumerable<string> ReadMembers<K, V>(IEnumerable<KeyValuePair<K, V>> members, string? key, BindingFlags flags) where V : MemberInfo
             {
@@ -471,47 +452,6 @@ namespace XQuinn.Reflection
             }
 
         }
-        // static class ArrayGen
-        // {
-
-        //     // public static T[] New<T>(params T[] arr) => arr;
-
-        //     // public static T[] New<T>(int i) => new T[i];
-
-        //     // public static bool GenerateCachedArray<T>(string name)
-        //     // {
-        //     //     return GenerateCachedArray(typeof(T[]), name);
-        //     // }
-        //     // public static bool GenerateCachedArray(Type t, string name)
-        //     // {
-        //     //     Type array = t.IsArray ? t : t.MakeArrayType();
-        //     //     return TypeCache.CacheType(name, array);
-
-        //     }
-
-        //     // public static string GenerateCachedArray<T>(bool fullname)
-        //     // {
-        //     //     return GenerateCachedArray(typeof(T[]), fullname);
-        //     // }
-        //     //Just put your own name for now
-        //     // public static string GenerateCachedArray(Type t, bool fullname)
-        //     // {
-        //     //     Type array = t.IsArray ? t : t.MakeArrayType();
-        //     //     string name;
-        //     //     if (t.IsArray)
-        //     //     {
-        //     //         Type underlying = t.GetElementType()!;
-        //     //         name = $"{TypeCache.GetCompatibleName(underlying, fullname)}[]";
-        //     //     }
-        //     //     else name = $"{TypeCache.GetCompatibleName(t, fullname)}[]";
-        //     //     TypeCache.CacheType(name, array);
-        //     //     return name;
-        //     // }
-
-        // }
-
-
-
         abstract class _
         {
             _()

@@ -77,7 +77,7 @@ namespace XQuinn.CodeAnalysis.AST
                 if (EnumNet20.TryParse(NameOrValue.Replace('|', ','), asType, true, out Enum? @enum))
                     return @enum;
             }
-            else if (asType.IsPrimitive || asType == typeof(object) || asType == typeof(decimal))
+            else if (asType.IsPrimitive || AsObjectOr<decimal>(asType))
             {
                 if (ParsePrimitive(asType, out object? primitive))
                     return primitive;
@@ -254,8 +254,8 @@ namespace XQuinn.CodeAnalysis.AST
     internal abstract class GenericString : ParameterString
     {
 
-        public string NameWithGenerics => _fullname;
-        string _fullname;
+        public string StringID => _id;
+        string _id;
         public IReadOnlyList<TypeString> Generics
         {
             get
@@ -264,24 +264,23 @@ namespace XQuinn.CodeAnalysis.AST
             }
         }
         List<TypeString>? _type_args;
-        protected GenericString(string nameForSnipping) : base(nameForSnipping)
+        protected GenericString(string name) : base(name)
         {
-            _fullname = nameForSnipping;
+            _id = name;
         }
         protected static T New<T>(T genericString) where T : GenericString
         {
             if (HasTypeArgs(genericString.NameOrValue))
-                genericString.UpdateForGenerics();
+                genericString.UpdateGenericArgs();
             return genericString;
         }
 
-        protected void UpdateForGenerics()
+        protected void UpdateGenericArgs()
         {
             StringBuilder sb = new();
             LexGenerics(sb);
             sb.Length = 0;
-            // if (this is MethodString)
-            PrintTypeArgs(sb);
+            GenericID(sb);
         }
 
         internal static bool HasTypeArgs(string NameOrValue)
@@ -319,15 +318,15 @@ namespace XQuinn.CodeAnalysis.AST
         {
             GenericString currentGeneric = this;
             bool finishedReadingLeadName = false;
-            for (int i = 0; i < _fullname.Length; i++) //this ones a lot simpler doesnt have smart whitespace skipping and doesnt actually check for context like
+            for (int i = 0; i < _id.Length; i++) //this ones a lot simpler doesnt have smart whitespace skipping and doesnt actually check for context like
             {                                           //whether or not its reading a proper identifier and not 83528474
-                char c = _fullname[i];                  //kinda busted it out quickly so it will allow things that the invocationlexer would throw for
+                char c = _id[i];                  //kinda busted it out quickly so it will allow things that the invocationlexer would throw for
                 if (c == ' ')
                     continue;                 //like collecting < s t r i n g> into string or allowing impossible names to lex
                 if (c == '<')
                 {
                     if (finishedReadingLeadName)
-                        currentGeneric = currentGeneric.AddTypeArg(sb);
+                        currentGeneric = currentGeneric.NewArg(sb);
                     else
                     {
                         currentGeneric.NameOrValue = sb.ToString();
@@ -339,7 +338,7 @@ namespace XQuinn.CodeAnalysis.AST
                 {
                     if (sb.Length > 0)
                     {
-                        currentGeneric.AddTypeArg(sb);
+                        currentGeneric.NewArg(sb);
                         if (currentGeneric != this)
                         {
                             TypeString currentArg = (TypeString)currentGeneric;
@@ -352,13 +351,13 @@ namespace XQuinn.CodeAnalysis.AST
                 else if (c == ',')
                 {
                     if (sb.Length > 0)
-                        currentGeneric.AddTypeArg(sb);
+                        currentGeneric.NewArg(sb);
                 }
                 else sb.Append(c);
             }
         }
 
-        TypeString AddTypeArg(StringBuilder sb)
+        TypeString NewArg(StringBuilder sb)
         {
             string name = sb.ToString();
             sb.Length = 0;
@@ -371,16 +370,16 @@ namespace XQuinn.CodeAnalysis.AST
 
         public override string ToString()
         {
-            return _fullname;
+            return _id;
         }
 
-        void PrintTypeArgs(StringBuilder sb)
+        void GenericID(StringBuilder sb)
         {
             sb.Append(NameOrValue);
             sb.Append('<');
             sb.AppendMany(Generics, ",");
             sb.Append('>');
-            _fullname = sb.ToString();
+            _id = sb.ToString();
         }
 
 
@@ -388,14 +387,14 @@ namespace XQuinn.CodeAnalysis.AST
 
     }
 
-    internal sealed class TypeString : GenericString, IEquatable<TypeString>
+    internal sealed class TypeString : GenericString//, IEquatable<TypeString>
     {
 
         internal static readonly TypeString s_this = new("this");
 
         internal readonly GenericString? _typeArgOf; //mostly used for generic lexing, not really necessary to be exposed right now
         //(kind of like paramOf)
-        internal TypeString(string nameForSnipping, GenericString? typeArgOf = null) : base(nameForSnipping.Trim())
+        internal TypeString(string name, GenericString? typeArgOf = null) : base(name.Trim())
         {
             _typeArgOf = typeArgOf;
         }
@@ -413,50 +412,50 @@ namespace XQuinn.CodeAnalysis.AST
         internal static TypeString NewGeneric(string name)
         {
             TypeString tstring = new(name);
-            tstring.UpdateForGenerics();
+            tstring.UpdateGenericArgs();
             return tstring;
         }
 
-        bool IEquatable<TypeString>.Equals(TypeString? other)
-        {
-            return Equals(other);
-        }
+        // bool IEquatable<TypeString>.Equals(TypeString? other)
+        // {
+        //     return Equals(other);
+        // }
 
-        public override bool Equals(object? obj)
-        {
-            return obj is TypeString t && Equals(t);
-        }
+        // public override bool Equals(object? obj)
+        // {
+        //     return obj is TypeString t && Equals(t);
+        // }
 
-        public bool Equals(TypeString? compareTo)
-        {
-            if (compareTo == null)
-                return false;
-            if (compareTo.Generics.Count != Generics.Count)
-                return false;
-            if (!compareTo.NameOrValue.EqualsCaseless(NameOrValue))
-                return false;
-            for (int i = 0; i < Generics.Count; i++)
-            {
-                TypeString myArg = Generics[i];
-                TypeString theirArg = compareTo.Generics[i];
-                if (!myArg.Equals(theirArg))
-                    return false;
-            }
-            return true;
-        }
+        // public bool Equals(TypeString? compareTo)
+        // {
+        //     if (compareTo == null)
+        //         return false;
+        //     if (compareTo.Generics.Count != Generics.Count)
+        //         return false;
+        //     if (!compareTo.NameOrValue.EqualsCaseless(NameOrValue))
+        //         return false;
+        //     for (int i = 0; i < Generics.Count; i++)
+        //     {
+        //         TypeString myArg = Generics[i];
+        //         TypeString theirArg = compareTo.Generics[i];
+        //         if (!myArg.Equals(theirArg))
+        //             return false;
+        //     }
+        //     return true;
+        // }
 
-        public override int GetHashCode()
-        {
-            int hash = 17;
-            unchecked
-            {
-                hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(NameOrValue);
-                hash = hash * 31 + Generics.Count.GetHashCode();
-                foreach (TypeString arg in Generics)
-                    hash = hash * 31 + arg.GetHashCode();
-            }
-            return hash;
-        }
+        // public override int GetHashCode()
+        // {
+        //     int hash = 17;
+        //     unchecked
+        //     {
+        //         hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(NameOrValue);
+        //         hash = hash * 31 + Generics.Count.GetHashCode();
+        //         foreach (TypeString arg in Generics)
+        //             hash = hash * 31 + arg.GetHashCode();
+        //     }
+        //     return hash;
+        // }
     }
     internal sealed class MethodString : GenericString, IMemberString
     {
@@ -503,7 +502,7 @@ namespace XQuinn.CodeAnalysis.AST
 
         void ParamStringShort(StringBuilder sb)
         {
-            sb.Append(NameWithGenerics);
+            sb.Append(StringID);
             sb.Append("( ");
             AppendParams(sb);
             sb.Append(" )");
@@ -529,11 +528,11 @@ namespace XQuinn.CodeAnalysis.AST
         public override string ToString()
         {
             StringBuilder sb = new();
-            sb.Append(NameWithGenerics);
+            sb.Append(StringID);
             sb.Append($" :: Nested in ");
             _subParamOf?.ParamStringShort(sb);
             sb.Append(" :: ");
-            sb.Append($"TypeName {DeclaringType.NameWithGenerics} :: ");
+            sb.Append($"TypeName {DeclaringType.StringID} :: ");
             sb.Append("Params: ");
             if (Params.Count > 0) AppendParams(sb);
             return sb.ToString();

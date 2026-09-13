@@ -26,12 +26,6 @@ namespace XQuinn.Reflection
             return new(typename);
         }
 
-        //  public static TypeKey Generate(Type t) => new(GetCompatibleName(t, false), t);
-
-        public GenericKey(MethodString m) : this(m.NameOrValue, m.Generics.Count)
-        {
-
-        }
 
         public GenericKey(string key, MethodBase m) : this(key, m.IsGenericMethodDefinition ? m.GetGenericArguments().Length : 0)
         {
@@ -100,8 +94,6 @@ namespace XQuinn.Reflection
             sb.Append('>');
             return sb.ToString();
         }
-
-        static char Normalize(char c) => c is >= 'a' and <= 'z' ? (char)(c - ('a' - 'A')) : c;
 
         public override string ToString()
         {

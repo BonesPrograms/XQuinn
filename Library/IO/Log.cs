@@ -5,24 +5,15 @@ using System.Text;
 namespace XQuinn.IO
 {
 
-    public sealed class Logger : IDisposable
+    public sealed class Logger : IOStream
     {
         readonly StringBuilder sb = new();
-        public readonly StreamWriter Writer;
-
-        //    static readonly object _lock = new();
-        Logger(string path)
+        Logger()
         {
-            Writer = new(path, true)
-            {
-                AutoFlush = true
-            };
         }
         public static Logger New(string path, bool safe)
         {
-            if (safe)
-                SafetyCheck(path);
-            Logger logger = new(path);
+            Logger logger = New<Logger>(new(), path, safe);
             logger.Log("Begin Log", 4, 2);
             return logger;
         }
@@ -35,32 +26,13 @@ namespace XQuinn.IO
                 sb.Append(Environment.NewLine);
             Writer.WriteLine(sb);
             sb.Length = 0;
-        }
-
-        public void Dispose()
-        {
-            Writer.Close();
-            GC.SuppressFinalize(this);
+            Flush();
         }
 
 
 
 
-        public static void SafetyCheck(string path)
-        {
-            if (string.IsNullOrWhiteSpace(path))
-                throw new ArgumentException("Pah cannot be null or whitespace.");
-            string? dir = Path.GetDirectoryName(path);
-            if (string.IsNullOrWhiteSpace(dir))
-                throw new ArgumentException("Unable to get directory name.");
-            if (!Directory.Exists(dir))
-                Directory.CreateDirectory(dir);
-            if (!File.Exists(path))
-            {
-                using FileStream fs = File.Create(path);
-            }
 
-        }
     }
 
 }

@@ -5,67 +5,29 @@ using System.Text;
 using System.Reflection;
 using XQuinn.Reflection;
 using System.IO;
+using XQuinn.IO;
 
 
 namespace XQuinn.ObjectModel
 {
 
 
-
-
-    //This does not read through the fields of GameObject types because fields like Zone and Cell will DESTROY the console
-    //Instead GameObject Scanner is used when a GameObject is detected as a field in a component
-    //GameObject elements in Collections are read "shallow" to avoid clogging console
-
-    //If you want to read a part from a GameObject that only exists as a field in your component, you will need to instance this class in code
-    //and pass the desired part from your GameObject field
-    //such as mutation equipment
-
-    //In the future I may add a way for you to name the field and one of its parts so that it can be read, but for now this is what you get
-
-    //You can use "ReadClass" arbitrarily, you can send any type through the scanner, even if it is not an IComponent<GameObject>
-    //but you will have to do that in code
-
-    //Parts like Body, Brain and Physics cannot be completely read, because it would become very unreadable
-    //Declared fields will be read, but as member access chains increase, object information will be skipped
-    //If you want to read specific details like that, you need to instance this type in code
-
-    //LoopLimit can be null - will stop reading at System.Object
-    //if reading a component in code, should mark this as typeof(IPart) or typeof(Effect) otherwise you will read the parentobject and it will clog console
-
-    //Note - "cameFromReferenceType" should actually say "cameFromClassOrStruct", it is for reading classes or nonprimitive structs, i am just too lazy
-    //to rename it (this used to not support reading nonprimitive structs because i never used a struct before wehn i wrote this and forgot i need to be able
-    //to read them lol)
-
-    //Note it should not say Custom Type, we should add some properties to the Object class that clarifies if this is a class or struct
-    //And then we can use that info to print the string "class" or "struct" instead of Custom Type
-
-    public sealed class InstanceReader : IDisposable
+    public sealed class InstanceReader : IOStream
     {
-        public void Dispose()
-        {
-            _writer.Close();
-            GC.SuppressFinalize(this);
-        }
-
-        void Write(string txt) => _writer.WriteLine(txt); //rewrote the code to use a streamwriter and im lazy, method was already called "Write"
-
-        public Type LoopLimit;
-        readonly StreamWriter _writer = null!;
+        void Write(string txt) => Writer.WriteLine(txt); //rewrote the code to use a streamwriter and im lazy, method was already called "Write"
+        public Type LoopLimit = null!;
         const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.Static;
         //loops through all base types so its declared only, but "source type" is tracked (the inheritor at the very end) if its a Field
 
-        InstanceReader(string path, Type? loopLimit = null)
+        InstanceReader()
         {
-            LoopLimit = loopLimit ?? typeof(object);
-            _writer = new(path);
-
+            
         }
         public static InstanceReader New(string outputFilePath, bool makeFileIfNotFound, Type? loopLimit = null)
         {
-            if (makeFileIfNotFound)
-                IO.Logger.SafetyCheck(outputFilePath);
-            return new(outputFilePath, loopLimit);
+            InstanceReader reader = New<InstanceReader>(new(), outputFilePath, makeFileIfNotFound);
+            reader.LoopLimit ??= typeof(object);
+            return reader;
         }
 
         public static void Read(string outputFilePath, bool makeFileIfNotFound, object instance, Type? loopLimit = null)
@@ -83,6 +45,7 @@ namespace XQuinn.ObjectModel
             Write(msg);
             Skip(2);
             ReadClass(LoopLimit, instance);
+            Flush();
         }
 
         //For overriding in inheritors incase you want to give a specific type a custom read (for example, a qud gameobject, since a normal read would be uninformative)
