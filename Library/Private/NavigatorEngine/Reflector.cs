@@ -107,19 +107,15 @@ namespace XQuinn.Private.NavigatorEngine
             readonly MemberInfo _member;
             public readonly Type MemberType;
 
-            AssignableMember(MemberInfo member, Type memberType)
+            internal AssignableMember(MemberInfo member)
             {
                 _member = member;
-                MemberType = memberType;
-            }
-            public static AssignableMember New(MemberInfo member)
-            {
-                if (member is PropertyInfo prop)
-                    return new(prop, prop.PropertyType);
-                if (member is FieldInfo field)
-                    return new(field, field.FieldType);
+                if(member is PropertyInfo p)
+                MemberType = p.PropertyType;
+                else if (member is FieldInfo f)
+                MemberType = f.FieldType;
+                else
                 throw new NotSupportedException();
-
             }
             public readonly void SetValue(object? instance, object? value)
             {

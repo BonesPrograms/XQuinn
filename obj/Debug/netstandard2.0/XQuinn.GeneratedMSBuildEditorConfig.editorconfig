@@ -1,6 +1,6 @@
 is_global = true
 build_property.RootNamespace = XQuinn
-build_property.ProjectDir = C:\Users\user\Desktop\C#Lab\XQuinnLib\
+build_property.ProjectDir = C:\Users\Devin\Desktop\xqulib\XQuinn\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
 build_property.CsWinRTUseWindowsUIXamlProjections = false

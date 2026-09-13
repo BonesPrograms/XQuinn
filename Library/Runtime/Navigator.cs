@@ -202,11 +202,11 @@ namespace XQuinn.Runtime
             Reflector.AssignableMember assigningTo;
             FieldInfo? field = lefthandtype.GetField(lefthand, Flag);// ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
             if (field != null)
-                assigningTo = Reflector.AssignableMember.New(field);
+                assigningTo = new Reflector.AssignableMember(field);
             else
             {
                 PropertyInfo? prop = lefthandtype.GetProperty(lefthand, Flag) ?? throw new MissingMemberException($"No field or property found named {lefthand} in {lefthandtype}.");
-                assigningTo = Reflector.AssignableMember.New(prop);
+                assigningTo = new Reflector.AssignableMember(prop);
             }
             string? righthandTypeName = MiniLexer.ResolveMemberAccess(righthand, out righthand, out bool righthandfield);// ?? _key ?? throw new ArgumentException("No type loaded for implicit access on righthand side.");
             if (righthandTypeName != null)
