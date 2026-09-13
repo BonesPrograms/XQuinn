@@ -22,7 +22,7 @@ namespace XQuinn.Private.NavigatorEngine
 
         Parser _parser => _navig._parser;
 
-        public Invoker(Navigator navig) : base(navig)
+        public Invoker(NavigatorCore navig) : base(navig)
         {
 
         }
@@ -49,15 +49,15 @@ namespace XQuinn.Private.NavigatorEngine
             }
             else if (fieldOrProp == null)
             {
-                PropertyInfo getprop = fromType.GetProperty(fname, Navigator.Flag);
-                if (getprop.GetIndexParameters().Length > 0)
+                PropertyInfo? getprop = fromType.GetProperty(fname, NavigatorCore.Flag);
+                if (getprop?.GetIndexParameters().Length > 0)
                     throw new NotSupportedException("Indexers must be invoked using their backing method.");
                 fieldOrProp = getprop;
             }
             if (fieldOrProp is PropertyInfo prop)
             {
                 CacheMember(typeCached, memberCached, fromType, fieldOrProp, fieldstring.NameOrValue);
-                ret = prop.GetValue(TargetInstance(fromType, variable), Navigator.Flag, null, null, null);
+                ret = prop.GetValue(TargetInstance(fromType, variable), NavigatorCore.Flag, null, null, null);
                 return true;
             }
             return false;
@@ -72,7 +72,7 @@ namespace XQuinn.Private.NavigatorEngine
                     fieldOrProp = fieldMember;
             }
             else if (fieldOrProp == null)
-                fieldOrProp = fromType.GetField(fname, Navigator.Flag);
+                fieldOrProp = fromType.GetField(fname, NavigatorCore.Flag);
             if (fieldOrProp is FieldInfo field)
             {
                 CacheMember(typeCached, memberCached, fromType, fieldOrProp, fieldstring.NameOrValue);
@@ -103,7 +103,7 @@ namespace XQuinn.Private.NavigatorEngine
                 {
                     try
                     {
-                        call = fromType.GetMethod(mthdString.NameOrValue, Navigator.Flag);
+                        call = fromType.GetMethod(mthdString.NameOrValue, NavigatorCore.Flag);
                     }
                     catch (AmbiguousMatchException)
                     {

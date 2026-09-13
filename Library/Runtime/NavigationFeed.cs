@@ -13,28 +13,28 @@ namespace XQuinn.Runtime
     /// <summary>
     /// Monitor the output, activity and exceptions of a Navigator instance via strings.
     /// </summary>
-    public sealed class Monitor
+    public sealed class NavigationFeed
     {
         public bool Caching
         {
             get => _navigator.Caching;
             set => _navigator.Caching = value;
         }
-        readonly StringBuilder _sb = new();
+        readonly StringBuilder _feed = new();
         readonly StringBuilder _collectionWriter = new();
-        internal Navigator _navigator = new();
+        internal NavigatorCore _navigator = new();
 
-        public Monitor()
+        public NavigationFeed()
         {
         }
-        public Monitor(bool caching)
+        public NavigationFeed(bool caching)
         {
             Caching = caching;
         }
 
         public string SafeInterface(string input, out object? interpretereReturned, out bool exception)
         {
-            _sb.Length = 0;
+            _feed.Length = 0;
             exception = false;
             interpretereReturned = null;
             string output;
@@ -44,10 +44,10 @@ namespace XQuinn.Runtime
             }
             catch (Exception ex)
             {
-                _sb.Length = 0;
-                _sb.CatchException(ex);
-                output = _sb.ToString();
-                _sb.Length = 0;
+                _feed.Length = 0;
+                _feed.CatchException(ex);
+                output = _feed.ToString();
+                _feed.Length = 0;
                 exception = true;
             }
             return output;
@@ -55,28 +55,28 @@ namespace XQuinn.Runtime
         string Interface(string input, out object? navigReturnValue)
         {
             navigReturnValue = null;
-            _sb.AppendLine($"{Environment.NewLine}{DateTime.Now}");
+            _feed.AppendLine($"{Environment.NewLine}{DateTime.Now}");
             if (input.Length != 0 && input[0] == '?')
                 return Question(input.Substring(1));
-            _sb.AppendLine($"Invoking : {input}");
+            _feed.AppendLine($"Invoking : {input}");
             navigReturnValue = _navigator.Interface(input);
             ProcessReturn(navigReturnValue);
             AppendNavigData();
-            string output = _sb.ToString();
-            _sb.Length = 0;
+            string output = _feed.ToString();
+            _feed.Length = 0;
             return output;
         }
 
         void ProcessReturn(object? ret)
         {
-            var c = _sb[1];
+            var c = _feed[1];
             if (ret is IEnumerable enumerable and not string)
             {
-                _sb.AppendLine($"Returned: \n{_collectionWriter.AppendMany(enumerable, Environment.NewLine, true)}");
+                _feed.AppendLine($"Returned: \n{_collectionWriter.AppendMany(enumerable, Environment.NewLine, true)}");
                 _collectionWriter.Length = 0;
             }
             else
-                _sb.AppendLine($"Returned: {ret?.ToString() ?? "null"}");
+                _feed.AppendLine($"Returned: {ret?.ToString() ?? "null"}");
         }
 
         string Question(string input)
@@ -126,10 +126,10 @@ namespace XQuinn.Runtime
         {
             if (!collection.Any())
                 return $"No {kind} found.";
-            _sb.AppendLine($"Printing {kind}.");
-            _sb.AppendMany(collection, Environment.NewLine, false, toString);
-            string output = _sb.ToString();
-            _sb.Length = 0;
+            _feed.AppendLine($"Printing {kind}.");
+            _feed.AppendMany(collection, Environment.NewLine, false, toString);
+            string output = _feed.ToString();
+            _feed.Length = 0;
             return output;
         }
 
@@ -139,12 +139,12 @@ namespace XQuinn.Runtime
         {
             if (_navigator._loadedType != null)
             {
-                _sb.AppendLine($"Type: {_navigator._loadedType}");
+                _feed.AppendLine($"Type: {_navigator._loadedType}");
                 if (_navigator._instance != null)
-                    _sb.AppendLine($"Instance Type: {_navigator._instanceType}");
+                    _feed.AppendLine($"Instance Type: {_navigator._instanceType}");
                 // sb.AppendLine($"Loaded Instance Object: {_navigator._instance}");
                 if (_navigator._variable != null)
-                    _sb.AppendLine($"Variable: {_navigator._variable}");
+                    _feed.AppendLine($"Variable: {_navigator._variable}");
             }
 
         }
