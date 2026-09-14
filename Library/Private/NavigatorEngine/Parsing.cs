@@ -18,7 +18,7 @@ namespace XQuinn.Private.NavigatorEngine
 
         sealed class Parser : CoreObject
         {
-            Invoker _invoker => _navig._invoker;
+            Invoker _invoker => _core._invoker;
             public Parser(NavigatorCore navig) : base(navig)
             {
             }
@@ -96,7 +96,7 @@ namespace XQuinn.Private.NavigatorEngine
                 prms[lastparam] = paramArray;
             }
             //This sorts between whether or not a parameter is a method invocation as a parameter, or an actual primitive/string value.
-            object? ParameterToObject(ParameterString value, Type paramType)
+            internal object? ParameterToObject(ParameterString value, Type paramType)
             {
                 object? obj;
                 if (value is FieldString field)

@@ -17,25 +17,25 @@ namespace XQuinn.Private.NavigatorEngine
 
     internal abstract class CoreObject
     {
-        protected readonly NavigatorCore _navig;
-        protected object? _instance => _navig._instance;
-        protected Dictionary<string, FieldInfo> _fields => _navig._fields;
-        protected Dictionary<string, PropertyInfo> _props => _navig._props;
-        protected Dictionary<string, VariableBinding> _variables => _navig._variables;
+        protected readonly NavigatorCore _core;
+        protected object? _instance => _core._instance;
+        protected Dictionary<string, FieldInfo> _fields => _core._fields;
+        protected Dictionary<string, PropertyInfo> _props => _core._props;
+        protected Dictionary<string, VariableBinding> _variables => _core._variables;
 
         public CoreObject(NavigatorCore navig)
         {
-            _navig = navig;
+            _core = navig;
         }
     }
 
     internal abstract class ExpandedCoreObject : CoreObject
     {
 
-        protected Type? _instanceType => _navig._instanceType;
-        protected Type? _loadedType => _navig._loadedType;
-        protected bool Caching => _navig.Caching;
-        protected TypeBook? LocalCache => _navig.LocalCache;
+        protected Type? _instanceType => _core._instanceType;
+        protected Type? _loadedType => _core._loadedType;
+        protected bool Caching => _core.Caching;
+        protected TypeBook? LocalCache => _core.LocalCache;
         public ExpandedCoreObject(NavigatorCore navig) : base(navig)
         {
 

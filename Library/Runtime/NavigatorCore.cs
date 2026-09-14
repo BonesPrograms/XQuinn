@@ -19,7 +19,7 @@ namespace XQuinn.Runtime
     {
         ///.This is for the DynamicNavigator.
         internal TypeBook? LocalCache;
-        readonly InvokeLexer _lexer = new();
+        internal readonly InvokeLexer _lexer = new();
         internal readonly Parser _parser;
         internal readonly Reflector _reflector;
         internal readonly Invoker _invoker;
@@ -58,8 +58,22 @@ namespace XQuinn.Runtime
                 , StringSplitOptions.TrimEntries
 #endif
                 )),
-                _ => InvokeOrAssign(invocation)
+                '?' => Query(invocation.Substring(1)),
+                _ => InvokeOrAssign(invocation) 
             };
+        }
+        
+
+        IEnumerable<string> Query(string invocation)
+        {
+            if(_loadedType == null)
+            throw new InvalidOperationException("No loaded type to query.");
+            MethodString query = _lexer.MethodTemplate(invocation, _implicit_this!, _implicit_this);
+            if(query.NameOrValue.EqualsCaseless("methods"))
+            {
+                
+            }
+            
         }
         List<string> ChainInvoke(params string[] commands)
         {
@@ -191,7 +205,7 @@ namespace XQuinn.Runtime
             {
                 TypeString typestring = ThisOrNew(lefthandTypeName);
                 FieldString fieldStr = new(lefthand, typestring);
-                lefthandtype = _reflector.FindObject(fieldStr, out object? variable);
+                lefthandtype = _reflector.FindReference(fieldStr, out object? variable);
                 lefthandInstance = variable;
             }
             if (!lefthandtype.IsClass)
