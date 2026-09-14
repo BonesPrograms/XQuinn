@@ -18,9 +18,9 @@ namespace XQuinn.Private.NavigatorEngine
     sealed class Invoker : ExpandedCoreObject
     {
 
-        Reflector _reflector => _navig._reflector;
+        Reflector _reflector => _core._reflector;
 
-        Parser _parser => _navig._parser;
+        Parser _parser => _core._parser;
 
         public Invoker(NavigatorCore navig) : base(navig)
         {
@@ -29,7 +29,7 @@ namespace XQuinn.Private.NavigatorEngine
 
         internal object? InvokeFieldOrProperty(FieldString fieldstring)
         {
-            Type fromType = _reflector.FindObject(fieldstring, out object? variable);
+            Type fromType = _reflector.FindReference(fieldstring, out object? variable);
             string fname = fieldstring.NameOrValue;
             MemberInfo? fieldOrProp = InternalCache.FromCache<MemberInfo>(fieldstring.NameOrValue, fromType, out bool typeCached, out bool memberCached);
             if (ReturnField(fieldOrProp, fromType, fname, fieldstring, typeCached, memberCached, variable, out object? ret))
@@ -84,7 +84,7 @@ namespace XQuinn.Private.NavigatorEngine
         }
         internal object? InvokeMethod(MethodString mthdString)
         {
-            Type fromType = _reflector.FindObject(mthdString, out object? variable);
+            Type fromType = _reflector.FindReference(mthdString, out object? variable);
             MethodBase? call = InternalCache.FromCache<MethodBase>(mthdString.StringID, fromType, out bool typeCached, out bool methodCached);
             ParameterInfo[]? parameters = null;
             ExternalMethod(ref call, ref parameters, fromType, mthdString);

@@ -18,8 +18,8 @@ namespace XQuinn.Private.NavigatorEngine
 
     internal sealed class Reflector : ExpandedCoreObject
     {
-        TypeString? _implicit_this => _navig._implicit_this;
-        Dictionary<MethodKey, MethodBase> _methods => _navig._methods;
+        TypeString? _implicit_this => _core._implicit_this;
+        Dictionary<MethodKey, MethodBase> _methods => _core._methods;
         public Reflector(NavigatorCore navig) : base(navig)
         {
 
@@ -32,7 +32,7 @@ namespace XQuinn.Private.NavigatorEngine
             return !parameters.Any(x => x.IsOut || x.IsIn || x.ParameterType.IsByRef);
         }
 
-        internal Type FindObject(IMemberString member, out object? instance)
+        internal Type FindReference(IMemberString member, out object? instance)
         {
             //  if (string.IsNullOrWhiteSpace(member.DeclaringType?.String)) { variable = new("this", _instance); return LoadedType ?? throw new InvalidOperationException("cannot implicitly access loaded type, no type is loaded"); }
             //        if (member.DeclaringType == null)
