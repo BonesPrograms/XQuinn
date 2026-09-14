@@ -56,6 +56,7 @@ Additional Tips:
 Enum OR is supported, but avoid placing whitespace. Send values like|this.
 Strings and chars should be declared just like C#.
 Again, nothing is case sensitive.
+Default parameters work.
 
 
 

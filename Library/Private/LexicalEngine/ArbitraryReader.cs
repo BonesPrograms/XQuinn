@@ -175,8 +175,8 @@ namespace XQuinn.Private.LexicalEngine
                 return _implicit_this ?? throw new InvalidOperationException("Cannot use implicit this, no implicit this has been provided.");
             if (name.EqualsCaseless(_implicit_this?.StringID)) // == this or == _key
                 return _implicit_this!;
-            if (name.EqualsCaseless(_declaringType!.StringID))
-                return _declaringType;
+            if (name.EqualsCaseless(_declaringType?.StringID))
+                return _declaringType!;
             return TypeString.New(name);
         }
         string? ResolveMemberAccess(out string member) //returns typename, outputs the accessed member
