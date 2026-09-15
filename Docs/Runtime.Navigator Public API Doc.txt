@@ -231,6 +231,42 @@ or other generic types with the same name and a different number of args.
 
 
 
+
+
+
+Assignment Caveats
+There are a few. If you load a field/property as the instance, and then reassign that field/property in it's declaring type, the current instance will not reflect changes, though
+the changes will occur. This also happens if you load a variable and then assign to it. It is generally better to not try to assign to fields/properties and variables
+that you currently are loaded into.
+ex.
+Class
+{
+    OtherClass Field;
+}
+
+If you load Field, and then reassign Field ie. class.Field = OtherClass.new() , your currnet loaded instance
+will lose reference equality with the actual field itself, you will need to reload.
+
+
+
+Assigning to the members of struct fields currently does not work. The changes will not be reflected in the type that the struct field is declared in.
+If you want to reassign a member of a struct field, you need to load the struct, reassign the value, then assign the field to this
+ex.
+
+Class
+{
+    Struct Field;
+}
+
+Struct
+{
+    int InnerField;
+}
+
+Load Class.Field, then modify InnerField, then assign Class.Field to this.
+
+
+
 PreCached Types:
 
 [ushort, System.UInt16]

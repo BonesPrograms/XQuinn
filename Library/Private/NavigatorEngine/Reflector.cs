@@ -105,28 +105,28 @@ namespace XQuinn.Private.NavigatorEngine
         }
         internal readonly struct Assignment
         {
-            readonly object _member;
+            public readonly object Member;
             public readonly Type ObjectType;
             public Assignment(object member)
             {
                 if (member is VariableBinding variable)
                     ObjectType = variable.ObjectType;
-                if (member is PropertyInfo prop)
+                else if (member is PropertyInfo prop)
                     ObjectType = prop.PropertyType;
                 else if (member is FieldInfo f)
                     ObjectType = f.FieldType;
                 else
                     throw new NotSupportedException();
-                _member = member;
+                Member = member;
             }
             public void SetValue(object? instance, object? value)
             {
-                if (_member is PropertyInfo prop)
+                if (Member is PropertyInfo prop)
                     prop.SetValue(instance, value, NavigatorCore.Flag, null, null, null);
-                else if (_member is FieldInfo field)
+                else if (Member is FieldInfo field)
                     field.SetValue(instance, value, NavigatorCore.Flag, null, null);
-                else if (_member is VariableBinding variable)
-                    variable.Object = value;
+                else if (Member is VariableBinding variable)
+                    variable.Object = value!; //Object cant be null, but object handles throwing over this internally
             }
         }
     }

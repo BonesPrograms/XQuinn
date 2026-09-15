@@ -264,8 +264,8 @@ namespace XQuinn.Runtime
                 lefthandtype = _reflector.FindReference(fieldStr, out object? variable);
                 lefthandInstance = variable;
             }
-            if (!lefthandtype?.IsClass ?? false)
-                throw new NotSupportedException($"Assigning to the members of struct fields is currently unsupported due to constraints related to boxing. Loading the struct field as the Navigator's instance also will not work for assignment; changes will not be reflected in the target field. You must recreate the struct entirely with your modified values and assign it to the target field.");
+            if (lefthandtype != _loadedType && (!lefthandtype?.IsClass ?? false))
+                throw new NotSupportedException($"Assigning to the members of struct fields is currently unsupported due to constraints related to boxing.See \"Assignment\" in public API doc for more info.");
             if (assigningTo == null)
             {
 
@@ -307,6 +307,16 @@ namespace XQuinn.Runtime
             }
 
             assigningTo.Value.SetValue(lefthandInstance, assignedValue);
+            // if (assignedValue != null && lefthandInstance != null && (lefthandInstance == _instance || var != null ))
+            // {
+            //     if (var != null)
+            //     {
+            //         LoadInstance(var.Object, var.ObjectType);
+            //     }
+            //     else
+            //         LoadInstance(assignedValue, assignedValue.GetType());
+            // }
+                   
             return true;
         }
 
