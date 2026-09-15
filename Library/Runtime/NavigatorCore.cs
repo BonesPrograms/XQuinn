@@ -47,8 +47,8 @@ namespace XQuinn.Runtime
         {
 
             chainexception = false;
-            if (invocation.Length == 0 || string.IsNullOrWhiteSpace(invocation))
-                return "No command detected.";
+            //  if (invocation.Length == 0 || string.IsNullOrWhiteSpace(invocation))
+            //     return "No command detected.";
             char controller = default;
             int substring = -1;
             for (int i = 0; i < invocation.Length; i++) //skips leading whitespace
@@ -60,6 +60,8 @@ namespace XQuinn.Runtime
                     break;
                 }
             }
+            if (substring == -1)
+                return "No command detected.";
             return controller switch
             {
                 '+' => AddViarable(invocation.Substring(substring)),
