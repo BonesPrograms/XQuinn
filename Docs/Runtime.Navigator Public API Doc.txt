@@ -235,9 +235,11 @@ or other generic types with the same name and a different number of args.
 
 
 Assignment Caveats
-There are a few. If you load a field/property as the instance, and then reassign that field/property in it's declaring type, the current instance will not reflect changes, though
-the changes will occur. This also happens if you load a variable and then assign to it. It is generally better to not try to assign to fields/properties and variables
-that you currently are loaded into.
+There are a few. 
+Variables are immutable. They cannot be reassigned or overwritten. You must remove and readd them manually to update them.
+If you load a field/property as the instance, and then reassign that field/property in it's declaring type, the current instance will not reflect changes, though
+the changes will occur in the field itself. 
+It is generally better to not try to assign to fields/properties that you currently are loaded into.
 ex.
 Class
 {
@@ -250,7 +252,7 @@ will lose reference equality with the actual field itself, you will need to relo
 
 
 Assigning to the members of struct fields currently does not work. The changes will not be reflected in the type that the struct field is declared in.
-If you want to reassign a member of a struct field, you need to load the struct, reassign the value, then assign the field to this
+If you want to reassign a member of a struct field, you need to load the struct, reassign the value, then assign the struct to this
 ex.
 
 Class
@@ -260,7 +262,7 @@ Class
 
 Struct
 {
-    int InnerField;
+    string InnerField;
 }
 
 Load Class.Field, then modify InnerField, then assign Class.Field to this.

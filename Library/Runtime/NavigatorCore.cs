@@ -246,13 +246,12 @@ namespace XQuinn.Runtime
             string? lefthandTypeName = MiniLexer.ResolveMemberAccess(lefthand, out lefthand, out bool lefthandfield);
             if (!lefthandfield)
                 throw new ArgumentException($"Can only assign to fields, properties or variables. Bad input: {lefthand}");
-
-            Type? lefthandtype = null;
-            object? lefthandInstance = null;
-            Reflector.Assignment? assigningTo = null;
-            if (_variables.TryGetValue(lefthand, out VariableBinding? var))
-                assigningTo = new(var);
-            else if (lefthandTypeName == null)
+            Type? lefthandtype;
+            object? lefthandInstance;
+            Reflector.Assignment assigningTo;
+            // if (_variables.TryGetValue(lefthand, out VariableBinding? var))
+            //     assigningTo = new(var);
+            if (lefthandTypeName == null)
             {
                 lefthandtype = _loadedType ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {invocation}");
                 lefthandInstance = _instance;
@@ -266,18 +265,16 @@ namespace XQuinn.Runtime
             }
             if (lefthandtype != _loadedType && (!lefthandtype?.IsClass ?? false))
                 throw new NotSupportedException($"Assigning to the members of struct fields is currently unsupported due to constraints related to boxing.See \"Assignment\" in public API doc for more info.");
-            if (assigningTo == null)
-            {
 
-                FieldInfo? field = lefthandtype!.GetField(lefthand, Flag);// ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
-                if (field != null)
-                    assigningTo = new Reflector.Assignment(field);
-                else
-                {
-                    PropertyInfo? prop = lefthandtype.GetProperty(lefthand, Flag) ?? throw new MissingMemberException($"No field or property found named {lefthand} in {lefthandtype}.");
-                    assigningTo = new Reflector.Assignment(prop);
-                }
+            FieldInfo? field = lefthandtype!.GetField(lefthand, Flag);// ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
+            if (field != null)
+                assigningTo = new Reflector.Assignment(field);
+            else
+            {
+                PropertyInfo? prop = lefthandtype.GetProperty(lefthand, Flag) ?? throw new MissingMemberException($"No field or property found named {lefthand} in {lefthandtype}.");
+                assigningTo = new Reflector.Assignment(prop);
             }
+
             string? righthandTypeName = MiniLexer.ResolveMemberAccess(righthand, out righthand, out bool righthandfield);// ?? _key ?? throw new ArgumentException("No type loaded for implicit access on righthand side.");
             if (righthandTypeName != null)
             {
@@ -303,10 +300,10 @@ namespace XQuinn.Runtime
             else
             {
                 ValueString valueStr = new(righthand.Trim());
-                assignedValue = _parser.ParseValue(valueStr, assigningTo.Value.ObjectType);
+                assignedValue = _parser.ParseValue(valueStr, assigningTo.ObjectType);
             }
 
-            assigningTo.Value.SetValue(lefthandInstance, assignedValue);
+            assigningTo.SetValue(lefthandInstance, assignedValue);
             // if (assignedValue != null && lefthandInstance != null && (lefthandInstance == _instance || var != null ))
             // {
             //     if (var != null)
@@ -316,7 +313,7 @@ namespace XQuinn.Runtime
             //     else
             //         LoadInstance(assignedValue, assignedValue.GetType());
             // }
-                   
+
             return true;
         }
 

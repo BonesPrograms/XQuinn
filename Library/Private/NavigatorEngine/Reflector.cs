@@ -109,9 +109,9 @@ namespace XQuinn.Private.NavigatorEngine
             public readonly Type ObjectType;
             public Assignment(object member)
             {
-                if (member is VariableBinding variable)
-                    ObjectType = variable.ObjectType;
-                else if (member is PropertyInfo prop)
+               // if (member is VariableBinding)
+                //    throw new NotImplementedException();//  ObjectType = variable.ObjectType;
+                if (member is PropertyInfo prop)
                     ObjectType = prop.PropertyType;
                 else if (member is FieldInfo f)
                     ObjectType = f.FieldType;
@@ -125,17 +125,17 @@ namespace XQuinn.Private.NavigatorEngine
                     prop.SetValue(instance, value, NavigatorCore.Flag, null, null, null);
                 else if (Member is FieldInfo field)
                     field.SetValue(instance, value, NavigatorCore.Flag, null, null);
-                else if (Member is VariableBinding variable)
-                    variable.Object = value!; //Object cant be null, but object handles throwing over this internally
+              //  else if (Member is VariableBinding variable)
+               //     variable.Object = value!; //Object cant be null, but object handles throwing over this internally
             }
         }
     }
 
     internal sealed class VariableBinding
     {
-        public object Object { get => _object; set => _object = value ?? throw new ArgumentException("Variables cannot be assigned null."); }
+        public object Object { get => _object; private init => _object = value ?? throw new ArgumentException("Variables cannot be assigned null."); }
         public Type ObjectType => _object.GetType();
-        object _object;
+        readonly object _object;
         internal VariableBinding(object instance)
         {
             _object = instance;
