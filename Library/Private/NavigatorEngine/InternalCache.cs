@@ -24,10 +24,8 @@ namespace XQuinn.Private.NavigatorEngine
             internal static bool CheckAmbiguousMatch(Type fromType, MethodString mthdString, out Type cachedType, out HashSet<string>? cachedMatches)
             {
                 cachedMatches = null;
-                cachedType = fromType;
-                if (fromType.IsGenericType)
-                    cachedType = fromType.GetGenericTypeDefinition();
-                InternalCache.s_ambiguous_matches.TryGetValue(cachedType, out cachedMatches);
+                cachedType = fromType.IsGenericType && !fromType.IsGenericTypeDefinition ? fromType.GetGenericTypeDefinition() : fromType;
+                s_ambiguous_matches.TryGetValue(cachedType, out cachedMatches);
                 bool ambiguousMatch = cachedMatches?.Contains(mthdString.NameOrValue) ?? false;
                 return ambiguousMatch;
             }

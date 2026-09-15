@@ -8,6 +8,8 @@ numeric char - '0' = actual number for that char
 
 normalizing chars
 
+(T)(object)
+
 ```cs
 #if NET6_0_OR_GREATER
             public override int GetHashCode()

@@ -17,12 +17,12 @@ namespace XQuinn.Runtime
     {
         public bool Caching
         {
-            get => _navigator.Caching;
-            set => _navigator.Caching = value;
+            get => _core.Caching;
+            set => _core.Caching = value;
         }
         readonly StringBuilder _feed = new();
         readonly StringBuilder _collectionWriter = new();
-        internal NavigatorCore _navigator = new();
+        internal NavigatorCore _core = new();
 
         public NavigationFeed()
         {
@@ -40,7 +40,7 @@ namespace XQuinn.Runtime
             string output;
             try
             {
-                output = Interface(input, out interpretereReturned);
+                output = Interface(input, out interpretereReturned, out exception);
             }
             catch (Exception ex)
             {
@@ -52,14 +52,13 @@ namespace XQuinn.Runtime
             }
             return output;
         }
-        string Interface(string input, out object? navigReturnValue)
+        internal string Interface(string input, out object? navigReturnValue, out bool chainexception)
         {
+            chainexception = false;
             navigReturnValue = null;
             _feed.AppendLine($"{Environment.NewLine}{DateTime.Now}");
-            if (input.Length != 0 && input[0] == '?')
-                return Question(input.Substring(1));
             _feed.AppendLine($"Invoking : {input}");
-            navigReturnValue = _navigator.Interface(input);
+            navigReturnValue = _core.Interface(input, out chainexception);
             ProcessReturn(navigReturnValue);
             AppendNavigData();
             string output = _feed.ToString();
@@ -69,82 +68,38 @@ namespace XQuinn.Runtime
 
         void ProcessReturn(object? ret)
         {
-            var c = _feed[1];
             if (ret is IEnumerable enumerable and not string)
             {
-                _feed.AppendLine($"Returned: \n{_collectionWriter.AppendMany(enumerable, Environment.NewLine, true)}");
+                bool empty = true;
+                if (enumerable is ICollection col)
+                    empty = col.Count == 0;
+                else
+                    foreach (object? obj in enumerable) //Find this funny because im only counting one time but i cant use .Any so it is what it is
+                    {
+                        empty = false;
+                        break;
+                    }
+                if (empty)
+                    _feed.AppendLine($"Returned: Enumerable is empty.");
+                else
+                    _feed.AppendLine($"Returned: \n{_collectionWriter.AppendMany(enumerable, Environment.NewLine, true)}");
                 _collectionWriter.Length = 0;
             }
             else
                 _feed.AppendLine($"Returned: {ret?.ToString() ?? "null"}");
         }
 
-        string Question(string input)
-        {
-            if (input.EqualsCaseless("vars") || input.EqualsCaseless("variables"))
-                return GetCollection(_navigator._variables, x => $"[Key: {x.Key} :: {x.Value}]", "variables");
-            if (_navigator._loadedType == null)
-                return "No type loaded.";
-            if (input.EqualsCaseless("props") || input.EqualsCaseless("properties"))
-                return GetCollection(_navigator._props, "properties");
-            if (input.EqualsCaseless("methods"))
-                return GetCollection(_navigator._methods, "methods");
-            if (input.EqualsCaseless("fields"))
-                return GetCollection(_navigator._fields, "fields");
-            string[] arr = input.Split(':'); //type;argument;name or argument;name
-            if (arr.Length >= 2)
-                return Search(0, arr);
-            return "Invalid query.";
-        }
-
-        string Search(int startint, string[] arr)
-        {
-            if (arr[startint].EqualsCaseless("props") || arr[startint].EqualsCaseless("Properties") || arr[startint].EqualsCaseless("prop") || arr[startint].EqualsCaseless("props"))
-                return Extract(_navigator._props, "properties", arr[startint + 1]);
-            else if (arr[startint].EqualsCaseless("method") || arr[startint].EqualsCaseless("methods"))
-                return Extract(_navigator._methods, "methods", arr[startint + 1]);
-            else if (arr[startint].EqualsCaseless("field") || arr[startint].EqualsCaseless("fields"))
-                return Extract(_navigator._fields, "fields", arr[startint + 1]);
-            return "Invalid query.";
-        }
-
-        string Extract<K, V>(IEnumerable<KeyValuePair<K, V>> extract, string kind, string containing) where V : MemberInfo
-        {
-            extract = extract.Where(x => x.Key!.ToString()!.ContainsCaseless(containing));
-            return GetCollection(extract, kind, containing);
-
-        }
-
-        string GetCollection<K, V>(IEnumerable<KeyValuePair<K, V>> col, string kind, string? containing = null) where V : MemberInfo
-        {
-            if (containing != null)
-                kind = $"{kind} containing string {containing}";
-            return GetCollection(col, x => $"[Key: {x.Key} :: {ReflectionPrinter.Print(x.Value)}]", kind);
-        }
-
-        string GetCollection<T>(IEnumerable<T> collection, Func<T?, string>? toString, string kind)
-        {
-            if (!collection.Any())
-                return $"No {kind} found.";
-            _feed.AppendLine($"Printing {kind}.");
-            _feed.AppendMany(collection, Environment.NewLine, false, toString);
-            string output = _feed.ToString();
-            _feed.Length = 0;
-            return output;
-        }
-
-
 
         void AppendNavigData()
         {
-            if (_navigator._loadedType != null)
+            if (_core._loadedType != null)
             {
-                _feed.AppendLine($"Type: {_navigator._loadedType}");
-                if (_navigator._instance != null)
-                    _feed.AppendLine($"Instance Type: {_navigator._instanceType}");
+                _feed.AppendLine($"Type: {_core._loadedType}");
+                if (_core._instance != null)
+                    _feed.AppendLine($"Instance Type: {_core._instanceType}");
                 // sb.AppendLine($"Loaded Instance Object: {_navigator._instance}");
-                if (_navigator._variable != null)
-                    _feed.AppendLine($"Variable: {_navigator._variable}");
+                if (_core._variable != null)
+                    _feed.AppendLine($"Variable: {_core._variable}");
             }
 
         }

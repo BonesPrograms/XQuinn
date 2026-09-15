@@ -3,14 +3,17 @@ using System.Collections.Generic;
 using System;
 using XQuinn.Reflection;
 using XQuinn.Extensions;
+using XQuinn.Private.NavigatorEngine;
 
 namespace XQuinn.CodeAnalysis.AST
 {
     internal abstract class GenericString : ParameterString
     {
 
-        public string StringID => _id;
-        string _id;
+        public string StringID => _id; ///Cache ID for methods and types. Includes raw name, generic arguments, and overload index.
+        string _id;                     ///Used for comparison between concrete GenericString objects to see if they represent the same MemberInfo object.
+                                        ///For methods, this comparison also includes comparing the StringID of their declaring type
+                                        ///      (though in practice we do not typically compare that way, usually we get the actual type first)
         public IReadOnlyList<TypeString> Generics
         {
             get
@@ -27,6 +30,11 @@ namespace XQuinn.CodeAnalysis.AST
         {
             if (HasTypeArgs(genericString.NameOrValue))
                 genericString.UpdateGenericArgs();
+            // else if (genericString is TypeString)
+            // {
+            //     genericString._id = genericString._id.Trim(); 
+            //     genericString.NameOrValue = genericString._id;
+            // }
             return genericString;
         }
 
@@ -41,13 +49,35 @@ namespace XQuinn.CodeAnalysis.AST
         internal static bool HasTypeArgs(string NameOrValue)
         {
             bool genericStart = false;
+            bool genericEnd = false;
+            int halt = -1;
             for (int i = 0; i < NameOrValue.Length; i++)
             {
                 char c = NameOrValue[i];
-                if (c == '<') genericStart = true;
-                else if (c == '>') return genericStart ? true : throw new FormatException($"Invalid generic argument format. {NameOrValue}");
+                if (c == '<')
+                {
+                    halt = i;
+                    genericStart = true;
+                    break;
+                }
             }
-            return genericStart ? throw new FormatException($"Invalid generic argument format. {NameOrValue}") : false;
+            if (genericStart)
+            {
+                for (int i = NameOrValue.Length - 1; i > halt; i--)
+                {
+                    char c = NameOrValue[i];
+                    if (c == '>')
+                    {
+                        genericEnd = true;
+                        break;
+                    }
+                }
+            }
+            if (genericEnd && genericStart)
+                return true;
+            if (genericEnd || genericStart)
+                throw new FormatException($"Invalid generic argument format. {NameOrValue}");
+            return false;
         }
         public Type[] ConvertGenericArguments(TypeBook? dic)
         {

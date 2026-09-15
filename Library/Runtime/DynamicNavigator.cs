@@ -72,8 +72,8 @@ namespace XQuinn.Runtime
             Load();
             //   Module[] modules = LoadedAssembly!.GetModules();
             //  if (modules.Length > 1) throw new NotSupportedException("Only single file assemblies are supported.");
-            _monitor._navigator.LocalCache = TypeBook.New(_assembly!.ManifestModule.GetTypes(), BookDelegate);
-            if (DefaultLoadedTypeName != null) _monitor._navigator.LoadTypeStatic(DefaultLoadedTypeName);
+            _monitor._core.LocalCache = TypeBook.New(_assembly!.ManifestModule.GetTypes(), BookDelegate);
+            if (DefaultLoadedTypeName != null) _monitor._core.LoadTypeStatic(DefaultLoadedTypeName);
             _lastwrite = File.GetLastWriteTime(DLLPath);
         }
 
@@ -96,7 +96,7 @@ namespace XQuinn.Runtime
         WeakReference? Unload()
         {
             if (_box == null) return null;
-            _monitor._navigator.Clear();
+            _monitor._core.Clear();
             NavigatorCore.FlushStaticCache();
             _assembly = null;
             WeakReference monitor = new(_box, trackResurrection: true);

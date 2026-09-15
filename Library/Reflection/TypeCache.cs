@@ -14,6 +14,7 @@ using System.Runtime.CompilerServices;
 using System.Linq;
 using XQuinn.CodeAnalysis.AST;
 using XQuinn.Private.NavigatorEngine;
+using XQuinn.Private;
 
 
 namespace XQuinn.Reflection
@@ -123,7 +124,7 @@ namespace XQuinn.Reflection
 
         };
 
-        readonly static string[] _illegalKeys = new string[] { "null", "default", "base", "this" };
+        readonly static string[] _illegalKeys = new string[] { "null", "default", "base", "this" }; ///Reserved "language" keywords
 
         static TypeCache()
         {
@@ -160,11 +161,6 @@ namespace XQuinn.Reflection
             throw new ArgumentException($"Could not find cached type with key {key.Key} and generic arg count {key.Args}.");
         }
 
-        internal static Type GetTypeOrThrow(TypeString name)
-        {
-            return GetTypeOrThrow(new GenericKey(name));
-
-        }
         /// <summary>
         /// returns false if type is already cached with the same key, true if caching was performed
         /// </summary>
@@ -204,6 +200,15 @@ namespace XQuinn.Reflection
             foreach (Type type in types)
                 CacheType(type, fullname);
 
+        }
+
+        public static void CacheTypes(IEnumerable<Type> types, bool fullname, string append)
+        {
+            foreach (Type type in types)
+            {
+                string name = GetCompatibleName(type, fullname);
+                CacheType(type, $"{append}{name}");
+            }
         }
 
         public static void CacheTypes(IEnumerable<Type> types, Func<Type, string?> keyProvider)
@@ -252,34 +257,19 @@ namespace XQuinn.Reflection
                 throw new ArgumentException($"Keys cannot begin with a digit. Bad Key: {key}");
             if (key[0] == '.')
                 throw new ArgumentException($"Keys cannot begin with a period. Bad Key {key}");
-            bool accessor = false;
-            // int? skip = null;
             for (int i = 0; i < _illegalKeys.Length; i++)
                 if (_illegalKeys[i].EqualsCaseless(key))
                     throw new ArgumentException($"This key is restricted and cannot be registered. Bad Key {key}.");
-            // if (key.Length >= 2)
-            // {
-
-            //     if (key.Length >= 3)
-            //     {
-            //         int finalIndex = key.Length - 1;
-            //         int beforeFinalIndex = finalIndex - 1;
-            //         (char beforeFinal, char final) last = (key[beforeFinalIndex], key[finalIndex]);
-            //         if (last == ('[', ']'))
-            //             skip = beforeFinalIndex;
-            //     }
-            // }
+            bool accessor = false;
             for (int i = 0; i < key.Length; i++)
             {
-                // if (skip == i)
-                //   break;
                 char value = key[i];
                 if (!value.IsDigit() && !value.IsLetter() && value != '_')
                 {
                     if (!accessor && value == '.')
                         accessor = true;
                     else
-                        throw new ArgumentException($"Keys can only consist of digits, letters, underscores, or single periods between names. Bad Key {key}. If you are having trouble caching generics, use TypeExtensions.SnipGenericName.");
+                        throw new ArgumentException($"Keys can only consist of digits, letters, underscores, or single periods between names. Bad Key {key}.");
                 }
                 else if (accessor)
                 {
@@ -291,7 +281,18 @@ namespace XQuinn.Reflection
             }
 
         }
+        // if (key.Length >= 2)
+        // {
 
+        //     if (key.Length >= 3)
+        //     {
+        //         int finalIndex = key.Length - 1;
+        //         int beforeFinalIndex = finalIndex - 1;
+        //         (char beforeFinal, char final) last = (key[beforeFinalIndex], key[finalIndex]);
+        //         if (last == ('[', ']'))
+        //             skip = beforeFinalIndex;
+        //     }
+        // }
 
         static bool CheckDuplicateOrCached(Type type, GenericKey key)
         {

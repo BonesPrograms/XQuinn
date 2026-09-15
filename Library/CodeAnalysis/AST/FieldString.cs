@@ -10,7 +10,7 @@ namespace XQuinn.CodeAnalysis.AST
     {
         public TypeString DeclaringType => _type;
         readonly TypeString _type;
-        internal FieldString(string name, TypeString declaredIn) : base(name.Trim())
+        internal FieldString(string name, TypeString declaredIn) : base(name)
         {
             _type = declaredIn;
         }

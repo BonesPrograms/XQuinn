@@ -10,7 +10,7 @@ namespace XQuinn.CodeAnalysis.AST
 
         internal readonly GenericString? _typeArgOf; //mostly used for generic lexing, not really necessary to be exposed right now
         //(kind of like paramOf)
-        internal TypeString(string name, GenericString? typeArgOf = null) : base(name.Trim())
+        internal TypeString(string name, GenericString? typeArgOf = null) : base(name)
         {
             _typeArgOf = typeArgOf;
         }
@@ -25,7 +25,7 @@ namespace XQuinn.CodeAnalysis.AST
             return New<TypeString>(new(name, typeArgOf));
         }
 
-        internal static TypeString NewGeneric(string name)
+        internal static TypeString NewGeneric(string name) //This is for a string that has been confirmed as generic by GenericString.HasTypeArgs()
         {
             TypeString tstring = new(name);
             tstring.UpdateGenericArgs();

@@ -15,6 +15,8 @@ namespace XQuinn.Private.LexicalEngine
 
         bool _readFirstCharOfName { get => _lexer._readFirstCharOfName; set => _lexer._readFirstCharOfName = value; }
 
+        bool _readEnum {get=> _lexer._readEnum; set=> _lexer._readEnum = value;}
+
         bool _readQualifiedMember { set => _lexer._readQualifiedMember = value; }
 
         bool _readArbitraryLegalValue {set => _lexer._readArbitraryLegalValue = value; }
@@ -68,7 +70,7 @@ namespace XQuinn.Private.LexicalEngine
                 ReadMethod();
                 return 2; //special case where we need to skip to increment if a method is detected
             }           //otherwise it will throw
-            else if (!Termination(_value))
+            else if (!Termination(_value) && _value != '|')
                 _lexer.ValidIdentifier(_value, invocation, i);
             else if (_readGeneric)
                 return 1; //true

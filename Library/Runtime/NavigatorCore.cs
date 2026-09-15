@@ -33,6 +33,7 @@ namespace XQuinn.Runtime
         internal readonly Dictionary<string, PropertyInfo> _props = new(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, VariableBinding> _variables = new(StringComparer.OrdinalIgnoreCase);
         public bool Caching = true;
+        bool _chaining = false;
         internal const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
         public NavigatorCore()
@@ -42,54 +43,106 @@ namespace XQuinn.Runtime
             _invoker = new(this);
         }
 
-        public object? Interface(string invocation) ///This is the primary and sole method for interfacing with the Navigator via strings.
+        public object? Interface(string invocation, out bool chainexception) ///This is the primary and sole method for interfacing with the Navigator via strings.
         {
+
+            chainexception = false;
             if (invocation.Length == 0 || string.IsNullOrWhiteSpace(invocation))
                 return "No command detected.";
-            return invocation[0] switch
+            char controller = default;
+            int substring = -1;
+            for (int i = 0; i < invocation.Length; i++) //skips leading whitespace
             {
-                '+' => AddViarable(invocation.Substring(1)),
-                '-' => RemoveVariable(invocation.Substring(1)),
-                '@' => LoadTypeStatic(invocation.Substring(1)),
-                '*' => LoadInstance(invocation.Substring(1)),
-                '^' => CastInstance(invocation.Substring(1)),
-                '~' => ChainInvoke(invocation.Substring(1).Split(';'
-#if NET6_0_OR_GREATER
-                , StringSplitOptions.TrimEntries
-#endif
-                )),
-                '?' => Query(invocation.Substring(1)),
-                _ => InvokeOrAssign(invocation) 
+                if (invocation[i] != ' ') //didnt feel like trimming here since we do a lot more trimming later on
+                {
+                    controller = invocation[i];
+                    substring = i + 1;
+                    break;
+                }
+            }
+            return controller switch
+            {
+                '+' => AddViarable(invocation.Substring(substring)),
+                '-' => RemoveVariable(invocation.Substring(substring)),
+                '@' => LoadTypeStatic(invocation.Substring(substring)),
+                '*' => LoadInstance(invocation.Substring(substring)),
+                '^' => CastInstance(invocation.Substring(substring)),
+                '~' => ChainInvoke(out chainexception, invocation.Substring(substring).Split(';')),
+                '?' => Query(invocation.Substring(substring)),
+                _ => InvokeOrAssign(invocation) //No controller
             };
         }
-        
+
 
         IEnumerable<string> Query(string invocation)
         {
-            if(_loadedType == null)
-            throw new InvalidOperationException("No loaded type to query.");
-            MethodString query = _lexer.MethodTemplate(invocation, _implicit_this!, _implicit_this);
-            if(query.NameOrValue.EqualsCaseless("methods"))
+            if (invocation.EqualsCaseless("vars"))
+                return _variables.Select(x => $"Key: {x.Key} :: {x.Value}");
+            if (_loadedType == null)
+                throw new InvalidOperationException("No loaded type to query. Use the static methods Fields/Methods/Props in class Types to query unloaded types.");
+            if (MiniLexer.ImplicitThisMethodCall(invocation))
             {
-                
+                MethodString query = _lexer.MethodTemplate(invocation, _implicit_this!, _implicit_this);
+                if (query.NameOrValue.EqualsCaseless("methods"))
+                    return QueryParameters(_methods, query);
+                if (query.NameOrValue.EqualsCaseless("fields"))
+                    return QueryParameters(_fields, query);
+                if (query.NameOrValue.EqualsCaseless("props"))
+                {
+                    if (query.Params.Count == 2)
+                        throw new TargetParameterCountException("Local query for properties only supports max one paramter: a containing string.");
+                    return QueryParameters(_props, query);
+                }
             }
-            
+            else //parameterless default
+            {
+                if (invocation.EqualsCaseless("methods"))
+                    return Types.ReadMembers(_methods, null, Flag);
+                if (invocation.EqualsCaseless("fields"))
+                    return Types.ReadMembers(_fields, null, Flag);
+                if (invocation.Equals("props"))
+                    return Types.ReadMembers(_props, null, Flag);
+            }
+            throw new ArgumentException("Invalid query");
         }
-        List<string> ChainInvoke(params string[] commands)
+
+        IEnumerable<string> QueryParameters<K, V>(Dictionary<K, V> dic, MethodString query) where V : MemberInfo where K : notnull
         {
+            if (query.Params.Count <= 2)
+            {
+                string? contains = null;
+                if (query.Params.Count >= 1)
+                    contains = (string?)_parser.ParameterToObject(query.Params[0], typeof(string));
+                BindingFlags? flags = null;
+                if (query.Params.Count == 2)
+                    flags = (BindingFlags)_parser.ParameterToObject(query.Params[1], typeof(BindingFlags))!;
+                flags ??= Flag;
+                return Types.ReadMembers(dic, contains, flags.Value);
+            }
+            throw new TargetParameterCountException("Local query is max 2 params: a containig string and bindingflags search flags.");
+        }
+
+        List<string> ChainInvoke(out bool exception, params string[] commands)
+        {
+            exception = false;
+            if (_chaining)
+                throw new ArgumentException("Cannot invoke nested chains.");
+            _chaining = true;
             List<string> invocations = new(commands.Length);
             for (int i = 0; i < commands.Length; i++)
             {
-                string cmd = commands[i].Trim();
+                string cmd = commands[i];
                 try
                 {
-                    object? ret = Interface(cmd);
+                    object? ret = Interface(cmd, out _);
                     if (ret is string s && s == "No command detected.")
                         continue;
                     invocations.Add($"[Invocation: {cmd} :: Returned: {ret ?? "null"}]");
                 }
                 catch (Exception ex)
                 {
+                    exception = true;
+                    _chaining = false;
                     StringBuilder sb = new();
                     sb.CatchException(ex);
                     invocations.Insert(0, sb.ToString());
@@ -97,6 +150,7 @@ namespace XQuinn.Runtime
                     return invocations;
                 }
             }
+            _chaining = false;
             return invocations;
         }
 
@@ -104,7 +158,7 @@ namespace XQuinn.Runtime
 
         public Type LoadTypeStatic(string typeName)
         {
-            TypeString tstring = TypeString.New(typeName);
+            TypeString tstring = TypeString.New(typeName.Trim());
             Type t = _reflector.FindType(tstring, true);
             _implicit_this = tstring;
             LoadTypeMembers(t);
@@ -162,7 +216,7 @@ namespace XQuinn.Runtime
                 if (_variables.TryGetValue(member, out VariableBinding? variable))
                     return variable;
                 TypeString declaringtype = ThisOrNew(typeName);
-                FieldString fieldStr = new(member, declaringtype);
+                FieldString fieldStr = new(member.Trim(), declaringtype);
                 return _invoker.InvokeFieldOrProperty(fieldStr);
             }
 
@@ -187,16 +241,18 @@ namespace XQuinn.Runtime
             assignedValue = null;
             if (!MiniLexer.AssignmentSubstring(invocation, out string? left, out string? right))
                 return false;
-            string lefthand = left!;
+            string lefthand = left!.Trim();
             string righthand = right!;
             string? lefthandTypeName = MiniLexer.ResolveMemberAccess(lefthand, out lefthand, out bool lefthandfield);
             if (!lefthandfield)
-                throw new ArgumentException($"Can only assign to fields or properties. Bad input: {lefthand}");
+                throw new ArgumentException($"Can only assign to fields, properties or variables. Bad input: {lefthand}");
 
-            Type lefthandtype;
-            object? lefthandInstance;
-            lefthand = lefthand.Trim();
-            if (lefthandTypeName == null)
+            Type? lefthandtype = null;
+            object? lefthandInstance = null;
+            Reflector.Assignment? assigningTo = null;
+            if (_variables.TryGetValue(lefthand, out VariableBinding? var))
+                assigningTo = new(var);
+            else if (lefthandTypeName == null)
             {
                 lefthandtype = _loadedType ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {invocation}");
                 lefthandInstance = _instance;
@@ -208,21 +264,24 @@ namespace XQuinn.Runtime
                 lefthandtype = _reflector.FindReference(fieldStr, out object? variable);
                 lefthandInstance = variable;
             }
-            if (!lefthandtype.IsClass)
+            if (!lefthandtype?.IsClass ?? false)
                 throw new NotSupportedException($"Assigning to the members of struct fields is currently unsupported due to constraints related to boxing. Loading the struct field as the Navigator's instance also will not work for assignment; changes will not be reflected in the target field. You must recreate the struct entirely with your modified values and assign it to the target field.");
-            Reflector.AssignableMember assigningTo;
-            FieldInfo? field = lefthandtype.GetField(lefthand, Flag);// ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
-            if (field != null)
-                assigningTo = Reflector.AssignableMember.New(field);
-            else
+            if (assigningTo == null)
             {
-                PropertyInfo? prop = lefthandtype.GetProperty(lefthand, Flag) ?? throw new MissingMemberException($"No field or property found named {lefthand} in {lefthandtype}.");
-                assigningTo = Reflector.AssignableMember.New(prop);
+
+                FieldInfo? field = lefthandtype!.GetField(lefthand, Flag);// ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
+                if (field != null)
+                    assigningTo = new Reflector.Assignment(field);
+                else
+                {
+                    PropertyInfo? prop = lefthandtype.GetProperty(lefthand, Flag) ?? throw new MissingMemberException($"No field or property found named {lefthand} in {lefthandtype}.");
+                    assigningTo = new Reflector.Assignment(prop);
+                }
             }
             string? righthandTypeName = MiniLexer.ResolveMemberAccess(righthand, out righthand, out bool righthandfield);// ?? _key ?? throw new ArgumentException("No type loaded for implicit access on righthand side.");
             if (righthandTypeName != null)
             {
-                TypeString typeStr = ThisOrNew(righthandTypeName);
+                TypeString typeStr = ThisOrNew(righthandTypeName.Trim());
                 if (righthandfield)
                 {
                     FieldString fieldStr = new(righthand, typeStr);
@@ -234,20 +293,20 @@ namespace XQuinn.Runtime
                     assignedValue = _invoker.InvokeMethod(methodStr);
                 }
             }
-            else if (MiniLexer.ImplicitThisMethodCall(righthand))//this enables implicit this access, ie. field = method() for the lead method name
+            else if (!righthandfield && MiniLexer.ImplicitThisMethodCall(righthand))//this enables implicit this access, ie. field = method() for the lead method name
             {
-                if (_implicit_this == null)
+                if (_loadedType == null)
                     throw new ArgumentException("Cannot perform implicit this call, no type is loaded.");
-                MethodString methodStr = _lexer.MethodTemplate(righthand, _implicit_this, _implicit_this);
+                MethodString methodStr = _lexer.MethodTemplate(righthand, _implicit_this!, _implicit_this);
                 assignedValue = _invoker.InvokeMethod(methodStr);
             }
             else
             {
                 ValueString valueStr = new(righthand.Trim());
-                assignedValue = _parser.ParseValue(valueStr, assigningTo.MemberType);
+                assignedValue = _parser.ParseValue(valueStr, assigningTo.Value.ObjectType);
             }
 
-            assigningTo.SetValue(lefthandInstance, assignedValue);
+            assigningTo.Value.SetValue(lefthandInstance, assignedValue);
             return true;
         }
 
@@ -262,6 +321,31 @@ namespace XQuinn.Runtime
         {
             if (_instance == null)
                 throw new InvalidOperationException("No instance is loaded.");
+            if (key.Any(x => x == ' '))
+            {
+                StringBuilder sb = new();
+                int start = -1;
+                for (int i = 0; i < key.Length; i++)
+                {
+                    if (key[i] != ' ')
+                    {
+                        start = i;
+                        break;
+                    }
+                }
+                int end = -1; //smort whitespace skipper skips lead and end whitespace 
+                for (int i = key.Length - 1; i >= 0; i--)
+                {
+                    if (key[i] != ' ')
+                    {
+                        end = i;
+                        break;
+                    }
+                }
+                for (int i = start; i <= end; i++)
+                    sb.Append(key[i]);
+                key = sb.ToString();
+            }
             TypeCache.ThrowIfBadKey(key);
             if (TypeCache.s_registry.ContainsKey(new(key)))
                 throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
@@ -271,7 +355,7 @@ namespace XQuinn.Runtime
                     throw new ArgumentException("Duplicate keyname detected.");
                 return false;
             }
-            _variables[key] = new(_instance, _instanceType!);
+            _variables[key] = new(_instance);
             _variable = key;
             return true;
         }

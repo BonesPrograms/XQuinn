@@ -8,6 +8,7 @@ using System.Collections.Generic;
 using XQuinn.CodeAnalysis;
 using System.Text;
 using System.Collections;
+using XQuinn.Private;
 using System.Runtime.ExceptionServices;
 
 using XQuinn.Runtime;
@@ -102,48 +103,47 @@ namespace XQuinn.Private.NavigatorEngine
                 methodbase = method.ConvertToGeneric(actualmethod, LocalCache);
             return methodbase;
         }
-        internal readonly struct AssignableMember
+        internal readonly struct Assignment
         {
-            readonly MemberInfo _member;
-            public readonly Type MemberType;
-
-            AssignableMember(MemberInfo member, Type memberType)
+            readonly object _member;
+            public readonly Type ObjectType;
+            public Assignment(object member)
             {
-                _member = member;
-                MemberType = memberType;
-            }
-            public static AssignableMember New(MemberInfo member)
-            {
+                if (member is VariableBinding variable)
+                    ObjectType = variable.ObjectType;
                 if (member is PropertyInfo prop)
-                    return new(prop, prop.PropertyType);
-                if (member is FieldInfo field)
-                    return new(field, field.FieldType);
-                throw new NotSupportedException();
-
+                    ObjectType = prop.PropertyType;
+                else if (member is FieldInfo f)
+                    ObjectType = f.FieldType;
+                else
+                    throw new NotSupportedException();
+                _member = member;
             }
-            public readonly void SetValue(object? instance, object? value)
+            public void SetValue(object? instance, object? value)
             {
                 if (_member is PropertyInfo prop)
                     prop.SetValue(instance, value, NavigatorCore.Flag, null, null, null);
                 else if (_member is FieldInfo field)
                     field.SetValue(instance, value, NavigatorCore.Flag, null, null);
+                else if (_member is VariableBinding variable)
+                    variable.Object = value;
             }
         }
     }
 
     internal sealed class VariableBinding
     {
-        public readonly object Object;
-        public readonly Type ObjectType;
-        internal VariableBinding(object instance, Type instanceType)
+        public object Object { get => _object; set => _object = value ?? throw new ArgumentException("Variables cannot be assigned null."); }
+        public Type ObjectType => _object.GetType();
+        object _object;
+        internal VariableBinding(object instance)
         {
-            Object = instance;
-            ObjectType = instanceType;
+            _object = instance;
         }
 
         public override string ToString()
         {
-            return $"ObjectType: {ObjectType} :: ObjectToString: {Object}";
+            return $"ObjectType: {ObjectType} :: ObjectToString: {_object}";
         }
     }
 

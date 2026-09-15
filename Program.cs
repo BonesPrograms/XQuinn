@@ -35,7 +35,9 @@ namespace XQuinn.Private
 #if IAPP_BUILD
             XQuinn.NetConsole.Apps.IApp.RunApp(args);
 #else
+
             Cache();
+
             RunNavigator();
 #endif
         }
@@ -50,6 +52,10 @@ namespace XQuinn.Private
         static void RunNavigator()
         {
             NavigationFeed monitor = new();
+            string flag = NavigatorCore.Flag.ToString().Replace(',', '|').Replace(" ", "");
+         //   Console.WriteLine(monitor.Interface($"~ *types.enum<bindingFlags>({flag}); +flag", out _, out bool chainexception));
+           // if (chainexception)
+             //   throw new ArgumentException();
             while (true)
             {
                 string? msg = Console.ReadLine();
@@ -64,49 +70,51 @@ namespace XQuinn.Private
             TypeCache.CacheType<Harmony>(false);
             TypeCache.CacheType(typeof(AccessTools), false);
             TypeCache.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
-            TypeCache.CacheType(typeof(BitConverter), false);
+            //   TypeCache.CacheType(typeof(BitConverter), false);
             //@ TypeCache.CacheType(typeof(BytesLittleEndian), "bytes");
         }
 
 
     }
 
-  class BaseClass
+class PrivBase
     {
-
-        public int Prop => 0;
-        public string method()=>"base";
-
-        public virtual string Call() => "baseCall";
+        int field;
+        int method(int i) => i;   
     }
 
-    class Inherit:BaseClass
+    class inh : PrivBase
     {
+        int call(int i) => i;
 
-        public new int Prop => 99;
-        public new string method()=>"new";
-
-        public string method(int i)=>"ober";
-
-        public override string Call() => "InheritrCall";
+        public int msg(int i) => i;
     }
-
     class Class<T> //where T : new()
     {
-        static T? Obj
+        static T? SObj
         {
-            get => _obj;
-            set => _obj = value;
+            get => s_obj;
+            set => s_obj = value;
         }
-        static T? _obj = default;
+        static T? s_obj = default;
+
+        T? Obj {get=>_obj;set=>_obj=value;}
+
+        T? _obj = default;
 
         public static T Method(T obj) => obj;
+
+        public static X Generic<X>(X obj) => obj;
 
         public static void Test(char x, char y) { }
 
         public static int Method(int i) => i;
 
-        public static T[] Method(string s, params T[] arr )=>arr;
+        public static T[] Array(string s = "42", params T[] arr)
+        {
+            Console.WriteLine(s);
+            return arr;
+        }
     }
 
 
@@ -225,7 +233,7 @@ namespace XQuinn.Private
     //         return bytes;
     //     }
 
- //   }
+    //   }
 
 }
 

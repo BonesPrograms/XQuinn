@@ -5,7 +5,10 @@ Publci API Doc
 Runtime Navigator: Reify generic types and methods, load static types, load instances, invoke methods, fields and properties at runtime. Create variables,
 pass fields, properties, the loaded instance, and variables as arguments to method parameters, or assignment. Access members of fields, properties
 and variables for invocation.
-All inputs are case insensitive, including values, member names, and type names.
+All inputs are case insensitive, including values (except strings/chars), member names, and type names. 
+If your code has types and members with the same name but in different cases, you will encounter
+ambiguity errors when trying to locate members (the system will overwrite members that have the same caseless name and some will appear to be missing)
+as well as throwing duplicate type key exceptions when caching your types.
 
 
 
@@ -26,7 +29,7 @@ namespaces in type names ex. Namespace.Type.Member will not interfere with this 
 You do not need to reload the current type or instance to invoke members from outside the current type or instance.
 You can lead with a typename, member name, or variable name, IE. StaticType.Method() or VariableName.Field or FieldName.Method() or FieldName = StaticType.Method() etc
 You can also use leading with a typename to cast the current instance without changing the loaded type, gaining explicit access to members of the casted type for that
-invocation - IE. BaseType.BasePrivateField or BaseType.BasePrivateMethod() its not only for
+invocation - IE. BaseType.BasePrivateField or BaseType.BasePrivateMethod(BaseType.Field) its not only for
 private members but that's what it's most useful for. You can also use the typename 'base' to access the instance type's immediate base type.
 Casting still follows standard C# polymorphism, even if you cast to a base type, invocations will use the instance type's overrides.
 
@@ -36,7 +39,7 @@ by value.
 You can also explicitly declare accessing from the current instance using 'this', ie this.fieldname, however this is not usually necessary due to implicit access.
 Note, if you have casted your instance into a base, accessing 'this' will return members from the currently loaded base type, not the instance type.
 
-Furthermore, the values 'default' and 'null' have been included.
+Furthermore, 
 
 Enumerable values are automatically enumerated and printed for your viewing upon return, either from a method, field, property, or this. Variables that store
 enumerable values are not read automatically when returned, they must be loaded as an instance first.
@@ -51,11 +54,32 @@ Indexers are not supported. You must invoke the backing get_item() method.
 
 You cannot pass methodgroups as parameters for delegate arguments.
 
+Whitespace - Avoid whitespace as part of type names, variable names, member names, and in type argument parameters. Otherwise, it is safe to have them in method parameters.
+They are also allowed right after the method's name.
+Ex.
+class<int>.method  (22  , "hello world"   , fieldname  ) GOOD
+
+cl ass  <int, string>.met hod  (22  , "hello world", fiel dname  ) 
+  ^BAD ^BAD  ^BAD        ^BAD                            ^BAD       These things will cause exceptions. I will fix generics type args later. maybe.
+
 Additional Tips:
+
+Default parameters are supported. Params arrays are supported.
+the values 'default' and 'null' have been included.
 
 Enum OR is supported, but avoid placing whitespace. Send values like|this.
 Strings and chars should be declared just like C#.
-Again, nothing is case sensitive.
+Again, nothing is case sensitive. Type names, field names, variable names, method names, all case insensitive.
+Variables can be used in assignment. They cannot be assigned null.
+
+Explicit Invocation For Explicit Implementations:
+You will occasionally encounter explicit interface implementations, such as the backing methods for IList's indexer property in arrays.
+It will have a key that is invalid and mangled looking (method keys arent allowed to have periods or typenames in them), such as this
+[0] [Key: System.Collections.IList.get_Item :: private sealed instance Object Array::System.Collections.IList.get_Item(Int32 index)]
+You must use casting to invoke these methods, using their cache type name.
+ex. ilist.get_item(1);
+or
+~ ^ilist; get_item(1); (You will learn more aobut what ~ and ^ does below)
 
 
 
@@ -81,7 +105,7 @@ Controllers are one character long and must be placed at the beginning of an ins
     invocation will throw an exception.
 
 
-? - Query: Query the currently loaded type for data. Query cannot be used as part of chains. More information below.
+? - Query: Query the currently loaded type for member data. 
 
 
 Chain Invocation Example:
@@ -114,28 +138,41 @@ Method:1 void Method()
 Methox:2 void Method(int)
 
 Use these custom keys to access specific overloads.
+ie. method:2(22);
 
-To view a type's resolved method names you have two options, one being Query:
+To view a type's resolved method names you can use our two query options:
 
 Query:
 
-Query has four possible options. "fields", "props" and "methods". You can also insert a string, and query checks if the member's name contains that string.
-The fourth option is "vars" or "variables", which returns a list of the currently stored variables. Variables cannot be searched using contains, they are all printed
-on query.
-Format for ?Query is as follows:
-?Option or ?Option:Containing
-
-There are also helper query methods, which you will read more about below, in the static class "Types":
+The helper class "Types" provides multiple methods for querying type members.
 
 Fields<T>(string,BindingFlags), Methods<T>(string,BindingFlags) and Props<T>(string)
 with nongeneric alternatives
 Fields(Type,string,BindingFlags), Methods(Type,string,BindingFlags), Props(Type,string)
 
-You can pass a "containing" string just like ?Query, in addition, for methods and fields,
-you can use BindingFlags to insert search options, such as instance, static, public, nonpublic, flattenhierarchy, or declared only.
-By default, it uses the same search options as the navigator, which returns declared members of all access modifiers, and all public/protected inherited members including
-flattening the hierarchy.
+ex. types.fields<int>("value", instance|public);
 
+String and BindingFlags are optional values. The string is a "containing" value, the query will return members who's name contains that string (caseless)
+if the value is not null.
+The bindingflags are search options. Currently supported flags include:
+Public
+NonPublic
+Static
+Instance
+DeclaredOnly
+FlattenHierarchy
+By default, all these flags are true.
+
+Furthermore, you can use the ? controller to query the currently loaded type.
+This follows the *exact* same parameter format and rules as the query methods in the Types class, but without type arguments.
+The names are the same.
+You can choose to query like a method, or query parameterlessly by name, using the default values.
+Ie.
+?methods
+or
+?fields(null, static|public|instance);
+
+You can also use query to view your variables by typing ?vars
 
 
 
@@ -147,7 +184,7 @@ Using the Navigator: Helper Class - Types
 The Navigator comes with a static helper class called Types. It provides various methods, including the previously
 mentioned alternative/static query methods. Here is a list of Types' additional helper methods:
 
-Of<T> and Of(string) - return a type object, either with a key matching the string, or typeof(T). String variant is mainly for obtaining generic definitions
+Of<T> and Of(string) - return a type object, either with a key matching the string, or typeof(T). String variant is mainly for obtaining generic definitions, ex. "List<T>" or "Dictionary<K,V>"
 Struct<T>(T) - return an unmanaged struct == the parameter values
 Enum<T>(T) - return an enum value == the parameter values
 String(string) - return a string == the parameter values
@@ -167,18 +204,80 @@ This is the simplest way to do it, here is an example of me caching only public 
             Assembly xquinn = Assembly.Load("XQuinn");
             TypeCache.CacheTypes(xquinn.GetTypes().Where(x => x.IsPublic), false);
 
-CacheTypes(IEnumerable<Type>,bool) by default returns a cache-compatible name for your type, either fullname, or shortname. There is an overload that uses
-a delegate to allow you to input custom logic for returning string names from types. 
+CacheTypes(IEnumerable<Type>,bool) by default returns a cache-compatible name for your type, either fullname, or shortname. You can read more about
+how it gets type names below. There is an overload that takes an 'append' string. It will append this value to the beginning of every type name.
+There is another overload that uses a delegate to allow you to input custom logic for returning string names from types. 
 If you return a null key using this delegate, the paired type will be skipped and not cached.
 
 If you are using your own custom cache names, it is recommended that you first use TypeCache.GetCompatibleName(Type,bool) before appending any
-extra data to your customized name. Type names have specific rules:
-you should follow the exact same naming rules for class names as you would in normal C#. 
+extra data to your customized name.
+Reflection may mangle typenames - generics have extra data appended to their name, and nested types have a + instead of a member accessor operator.
+GetCompatibleName snips off the extra generic data and replaces + with a member accessor operator.
+ex. the nested generic type
+NameSpace.TopType.NestedType<T>
+will typically have a reflection name something like
+Namespace.TopType+NestedType`[1]T
+The method will convert it to the string
+NameSpace.TopType.NestedType (see more below for why we dont include <T>)
+
+Type names have specific rules:
+You should follow the exact same naming rules for class names as you would in normal C#. 
 If you are curious on the specific rules, check out TypeCache.ThrowIfBadKey(string).
 
-Note: Do not attempt to create string keys such as "Class<T>" for generic definitions. The system internally handles generic arguments separately outisde of the string key. 
-Class<T> should be cached with string key "Class", it will not cause conflicts with a nongeneric "Class" of the same name, 
+Note: Do not attempt to create string keys such as "Class<T>" for generic definitions. These will be considered invalid and will throw.
+The system internally handles the inclusion of generic parameters in type keys.
+Class<T> should be cached with string key "Class", it will not cause conflicts with a nongeneric Class of the same name, 
 or other generic types with the same name and a different number of args.
 
 
 
+PreCached Types:
+
+[ushort, System.UInt16]
+[Type, System.RuntimeType]
+[ICollection, System.Collections.ICollection]
+[Activator, System.Activator]
+[ICollection<T>, System.Collections.Generic.ICollection`1[T]]
+[List<T>, System.Collections.Generic.List`1[T]]
+[nint, System.IntPtr]
+[float, System.Single]
+[RuntimeInformation, System.Runtime.InteropServices.RuntimeInformation]
+[string, System.String]
+[RuntimeEnvironment, System.Runtime.InteropServices.RuntimeEnvironment]
+[nuint, System.UIntPtr]
+[byte, System.Byte]
+[IDictionary, System.Collections.IDictionary]
+[IDictionary<T1, T2>, System.Collections.Generic.IDictionary`2[TKey,TValue]]
+[HashSet<T>, System.Collections.Generic.HashSet`1[T]]
+[IDisposable, System.IDisposable]
+[char, System.Char]
+[Array, System.Array]
+[sbyte, System.SByte]
+[IList, System.Collections.IList]
+[Types, XQuinn.Private.NavigatorEngine.Types]
+[Enum, System.Enum]
+[IList<T>, System.Collections.Generic.IList`1[T]]
+[Tuple, System.ValueTuple]
+[object, System.Object]
+[AppContext, System.AppContext]
+[int, System.Int32]
+[Collection<T>, System.Collections.ObjectModel.Collection`1[T]]
+[TypeCache, XQuinn.Reflection.TypeCache]
+[KVP<T1, T2>, System.Collections.Generic.KeyValuePair`2[TKey,TValue]]
+[Dictionary<T1, T2>, System.Collections.Generic.Dictionary`2[TKey,TValue]]
+[ulong, System.UInt64]
+[long, System.Int64]
+[AppDomain, System.AppDomain]
+[Enumerable, System.Linq.Enumerable]
+[Assembly, System.Reflection.Assembly]
+[IEnumerable, System.Collections.IEnumerable]
+[IEnumerable<T>, System.Collections.Generic.IEnumerable`1[T]]
+[bool, System.Boolean]
+[uint, System.UInt32]
+[BindingFlags, System.Reflection.BindingFlags]
+[double, System.Double]
+[Environment, System.Environment]
+[decimal, System.Decimal]
+[short, System.Int16]
+
+If using on Caves of Qud, Additional Precached types are on a separate page on the steam mod threads.

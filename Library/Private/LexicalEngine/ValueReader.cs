@@ -108,8 +108,12 @@ namespace XQuinn.Private.LexicalEngine
             }
             if (!_noEscape && _value == EscSeq)
             {
-                i += 2;
+                i++;
                 _value = invocation[i];
+                if (_value == '"')
+                    _sb.Append(_value); //i actually have a rule against doing direct appends but
+                i++;                             //im feeling lazy right now and it works really smooth here (usually doing direct appends is a bad idea)
+                _value = invocation[i];             //(youre usually just supposed to return true or false which may jump to append in the main loop)
             }
             if (_value == StringDeclr)
             {

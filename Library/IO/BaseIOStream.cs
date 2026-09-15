@@ -20,7 +20,7 @@ public abstract class IOStream : IDisposable
 
     StreamWriter _writer = null!;
 
-    protected IOStream()
+    internal IOStream()
     {
 
     }

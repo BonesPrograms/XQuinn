@@ -71,13 +71,15 @@ namespace XQuinn.CodeAnalysis
 
         //Primary reading rulesets - determine how to lex incoming data based on context
         internal bool _readChar;
-        internal bool _readCharValue = false;
+        internal bool _readCharValue;
         internal bool _readArbitraryLegalValue;
         internal bool _readQualifiedMember;
         internal bool _readDigit;
         internal bool _readString;
         internal bool _readGeneric;
         internal bool _noEscape;
+
+        internal bool _readEnum;
 
         //These are supporting flags for rulesets, some rulesets have specific rules for specific characters, or need to be read around declaration characters
         internal bool _readFirstCharOfName;
@@ -102,17 +104,21 @@ namespace XQuinn.CodeAnalysis
             _valueReader = new(this);
             _arbitraryReader = new(this);
         }
+
         public MethodString MethodTemplate(string invocation, TypeString declaringType, TypeString? implicitAccess)
         {
 
             //   if (string.IsNullOrWhiteSpace(invocation))
             //   throw new ArgumentException("Invocation cannot be null or whitespace.");
             Clear();
+            int? breakpoint = Breakpoint(invocation);
             int i = 0;
             _declaringType = declaringType; //this is specifically to support trycatch, though otherwise not necessary because it always clears at the end to avoid holding onto stale data
             _implicit_this = implicitAccess;
             while (i < invocation.Length)
             {
+                if (i == breakpoint)
+                    break;
                 _value = invocation[i];
                 if (_start)
                 {
@@ -180,9 +186,9 @@ namespace XQuinn.CodeAnalysis
                 i++;
             }
             FatalLexicalError(invocation);
-            MethodString primary = _main!;
+            MethodString method = _main!;
             Clear();
-            return primary;
+            return method;
         }
 
         void GetContext(string invocation, ref int i) //helps us figure out whats about to be read 
@@ -215,6 +221,8 @@ namespace XQuinn.CodeAnalysis
 
         void FatalLexicalError(string invocation)
         {
+            if (_lastReadingCount > 0)
+                throw new LexicalException("Nested method parameters not properly terminated. You can usually throw another ending parenthesis at the end of your invocation to fix this. ", invocation, _sb);
             if (_readGeneric)
                 throw new LexicalException("Invalid generic arguments.", invocation, _sb);
             if (_readChar)
@@ -248,7 +256,7 @@ namespace XQuinn.CodeAnalysis
         internal void ValidIdentifier(char value, string invocation, int? i)
         {
             const string error = "Detected illegal character in identifier.";//&&value!='('
-            if (value != '<' && value != '>' && value != ',' && value != ':' && value != '|' && Illegal(value))
+            if (value != '<' && value != '>' && value != ',' && value != ':' && Illegal(value))
                 throw i == null ? new LexicalException(error, invocation, value, _sb) : throw new LexicalException(error, invocation, value, _sb, i.Value);
 
         }
@@ -256,8 +264,8 @@ namespace XQuinn.CodeAnalysis
         public static bool Termination(char value) => value == ParamTerminate || value == MethodTerminate;
         public static bool ValidIdentifierFirstChar(char value) => value == VaidNonAlphaNumeric || value.IsLetter();
 
-        void Clear()
-        {
+        void Clear() //This allows the Lexer to recover if an exception is thrown during analysis
+        {             //There can also be some leftover values after a lex so state must be reset
             _main = null;
             _declaringType = null;
             _implicit_this = null;
@@ -267,7 +275,10 @@ namespace XQuinn.CodeAnalysis
             _readDigit = false;
             _readFloat = false;
             _readString = false;
+            _noEscape = false;
+            _readGeneric = false;
             _stringEnding = false;
+            _readFirstCharOfName = false;
             _readQualifiedMember = false;
             _finishedReadChar = false;
             _readCharValue = false;
@@ -279,6 +290,52 @@ namespace XQuinn.CodeAnalysis
             _lastReadingCount = 0;
             _sb.Length = 0;
         }
+
+
+        int? Breakpoint(string invocation) // a more refined version of what you see above that doesnt suffer from that invalid method breaking thing
+        {                               //and is actually able to help enforce more lexical rules as to how a method is allowed to end
+            bool breaking = false;      //tho atp mostly a redundancy, but this will make the exceptions more informative
+            int? breakpoint = null;
+            for (int i = invocation.Length - 1; i >= 0; i--)
+            {
+                char val = invocation[i];
+                if (val == ' ')
+                    continue;
+                if (val == ';')
+                    breaking = true;
+                else if (breaking)
+                {
+                    if (val == MethodTerminate)
+                    {
+                        breakpoint = i + 1;
+                        break;
+                    }
+                    else
+                        throw new LexicalException("Invalid method termination. ", invocation, val, _sb);
+                }
+                else if (val == MethodTerminate)
+                    break;
+                else
+                    throw new LexicalException("Detected trailing input after method termination or lack of method termination. ", invocation, val, _sb);
+            }
+            return breakpoint;
+        }
+
+        //testing with strings reveals that breakpoint needs to be pushed up by +1
+        //this is because having breakpoint exactly on method terminate fucks up string closure
+        // the _stringEnding branch in ReadString is not reached
+        //this phenomena can be tested with class<string>.method("hi"); simply if you remove the +1 code
+        //but you will get the same failed string closure exception if you do method("hi" 
+        //so the cause is revealed
+        //when you terminate on ), you are effectively shrinking the call down to
+        //class<string>.method("hi"
+        //when we reach the index after ", the loop ends entirely and we leave its scope
+        //but you werent supposed to, it needs to loop *one* more time to finalize the string read
+        //string read processing doesnt actually happen on the final "
+        //it happens on the next loop thereafter
+        //so essentially you break out of the loop and the stringread method doesnt get a chance to invoke and that causes the bug
+
+
 
     }
 

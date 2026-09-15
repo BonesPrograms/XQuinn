@@ -25,7 +25,7 @@ namespace XQuinn.Extensions
     }
     public static class StringBuilderExtensions
     {
-
+        
         public static StringBuilder AppendMany(this StringBuilder sb, IEnumerable many, string? delimiter = null, bool appendIndex = false, Func<object?, string?>? toString = null)
         {
             int length;
@@ -54,7 +54,7 @@ namespace XQuinn.Extensions
 
         static void AppendMany<T>(int length, ref int i, StringBuilder sb, T? element, string? delimiter = null, bool appendIndex = false, Func<T?, string?>? toString = null)
         {
-            if (appendIndex)
+            if (length > 1 && appendIndex)
                 sb.Append($"[{i}] ");
             string? text = toString?.Invoke(element);
             if (toString == null)
