@@ -6,7 +6,7 @@ using System;
 using static XQuinn.CodeAnalysis.InvokeLexer;
 
 
-namespace XQuinn.Private.LexicalEngine
+namespace XQuinn.CodeAnalysis.LexicalEngine
 {
     sealed class ArbitraryReader : LexicalObject
     {

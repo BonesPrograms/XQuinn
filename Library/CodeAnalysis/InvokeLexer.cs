@@ -2,7 +2,7 @@ using System.Text;
 using XQuinn.CodeAnalysis.AST;
 using System;
 using XQuinn.Extensions;
-using XQuinn.Private.LexicalEngine;
+using XQuinn.CodeAnalysis.LexicalEngine;
 
 namespace XQuinn.CodeAnalysis
 {

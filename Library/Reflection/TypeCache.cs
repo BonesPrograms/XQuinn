@@ -13,8 +13,8 @@ using XQuinn.ObjectModel;
 using System.Runtime.CompilerServices;
 using System.Linq;
 using XQuinn.CodeAnalysis.AST;
-using XQuinn.Private.NavigatorEngine;
-using XQuinn.Private;
+using XQuinn.Runtime.NavigatorEngine;
+using XQuinn.Runtime;
 
 
 namespace XQuinn.Reflection

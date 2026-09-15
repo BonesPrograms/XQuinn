@@ -3,11 +3,11 @@ using System;
 using System.Collections.Generic;
 using XQuinn.Extensions;
 using XQuinn.Runtime;
-using XQuinn.Private.NavigatorEngine;
+using XQuinn.Runtime.NavigatorEngine;
 using XQuinn.Reflection;
 using static XQuinn.Reflection.TypeCache;
 
-namespace XQuinn.Private.NavigatorEngine
+namespace XQuinn.Runtime.NavigatorEngine
 {
 
 

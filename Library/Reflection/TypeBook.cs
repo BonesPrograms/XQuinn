@@ -7,7 +7,7 @@ using XQuinn.CodeAnalysis.AST;
 using System.Runtime.CompilerServices;
 using System.CodeDom.Compiler;
 using XQuinn.Extensions;
-using XQuinn.Private.NavigatorEngine;
+using XQuinn.Runtime.NavigatorEngine;
 
 namespace XQuinn.Reflection
 {

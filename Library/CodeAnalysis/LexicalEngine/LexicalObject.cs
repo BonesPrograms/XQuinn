@@ -2,7 +2,7 @@ using System;
 using System.Text;
 using XQuinn.CodeAnalysis;
 
-namespace XQuinn.Private.LexicalEngine
+namespace XQuinn.CodeAnalysis.LexicalEngine
 {
     abstract class LexicalObject
     {

@@ -3,7 +3,7 @@ using XQuinn.Reflection;
 using XQuinn.CodeAnalysis.AST;
 using System.Text;
 
-namespace XQuinn.Private.NavigatorEngine
+namespace XQuinn.Runtime.NavigatorEngine
 {
     internal readonly struct MethodKey : IEquatable<MethodKey>
     {

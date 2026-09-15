@@ -11,7 +11,7 @@ using System.Collections;
 using System.Runtime.ExceptionServices;
 using XQuinn.Runtime;
 
-namespace XQuinn.Private.NavigatorEngine
+namespace XQuinn.Runtime.NavigatorEngine
 {
     
 

@@ -3,7 +3,7 @@ using static XQuinn.CodeAnalysis.InvokeLexer;
 using XQuinn.Extensions;
 using XQuinn.CodeAnalysis.AST;
 
-namespace XQuinn.Private.LexicalEngine
+namespace XQuinn.CodeAnalysis.LexicalEngine
 {
     sealed class ValueReader : LexicalObject
     {

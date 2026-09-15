@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System;
 using XQuinn.Reflection;
 using XQuinn.Extensions;
-using XQuinn.Private.NavigatorEngine;
+using XQuinn.Runtime.NavigatorEngine;
 
 namespace XQuinn.CodeAnalysis.AST
 {

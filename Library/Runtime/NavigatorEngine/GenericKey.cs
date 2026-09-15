@@ -4,7 +4,7 @@ using System.Text;
 using XQuinn.CodeAnalysis.AST;
 using XQuinn.Extensions;
 
-namespace XQuinn.Private.NavigatorEngine
+namespace XQuinn.Runtime.NavigatorEngine
 {
     internal readonly struct GenericKey : IEquatable<GenericKey>
     {

@@ -22,7 +22,7 @@ namespace XQuinn.Runtime
         }
         readonly StringBuilder _feed = new();
         readonly StringBuilder _collectionWriter = new();
-        internal NavigatorCore _core = new();
+        readonly internal NavigatorCore _core = new();
 
         public NavigationFeed()
         {

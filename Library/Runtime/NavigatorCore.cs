@@ -9,7 +9,7 @@ using XQuinn.CodeAnalysis;
 using System.Text;
 using System.Collections;
 using System.Runtime.ExceptionServices;
-using XQuinn.Private.NavigatorEngine;
+using XQuinn.Runtime.NavigatorEngine;
 
 namespace XQuinn.Runtime
 {
@@ -328,31 +328,7 @@ namespace XQuinn.Runtime
         {
             if (_instance == null)
                 throw new InvalidOperationException("No instance is loaded.");
-            if (key.Any(x => x == ' '))
-            {
-                StringBuilder sb = new();
-                int start = -1;
-                for (int i = 0; i < key.Length; i++)
-                {
-                    if (key[i] != ' ')
-                    {
-                        start = i;
-                        break;
-                    }
-                }
-                int end = -1; //smort whitespace skipper skips lead and end whitespace 
-                for (int i = key.Length - 1; i >= 0; i--)
-                {
-                    if (key[i] != ' ')
-                    {
-                        end = i;
-                        break;
-                    }
-                }
-                for (int i = start; i <= end; i++)
-                    sb.Append(key[i]);
-                key = sb.ToString();
-            }
+            key = key.Trim();
             TypeCache.ThrowIfBadKey(key);
             if (TypeCache.s_registry.ContainsKey(new(key)))
                 throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");

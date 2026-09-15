@@ -8,7 +8,7 @@ using System.Linq;
 using XQuinn.CodeAnalysis.AST;
 using System.Text;
 
-namespace XQuinn.Private.NavigatorEngine
+namespace XQuinn.Runtime.NavigatorEngine
 {
 
     internal static class TypeMap

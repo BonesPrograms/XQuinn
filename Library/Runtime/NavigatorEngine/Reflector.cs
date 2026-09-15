@@ -8,12 +8,12 @@ using System.Collections.Generic;
 using XQuinn.CodeAnalysis;
 using System.Text;
 using System.Collections;
-using XQuinn.Private;
+using XQuinn.Runtime;
 using System.Runtime.ExceptionServices;
 
 using XQuinn.Runtime;
 
-namespace XQuinn.Private.NavigatorEngine
+namespace XQuinn.Runtime.NavigatorEngine
 {
 
 
