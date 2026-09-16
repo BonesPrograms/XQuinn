@@ -39,6 +39,7 @@ namespace XQuinn.Private
 #else
 
             Cache();
+            //Example();
             RunNavigator();
 
  
@@ -56,7 +57,7 @@ namespace XQuinn.Private
         {
             NavigationFeed monitor = new();
             string flag = NavigatorCore.Flag.ToString().Replace(',', '|').Replace(" ", "");
-              Console.WriteLine(monitor.Interface($"~ *types.enum<bindingFlags>({flag}); +flag;", out _, out bool chainexception));
+              Console.WriteLine(monitor.Interface($"~ *types.enum<bindingFlags>({flag}); +flag; @program", out _, out bool chainexception));
             // if (chainexception)
             //   throw new ArgumentException();
             while (true)
@@ -76,6 +77,17 @@ namespace XQuinn.Private
             TypeCache.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
             //   TypeCache.CacheType(typeof(BitConverter), false);
             //@ TypeCache.CacheType(typeof(BytesLittleEndian), "bytes");
+        }
+
+
+        class Class
+        {
+            public string Field;
+
+            public Class(string f)
+            {
+                Field = f;
+            }
         }
 
 
@@ -106,24 +118,13 @@ namespace XQuinn.Private
             set => _s_obj = value;
         }
         static T? _s_obj = default;
-
         T? Obj { get => _obj; set => _obj = value; }
-
         T? _obj = default;
-
-        public T Func(T obj) => obj;
-
+        public (T,T) Func(T obj, T obj2) => (obj,obj2);
         public static T Method(T obj) => obj;
-
         public static X Generic<X>(X obj) => obj;
-
-        public static void Test(char x, char y) { }
-
-        public static int Method(int i) => i;
-
-        public static T[] Array(string s = "42", params T?[]? arr)
+        public static T[] Array(params T[] arr)
         {
-            Console.WriteLine(s);
             return arr;
         }
     }

@@ -62,7 +62,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 throw new TargetParameterCountException($"input param count: {invocation.Params.Count} required count: {parameters.Length} method name {invocation.Name}");
         }
 
-    //Notes about
+        //Notes about
         void ParamsArray(int lastparam, ParameterInfo[] parameters, object?[] args, MethodString invocation)
         {
             int lastBeforeThat = lastparam - 1;
@@ -71,21 +71,24 @@ namespace XQuinn.Runtime.NavigatorEngine
             Type elementType = parameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentNullException();
             if (invocation.Params.Count == parameters.Length)
             {
-                //this checks to see if youve sent an array. if the object is not an array or null, divert to creating an array
-                object? arg = ParameterToObject(invocation.Params[lastparam], elementType);
-                if( arg == null || arg is IList) //list && list.GetType() == actualParameters[lastparam].ParameterType) //i dont bother checking conversions most of the time runtime does it for me
+                
+                if (invocation.Params[lastparam].Argument.EqualsCaseless("null"))
+                    args[lastparam] = null; //if element type is non nullable, then attempting to pass "null" for the params array will throw a format exception (because ParameterToObject attempts to parse the argument as the element type)
+                else                        //so if your arg is null, special case takes over and assigns null for the params array
                 {
-                    args[lastparam] = arg;
-                    return;
+                    object? arg = ParameterToObject(invocation.Params[lastparam], elementType);
+                    if (arg?.GetType().IsArray ?? true) //list && list.GetType() == actualParameters[lastparam].ParameterType) //i dont bother checking conversions most of the time runtime does it for me
+                    {
+                        args[lastparam] = arg;
+                    }
+                    else if (arg != null) ////this checks to see if youve sent an array. if the object is not an array or null, divert to creating an array. I have some notes about this choice below
+                    {
+                        Array singleArgArray = Array.CreateInstance(elementType, 1);
+                        singleArgArray.SetValue(arg, 0);
+                        args[lastparam] = singleArgArray;
+                    }
                 }
-                else if(arg!=null) //I have some notes about this choice below
-                {
-                    Array singleArgArray = Array.CreateInstance(elementType, 1);
-                    
-                    singleArgArray.SetValue(arg, 0);
-                    args[lastparam] = singleArgArray;
-                    return;
-                }
+                return;
                 //Fixes a bug wherein; if you send an already initialized array[] to a method with the 'params' keyword, it would create a new array (of arrays)
                 //and assign the array you passed us as an element nested inside of the new array.
             }

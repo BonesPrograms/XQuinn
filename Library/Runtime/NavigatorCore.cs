@@ -30,7 +30,7 @@ namespace XQuinn.Runtime
         internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, PropertyInfo> _props = new(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, VariableBinding> _variables = new(StringComparer.OrdinalIgnoreCase);
-       // public bool Caching = true;
+        // public bool Caching = true;
         bool _chaining = false;
         internal const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
@@ -126,7 +126,7 @@ namespace XQuinn.Runtime
         {
             exception = false;
             if (_chaining)
-                throw new ArgumentException("Cannot invoke nested chains.");
+                throw new NotSupportedException("Cannot invoke nested chains.");
             _chaining = true;
             List<string> invocations = new(commands.Length);
             for (int i = 0; i < commands.Length; i++)
@@ -204,6 +204,8 @@ namespace XQuinn.Runtime
             if (Assignment(invocation, out object? assigned))
                 return assigned;
             string typeName = MiniLexer.ResolveMemberAccess(invocation, out string member, out bool field) ?? _implicit_this?.StringID ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
+            if (typeName != _implicit_this?.StringID)
+                typeName = typeName.Trim();
             if (!field)
             {
                 TypeString declaringtype = ThisOrNew(typeName);
@@ -212,12 +214,13 @@ namespace XQuinn.Runtime
             }
             else
             {
+                member = member.Trim();
                 if (member.EqualsCaseless("this"))
                     return _instance ?? "null";
                 if (_variables.TryGetValue(member, out VariableBinding? variable))
                     return variable;
                 TypeString declaringtype = ThisOrNew(typeName);
-                FieldString fieldStr = new(member.Trim(), declaringtype);
+                FieldString fieldStr = new(member, declaringtype);
                 return _invoker.InvokeFieldOrProperty(fieldStr);
             }
 
