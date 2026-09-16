@@ -21,6 +21,8 @@ using XQuinn.ObjectModel;
 using System.Runtime.InteropServices;
 using System.ComponentModel;
 using static XQuinn.Reflection.ByteSizes;
+using XQuinn.Runtime.NavigatorEngine;
+using XQuinn.NetConsole;
 
 namespace XQuinn.Private
 {
@@ -37,8 +39,9 @@ namespace XQuinn.Private
 #else
 
             Cache();
-
             RunNavigator();
+
+ 
 #endif
         }
 
@@ -53,9 +56,9 @@ namespace XQuinn.Private
         {
             NavigationFeed monitor = new();
             string flag = NavigatorCore.Flag.ToString().Replace(',', '|').Replace(" ", "");
-         //   Console.WriteLine(monitor.Interface($"~ *types.enum<bindingFlags>({flag}); +flag", out _, out bool chainexception));
-           // if (chainexception)
-             //   throw new ArgumentException();
+              Console.WriteLine(monitor.Interface($"~ *types.enum<bindingFlags>({flag}); +flag", out _, out bool chainexception));
+            // if (chainexception)
+            //   throw new ArgumentException();
             while (true)
             {
                 string? msg = Console.ReadLine();
@@ -68,6 +71,7 @@ namespace XQuinn.Private
             Assembly xquinn = Assembly.Load("XQuinn");
             TypeCache.CacheTypes(xquinn.GetTypes(), false);
             TypeCache.CacheType<Harmony>(false);
+            TypeCache.CacheType(typeof(KeyValuePair<,>), false);
             TypeCache.CacheType(typeof(AccessTools), false);
             TypeCache.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
             //   TypeCache.CacheType(typeof(BitConverter), false);
@@ -77,10 +81,15 @@ namespace XQuinn.Private
 
     }
 
-class PrivBase
+    class PrivBase
     {
         int field;
-        int method(int i) => i;   
+        int method(int i) => i;
+
+        class Nest
+        {
+
+        }
     }
 
     class inh : PrivBase
@@ -91,16 +100,18 @@ class PrivBase
     }
     class Class<T> //where T : new()
     {
-        static T? SObj
+        static T? S_Obj
         {
-            get => s_obj;
-            set => s_obj = value;
+            get => _s_obj;
+            set => _s_obj = value;
         }
-        static T? s_obj = default;
+        static T? _s_obj = default;
 
-        T? Obj {get=>_obj;set=>_obj=value;}
+        T? Obj { get => _obj; set => _obj = value; }
 
         T? _obj = default;
+
+        public T Func(T obj) => obj;
 
         public static T Method(T obj) => obj;
 
@@ -110,7 +121,7 @@ class PrivBase
 
         public static int Method(int i) => i;
 
-        public static T[] Array(string s = "42", params T[] arr)
+        public static T[] Array(string s = "42", params T?[]? arr)
         {
             Console.WriteLine(s);
             return arr;

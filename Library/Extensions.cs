@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System;
 using System.Linq;
 using System.Collections;
+using System.Reflection;
+using XQuinn.Reflection;
 
 namespace XQuinn.Extensions
 {
@@ -54,7 +56,7 @@ namespace XQuinn.Extensions
 
         static void AppendMany<T>(int length, ref int i, StringBuilder sb, T? element, string? delimiter = null, bool appendIndex = false, Func<T?, string?>? toString = null)
         {
-            if (length > 1 && appendIndex)
+            if (appendIndex)
                 sb.Append($"[{i}] ");
             string? text = toString?.Invoke(element);
             if (toString == null)

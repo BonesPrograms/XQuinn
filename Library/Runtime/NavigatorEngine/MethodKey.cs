@@ -17,7 +17,7 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         internal static MethodKey MethodQuery(MethodString mthdString)
         {
-            string name = mthdString.NameOrValue;
+            string name = mthdString.Name;
             int split = name.IndexOf(':');
             //  string[] query = name.Split(':');
             int index = 0;

@@ -48,7 +48,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         {
             int? lastAccessorIndex = null;
             int paramStart = invocation.IndexOf('(');
-            field = paramStart == -1;
+            field = paramStart < 0;
             for (int i = 0; i < invocation.Length; i++) //this resolves typenames vs member names, lexer does something similar but not exactly the same - this one is pretty much universal
             {                                        //works with anything like field or method() (no type name) or namespace.typename.method(22, "hello", othertype.method()) //methods are broken off from the typename with all their parameters included
                 if (i == paramStart)

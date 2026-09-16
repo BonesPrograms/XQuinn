@@ -7,20 +7,20 @@ namespace XQuinn.CodeAnalysis.AST
     //Parameter doesnt support Generics so you cannot just move it all up to the top class
     internal abstract class ParameterString
     {
-        public string NameOrValue
+        public string Argument
         {
-            get => _string;
-            protected set => _string = value;
+            get => _arg;
+            protected set => _arg = value;
         }
 
-        string _string;
+        string _arg;
         internal ParameterString(string String)
         {
-            _string = String;
+            _arg = String;
         }
         public override string ToString()
         {
-            return NameOrValue;
+            return Argument;
         }
 
 

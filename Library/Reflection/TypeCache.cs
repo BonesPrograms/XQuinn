@@ -14,7 +14,6 @@ using System.Runtime.CompilerServices;
 using System.Linq;
 using XQuinn.CodeAnalysis.AST;
 using XQuinn.Runtime.NavigatorEngine;
-using XQuinn.Runtime;
 
 
 namespace XQuinn.Reflection
@@ -86,6 +85,7 @@ namespace XQuinn.Reflection
             [new(nameof(Enum))] = typeof(Enum),
             [new("Tuple")] = typeof(ValueTuple),
             [new(nameof(BindingFlags))] = typeof(BindingFlags),
+            [new(nameof(Nullable<_>), 1)] = typeof(Nullable<>),
 
             [new(nameof(Types))] = typeof(Types),
             // ["arraygen"] = typeof(ArrayGen),
@@ -300,12 +300,9 @@ namespace XQuinn.Reflection
                 return type == cachedtype ? true : throw new DuplicateKeyException(cachedtype!, type, key);
             return false;
         }
-        abstract class _
+        struct _
         {
-            _()
-            {
 
-            }
         }
     }
 }

@@ -9,6 +9,8 @@ namespace XQuinn.CodeAnalysis.AST
 {
     internal sealed class MethodString : GenericString, IMemberString
     {
+
+
         internal readonly MethodString? _subParamOf;
         public TypeString DeclaringType => _type;
         readonly TypeString _type;
@@ -71,7 +73,7 @@ namespace XQuinn.CodeAnalysis.AST
                     sb2.Length = 0;
                     return s;
                 }
-                else return x!.NameOrValue;
+                else return x!.Argument;
             });
         }
 

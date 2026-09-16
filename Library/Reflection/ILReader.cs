@@ -90,7 +90,7 @@ namespace XQuinn.Reflection
             if (_methodbase is MethodInfo mthdinfo)
                 methodstring = MetadataPrinter.MethodToString(new(), mthdinfo, true).ToString();
             else
-                methodstring = MetadataPrinter.ConstructorToString(new(), (ConstructorInfo)_methodbase).ToString();
+                methodstring = MetadataPrinter.ConstructorToString(new(), (ConstructorInfo)_methodbase, false).ToString();
             Writer.WriteLine($"  {methodstring}");//,maybe should edit the stringbuilder to slip in parameter names
             Writer.WriteLine("");
             //  writer.WriteLine("	.maxstack 1");
@@ -297,12 +297,12 @@ namespace XQuinn.Reflection
         {
             if (Operand is LocalVariableInfo lvar)
             {
-                MetadataPrinter.GenericTypeToString(sb, lvar.LocalType);
+                MetadataPrinter.GenericTypeToString(sb, lvar.LocalType, false);
                 sb.Append($" {lvar.LocalIndex}");
             }
             else if (Operand is ParameterInfo info)
             {
-                MetadataPrinter.GenericTypeToString(sb, info.ParameterType);
+                MetadataPrinter.GenericTypeToString(sb, info.ParameterType, false);
                 sb.Append($" {info.Name}");
             }
             else if (OpCode.OperandType == OperandType.InlineBrTarget || OpCode.OperandType == OperandType.ShortInlineBrTarget)
@@ -315,7 +315,7 @@ namespace XQuinn.Reflection
             else if (Operand is string)
                 sb.Append($"\"{Operand}\"");
             else if (Operand is MemberInfo inf)
-                MetadataPrinter.BuildPrint(sb, inf!);
+                MetadataPrinter.BuildPrint(sb, inf!, false);
             else
                 sb.Append($"{Operand?.ToString()}");
         }

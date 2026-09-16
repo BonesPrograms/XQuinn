@@ -15,23 +15,16 @@ namespace XQuinn.Runtime
     /// </summary>
     public sealed class NavigationFeed
     {
-        public bool Caching
-        {
-            get => _core.Caching;
-            set => _core.Caching = value;
-        }
         readonly StringBuilder _feed = new();
         readonly StringBuilder _collectionWriter = new();
         readonly internal NavigatorCore _core = new();
-
+        Type? _lastLoadedType;
+        string? _lastloadedString;
+        Type? _lastinstanceType;
+        string? _lastInstanceString;
         public NavigationFeed()
         {
         }
-        public NavigationFeed(bool caching)
-        {
-            Caching = caching;
-        }
-
         public string SafeInterface(string input, out object? interpretereReturned, out bool exception)
         {
             _feed.Length = 0;
@@ -82,11 +75,14 @@ namespace XQuinn.Runtime
                 if (empty)
                     _feed.AppendLine($"Returned: Enumerable is empty.");
                 else
-                    _feed.AppendLine($"Returned: \n{_collectionWriter.AppendMany(enumerable, Environment.NewLine, true)}");
+                    _feed.AppendLine($"Returned: \n{_collectionWriter.AppendMany(enumerable, Environment.NewLine, true, x => x is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : x?.ToString())}");
                 _collectionWriter.Length = 0;
             }
             else
-                _feed.AppendLine($"Returned: {ret?.ToString() ?? "null"}");
+            {
+                string returnString = ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString() ?? "null";
+                _feed.AppendLine($"Returned: {returnString}");
+            }
         }
 
 
@@ -94,12 +90,36 @@ namespace XQuinn.Runtime
         {
             if (_core._loadedType != null)
             {
-                _feed.AppendLine($"Type: {_core._loadedType}");
-                if (_core._instance != null)
-                    _feed.AppendLine($"Instance Type: {_core._instanceType}");
+                if (_lastLoadedType != _core._loadedType)
+                {
+                    _lastLoadedType = _core._loadedType;
+                    _lastloadedString = ReflectionPrinter.Print(_core._loadedType, false);
+                }
+                _feed.AppendLine($"Type: {_lastloadedString}");
+                if (_core._instanceType != null)
+                {
+                    if (_lastinstanceType != _core._instanceType)
+                    {
+                        _lastinstanceType = _core._instanceType;
+                        _lastInstanceString = ReflectionPrinter.Print(_core._instanceType, false);
+                    }
+                    _feed.AppendLine($"Instance Type: {_lastInstanceString}");
+                }
+                else
+                {
+                    _lastinstanceType = null;
+                    _lastInstanceString = null;
+                }
                 // sb.AppendLine($"Loaded Instance Object: {_navigator._instance}");
                 if (_core._variable != null)
                     _feed.AppendLine($"Variable: {_core._variable}");
+            }
+            else
+            {
+                _lastLoadedType = null;
+                _lastloadedString = null;
+                _lastinstanceType = null;
+                _lastInstanceString = null;
             }
 
         }

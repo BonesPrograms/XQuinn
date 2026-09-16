@@ -8,6 +8,8 @@ namespace XQuinn.CodeAnalysis.AST
 
     internal sealed class FieldString : ParameterString, IMemberString
     {
+
+        public string Name => Argument;
         public TypeString DeclaringType => _type;
         readonly TypeString _type;
         internal FieldString(string name, TypeString declaredIn) : base(name)

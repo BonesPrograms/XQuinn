@@ -15,34 +15,34 @@ namespace XQuinn.Reflection
     internal static class MetadataPrinter
     {
 
-        public static StringBuilder BuildPrint(StringBuilder sb, MemberInfo Object)
+        public static StringBuilder BuildPrint(StringBuilder sb, MemberInfo Object, bool fullname)
         {
             if (Object is MethodInfo mthd)
-                MethodToString(sb, mthd);
+                MethodToString(sb, mthd, fullname);
             else if (Object is ConstructorInfo ctor)
-                ConstructorToString(sb, ctor);
+                ConstructorToString(sb, ctor, fullname);
             else if (Object is Type t)
-                TypeToString(sb, t);
-            else if(Object is not PropertyInfo)
-                MemberToString(sb, Object);
+                TypeToString(sb, t, fullname);
+            else if (Object is not PropertyInfo)
+                MemberToString(sb, Object, fullname);
             return sb;
         }
 
 
 
-        static StringBuilder MemberToString(StringBuilder sb, MemberInfo member)
+        static StringBuilder MemberToString(StringBuilder sb, MemberInfo member, bool fullname)
         {
             sb.Append(member.MemberType.ToString());
             sb.Append(' ');
-            GenericTypeToString(sb, member.DeclaringType);
+            GenericTypeToString(sb, member.DeclaringType, fullname);
             sb.Append("::");
-            GenericTypeToString(sb, member.GetUnderlyingType());
+            GenericTypeToString(sb, member.GetUnderlyingType(), fullname);
             sb.Append(' ');
             FixGenericString(sb, member.Name);
             return sb;
         }
 
-        public static StringBuilder TypeToString(StringBuilder sb, Type type)
+        public static StringBuilder TypeToString(StringBuilder sb, Type type, bool fullname)
         {
             if (typeof(Delegate).IsAssignableFrom(type)) sb.Append("delegate");
             else if (type.IsEnum) sb.Append("enum");
@@ -52,31 +52,31 @@ namespace XQuinn.Reflection
             else if (type.IsClass) sb.Append("class");
             else sb.Append("struct");
             sb.Append(' ');
-            GenericTypeToString(sb, type);
+            GenericTypeToString(sb, type, fullname);
             return sb;
         }
-        public static StringBuilder ConstructorToString(StringBuilder sb, ConstructorInfo ctor)
+        public static StringBuilder ConstructorToString(StringBuilder sb, ConstructorInfo ctor, bool fullname)
         {
-            if (ctor.DeclaringType != null) GenericTypeToString(sb, ctor.DeclaringType);
-            sb.Append($"::.ctor{ParamsToString(ctor.GetParameters())}");
+            if (ctor.DeclaringType != null) GenericTypeToString(sb, ctor.DeclaringType, fullname);
+            sb.Append($"::.ctor{ParamsToString(ctor.GetParameters(), fullname)}");
             return sb;
         }
 
-        public static StringBuilder MethodToString(StringBuilder sb, MethodInfo mthd, bool parameterNames = true)
+        public static StringBuilder MethodToString(StringBuilder sb, MethodInfo mthd, bool fullname)
         {
             sb.Append(mthd.IsStatic ? "static " : "instance ");
-            GetReturnString(sb, mthd);
+            GetReturnString(sb, mthd, fullname);
             sb.Append(' ');
-            GenericTypeToString(sb, mthd.DeclaringType);
+            GenericTypeToString(sb, mthd.DeclaringType, fullname);
             sb.Append("::");
             sb.Append(mthd.Name);
-            AddGenericArguments(sb, mthd.GetGenericArguments());
-            sb.Append(ParamsToString(mthd.GetParameters(), parameterNames));
+            AddGenericArguments(sb, mthd.GetGenericArguments(), fullname);
+            sb.Append(ParamsToString(mthd.GetParameters(), fullname));
 
             return sb;
         }
 
-        static void GetReturnString(StringBuilder sb, MethodInfo mthd)
+        static void GetReturnString(StringBuilder sb, MethodInfo mthd, bool fullname)
         {
             if (mthd.ReturnType.Name == "Boolean")
             {
@@ -84,11 +84,11 @@ namespace XQuinn.Reflection
                 return;
             }
             string lowered = mthd.ReturnType.Name.ToLower();
-            if (lowered != "string" && lowered != "boolean" && lowered != "void") GenericTypeToString(sb, mthd.ReturnType);
+            if (lowered != "string" && lowered != "boolean" && lowered != "void") GenericTypeToString(sb, mthd.ReturnType, fullname);
             else sb.Append(lowered);
 
         }
-        static StringBuilder ParamsToString(ParameterInfo[] args, bool names = false)
+        static StringBuilder ParamsToString(ParameterInfo[] args, bool fullname)
         {
             StringBuilder txt = new();
             StringBuilder tname = new();
@@ -96,20 +96,23 @@ namespace XQuinn.Reflection
             for (int i = 0; i < args.Length; i++)
             {
                 ParameterInfo arg = args[i];
-                if(arg.IsDefined(typeof(ParamArrayAttribute)))
-                txt.Append("params ");
-                else if (arg.IsIn) txt.Append("in ");
-                else if (arg.IsOut) txt.Append("out ");
-                else if (arg.ParameterType.IsByRef) txt.Append("ref ");
+                if (arg.IsDefined(typeof(ParamArrayAttribute)))
+                    txt.Append("params ");
+                else if (arg.IsIn)
+                    txt.Append("in ");
+                else if (arg.IsOut)
+                    txt.Append("out ");
+                else if (arg.ParameterType.IsByRef)
+                    txt.Append("ref ");
                 tname.Length = 0;
-                GenericTypeToString(tname, arg.ParameterType);
+                GenericTypeToString(tname, arg.ParameterType, fullname);
                 int index = tname.Length - 1;
                 if (tname[index] == '&') tname.Remove(index, 1);
                 txt.Append(tname);
-                if (names)
-                 txt.Append($" {arg.Name}");
+
+                txt.Append($" {arg.Name}");
                 if (For.NeedsDelimiter(args.Length, i))
-                 txt.Append(", ");
+                    txt.Append(", ");
             }
             txt.Append(')');
             return txt;
@@ -119,11 +122,11 @@ namespace XQuinn.Reflection
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        public static void GenericTypeToString(StringBuilder sb, Type? type)
+        public static void GenericTypeToString(StringBuilder sb, Type? type, bool fullname)
         {
             if (type == null) return;
-            FixGenericString(sb, type.Name);
-            AddGenericArguments(sb, type.GetGenericArguments());
+            FixGenericString(sb, fullname ? type.FullName ?? type.Name : type.Name);
+            AddGenericArguments(sb, type.GetGenericArguments(), fullname);
         }
 
 
@@ -136,16 +139,18 @@ namespace XQuinn.Reflection
                     sb.Append(c);
         }
 
-        internal static void AddGenericArguments(StringBuilder sb, Type[]? genericargs)
+        internal static void AddGenericArguments(StringBuilder sb, Type[]? genericargs, bool fullname)
         {
             if (genericargs?.Length > 0)
             {
                 sb.Append('<');
                 for (int i = 0; i < genericargs.Length; i++)
                 {
-                    FixGenericString(sb, genericargs[i].Name);
-                    if (For.NeedsDelimiter(genericargs.Length, i)) 
-                    sb.Append(", ");
+                    FixGenericString(sb, fullname ? genericargs[i].FullName ?? genericargs[i].Name : genericargs[i].Name);
+                    if (genericargs[i].IsGenericType)
+                        AddGenericArguments(sb, genericargs[i].GetGenericArguments(), fullname);
+                    if (For.NeedsDelimiter(genericargs.Length, i))
+                        sb.Append(", ");
                 }
                 sb.Append('>');
             }

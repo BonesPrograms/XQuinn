@@ -32,7 +32,7 @@ namespace XQuinn.Runtime
         internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, PropertyInfo> _props = new(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, VariableBinding> _variables = new(StringComparer.OrdinalIgnoreCase);
-        public bool Caching = true;
+       // public bool Caching = true;
         bool _chaining = false;
         internal const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
@@ -85,11 +85,11 @@ namespace XQuinn.Runtime
             if (MiniLexer.ImplicitThisMethodCall(invocation))
             {
                 MethodString query = _lexer.MethodTemplate(invocation, _implicit_this!, _implicit_this);
-                if (query.NameOrValue.EqualsCaseless("methods"))
+                if (query.Name.EqualsCaseless("methods"))
                     return QueryParameters(_methods, query);
-                if (query.NameOrValue.EqualsCaseless("fields"))
+                if (query.Name.EqualsCaseless("fields"))
                     return QueryParameters(_fields, query);
-                if (query.NameOrValue.EqualsCaseless("props"))
+                if (query.Name.EqualsCaseless("props"))
                 {
                     if (query.Params.Count == 2)
                         throw new TargetParameterCountException("Local query for properties only supports max one paramter: a containing string.");
@@ -139,7 +139,8 @@ namespace XQuinn.Runtime
                     object? ret = Interface(cmd, out _);
                     if (ret is string s && s == "No command detected.")
                         continue;
-                    invocations.Add($"[Invocation: {cmd} :: Returned: {ret ?? "null"}]");
+                    string? retstring = ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString();
+                    invocations.Add($"[Invocation: {cmd} :: Returned: {retstring ?? "null"}]");
                 }
                 catch (Exception ex)
                 {
@@ -321,6 +322,7 @@ namespace XQuinn.Runtime
 
         bool RemoveVariable(string key)
         {
+            key = key.Trim();
             if (key.EqualsCaseless(_variable))
                 _variable = null;
             return _variables.Remove(key);
@@ -349,7 +351,7 @@ namespace XQuinn.Runtime
 
         public static void FlushStaticCache(bool ambiguousMatches = false, bool typeMembers = true, bool reifiedGenerics = true)
         {
-            InternalCache.FlushStaticCache(ambiguousMatches, typeMembers, reifiedGenerics);
+            RuntimeCache.FlushStaticCache(ambiguousMatches, typeMembers, reifiedGenerics);
         }
 
 

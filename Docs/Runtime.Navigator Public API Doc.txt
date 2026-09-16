@@ -140,6 +140,13 @@ Methox:2 void Method(int)
 Use these custom keys to access specific overloads.
 ie. method:2(22);
 
+Overloaded generic methods will typically look like this:
+key          value
+Method:1<T> void Method<T>()
+Method:2<T> void Method<T>(T)
+
+Always make sure to put your :1 overload index BEFORE your generic arguments.
+
 To view a type's resolved method names you can use our two query options:
 
 Query:

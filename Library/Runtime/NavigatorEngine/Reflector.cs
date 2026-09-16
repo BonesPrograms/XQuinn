@@ -8,10 +8,8 @@ using System.Collections.Generic;
 using XQuinn.CodeAnalysis;
 using System.Text;
 using System.Collections;
-using XQuinn.Runtime;
 using System.Runtime.ExceptionServices;
 
-using XQuinn.Runtime;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
@@ -45,7 +43,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
             if (_props.TryGetValue(member.DeclaringType.StringID, out PropertyInfo? prop))
             {
-                instance = prop.GetValue(_instance, NavigatorCore.Flag, null, null, null) ?? throw new ArgumentException($"Property {member.DeclaringType.NameOrValue} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
+                instance = prop.GetValue(_instance, NavigatorCore.Flag, null, null, null) ?? throw new ArgumentException($"Property {member.DeclaringType.Name} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
                 return instance.GetType();
             }
             if (_variables.TryGetValue(member.DeclaringType.StringID, out VariableBinding? variable))
@@ -82,11 +80,11 @@ namespace XQuinn.Runtime.NavigatorEngine
             t ??= TypeCache.GetTypeOrThrow(key);
             if (t.IsGenericTypeDefinition)
             {
-                if (InternalCache.s_reified_generic_types.TryGetValue(typename.StringID, out Type? generic))
+                if (RuntimeCache.s_reified_generic_types.TryGetValue(typename.StringID, out Type? generic))
                     return generic;
                 t = typename.ConvertToGeneric(t, LocalCache);
-                if (Caching)
-                    InternalCache.s_reified_generic_types[typename.StringID] = t;
+                //if (Caching)
+                    RuntimeCache.s_reified_generic_types[typename.StringID] = t;
             }
             else if (!t.IsGenericType && typename.Generics.Count > 0)
                 throw new ArgumentException($"type {t} does not accept type arguments.");
@@ -98,7 +96,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         {
             _methods.TryGetValue(MethodKey.MethodQuery(method), out MethodBase? methodbase);
             if (methodbase == null)
-                throw new MissingMethodException($"No method named {method.NameOrValue}  with generic arg count {method.Generics.Count} found in {_loadedType}'s method dictionary. It may have been removed due to having a ref return type or in/out/ref parameters.");
+                throw new MissingMethodException($"No method named {method.Name}  with generic arg count {method.Generics.Count} found in {_loadedType}'s method dictionary. It may have been removed due to having a ref return type or in/out/ref parameters.");
             if (methodbase.IsGenericMethodDefinition && methodbase is MethodInfo actualmethod)
                 methodbase = method.ConvertToGeneric(actualmethod, LocalCache);
             return methodbase;
@@ -143,7 +141,7 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         public override string ToString()
         {
-            return $"ObjectType: {ObjectType} :: ObjectToString: {_object}";
+            return $"ObjectType: {ReflectionPrinter.Print(ObjectType, false)} :: ObjectToString: {_object}";
         }
     }
 

@@ -9,7 +9,7 @@ namespace XQuinn.CodeAnalysis.AST
 {
     internal abstract class GenericString : ParameterString
     {
-
+        public string Name => Argument;
         public string StringID => _id; ///Cache ID for methods and types. Includes raw name, generic arguments, and overload index.
         string _id;                     ///Used for comparison between concrete GenericString objects to see if they represent the same MemberInfo object.
                                         ///For methods, this comparison also includes comparing the StringID of their declaring type
@@ -28,13 +28,9 @@ namespace XQuinn.CodeAnalysis.AST
         }
         protected static T New<T>(T genericString) where T : GenericString
         {
-            if (HasTypeArgs(genericString.NameOrValue))
+            if (HasTypeArgs(genericString.Name))
                 genericString.UpdateGenericArgs();
-            // else if (genericString is TypeString)
-            // {
-            //     genericString._id = genericString._id.Trim(); 
-            //     genericString.NameOrValue = genericString._id;
-            // }
+
             return genericString;
         }
 
@@ -92,12 +88,22 @@ namespace XQuinn.CodeAnalysis.AST
                     dic?.TryGetValue(key, out realtype);
                     realtype ??= TypeCache.GetTypeOrThrow(key);
                     if (realtype.IsGenericTypeDefinition)
-                        realtype = realtype.MakeGenericType(tstring.ConvertGenericArguments(dic));
+                    {
+                        if (RuntimeCache.s_reified_generic_types.TryGetValue(tstring.StringID, out Type? generic))
+                            realtype = generic;
+                        else
+                        {
+                            Type[] args = tstring.ConvertGenericArguments(dic);
+                            realtype = realtype.MakeGenericType(args);
+                            RuntimeCache.s_reified_generic_types[tstring.StringID] = realtype;
+                        }
+                    }
                     genericArgs[i] = realtype;
+
                 }
                 return genericArgs;
             }
-            throw new ArgumentException($"No generic parameters were provided to {GetType().Name} with name value {NameOrValue} ");
+            throw new ArgumentException($"No generic parameters were provided to {GetType().Name} with name value {Name} ");
         }
         void LexGenerics(StringBuilder sb)
         {
@@ -114,7 +120,7 @@ namespace XQuinn.CodeAnalysis.AST
                         currentGeneric = currentGeneric.NewArg(sb);
                     else
                     {
-                        currentGeneric.NameOrValue = sb.ToString();
+                        currentGeneric.Argument = sb.ToString();
                         sb.Length = 0;
                         finishedReadingLeadName = true;
                     }
@@ -122,16 +128,15 @@ namespace XQuinn.CodeAnalysis.AST
                 else if (c == '>')
                 {
                     if (sb.Length > 0)
-                    {
                         currentGeneric.NewArg(sb);
-                        if (currentGeneric != this)
-                        {
-                            TypeString currentArg = (TypeString)currentGeneric;
-                            currentGeneric = currentArg._typeArgOf!;
-                            continue;
-                        }
-                        break;
+                    if (currentGeneric != this)
+                    {
+                        currentGeneric.UpdateGenericArgs();
+                        TypeString currentArg = (TypeString)currentGeneric;
+                        currentGeneric = currentArg._typeArgOf!;
+                        continue;
                     }
+                    break;
                 }
                 else if (c == ',')
                 {
@@ -160,7 +165,7 @@ namespace XQuinn.CodeAnalysis.AST
 
         void GenericID(StringBuilder sb)
         {
-            sb.Append(NameOrValue);
+            sb.Append(Name);
             sb.Append('<');
             sb.AppendMany(Generics, ",");
             sb.Append('>');

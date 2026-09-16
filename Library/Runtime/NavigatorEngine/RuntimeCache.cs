@@ -15,7 +15,7 @@ namespace XQuinn.Runtime.NavigatorEngine
 {
     
 
-        static class InternalCache
+        static class RuntimeCache
         {
             internal static readonly Dictionary<Type, HashSet<string>> s_ambiguous_matches = new();
             internal static readonly Dictionary<Type, Dictionary<string, MemberInfo>> s_known_members = new(); //all members ever accessed by callinterp 
@@ -26,8 +26,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 cachedMatches = null;
                 cachedType = fromType.IsGenericType && !fromType.IsGenericTypeDefinition ? fromType.GetGenericTypeDefinition() : fromType;
                 s_ambiguous_matches.TryGetValue(cachedType, out cachedMatches);
-                bool ambiguousMatch = cachedMatches?.Contains(mthdString.NameOrValue) ?? false;
-                return ambiguousMatch;
+                return cachedMatches?.Contains(mthdString.Name) ?? false;
             }
 
             public static void FlushStaticCache(bool ambiguousMatches = false, bool typeMembers = true, bool reifiedGenerics = true)
@@ -43,7 +42,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             internal static T? FromCache<T>(string key, Type fromType, out bool typeCached, out bool memberCached) where T : MemberInfo
             {
                 memberCached = false;
-                typeCached = s_known_members.TryGetValue(fromType, out var cachedMembers);
+                typeCached = s_known_members.TryGetValue(fromType, out Dictionary<string,MemberInfo>? cachedMembers);
                 if (typeCached)
                 {
                     memberCached = cachedMembers!.TryGetValue(key, out MemberInfo? member);
@@ -60,7 +59,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                     cachedMatches = new(StringComparer.OrdinalIgnoreCase);
                     s_ambiguous_matches[cachedType] = cachedMatches;
                 }
-                cachedMatches.Add(mthdString.NameOrValue);
+                cachedMatches.Add(mthdString.Name);
             }
 
             internal static void CacheMember(bool typeCached, bool memberCached, Type fromType, MemberInfo member, string key) //ResolvedOverload? overloadKey)

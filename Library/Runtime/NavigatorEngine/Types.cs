@@ -73,7 +73,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                     if (SearchModifiers.ProcessSearch(member.Value, flags) && member.Key!.ToString()!.ContainsCaseless(key))
                     {
                         contained = true;
-                        yield return $"[Key: {member.Key} :: {ReflectionPrinter.Print(member.Value)}]";
+                        yield return $"[Key: {member.Key} :: {ReflectionPrinter.Print(member.Value, false)}]";
                     }
                 }
                 if (!contained)
@@ -82,7 +82,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             else
                 foreach (KeyValuePair<K, V> member in members)
                     if (SearchModifiers.ProcessSearch(member.Value, flags))
-                        yield return $"[Key: {member.Key} :: {ReflectionPrinter.Print(member.Value)}]";
+                        yield return $"[Key: {member.Key} :: {ReflectionPrinter.Print(member.Value, false)}]";
         }
 
         readonly struct SearchModifiers

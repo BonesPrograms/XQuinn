@@ -26,15 +26,15 @@ namespace XQuinn.Reflection
         /// </summary>
         /// <param name="x"></param>
         /// <returns></returns>
-        public static string Print(MemberInfo Info)
+        public static string Print(MemberInfo Info, bool fullname)
         {
             StringBuilder sb = new();
             MetadataTypeToString(sb, Info);
-            MetadataPrinter.BuildPrint(sb, Info);
+            MetadataPrinter.BuildPrint(sb, Info, fullname);
             if (Info is Type t && t.BaseType != typeof(object) && t.BaseType != null)
             {
                 sb.Append(" : ");
-                MetadataPrinter.GenericTypeToString(sb, t.BaseType);
+                MetadataPrinter.GenericTypeToString(sb, t.BaseType, fullname);
             }
             return sb.ToString();
         }

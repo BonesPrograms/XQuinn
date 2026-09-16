@@ -5,9 +5,7 @@ namespace XQuinn.CodeAnalysis.AST
 {
     internal sealed class TypeString : GenericString//, IEquatable<TypeString>
     {
-
         internal static readonly TypeString s_this = new("this");
-
         internal readonly GenericString? _typeArgOf; //mostly used for generic lexing, not really necessary to be exposed right now
         //(kind of like paramOf)
         internal TypeString(string name, GenericString? typeArgOf = null) : base(name)

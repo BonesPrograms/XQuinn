@@ -38,7 +38,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         }
 
 
-        internal GenericKey(TypeString str) : this(str.NameOrValue, str.Generics.Count)
+        internal GenericKey(TypeString str) : this(str.Name, str.Generics.Count)
         {
         }
 

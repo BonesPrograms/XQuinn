@@ -147,7 +147,7 @@ namespace XQuinn.ObjectModel
             StringBuilder sb = new();
             if (type == null) return null;
             MetadataPrinter.FixGenericString(sb, type.Name);
-            MetadataPrinter.AddGenericArguments(sb, type.GetGenericArguments());
+            MetadataPrinter.AddGenericArguments(sb, type.GetGenericArguments(), true);
             return sb.ToString();
         }
         void ReadObjectBasic(TokenizedObject info, FieldInfo? field, Type? sourceType, bool isInCollection)
@@ -159,7 +159,7 @@ namespace XQuinn.ObjectModel
             if (!isInCollection)                //so in those cases it is possible for us to be unable to retrieve the value's type
             {                                   //though you can just see the dictionary's generic arguments to get an idea of what type it would've been
                 text.Append($"Declared in: ");
-                MetadataPrinter.GenericTypeToString(text, field!.DeclaringType);
+                MetadataPrinter.GenericTypeToString(text, field!.DeclaringType, true);
                 text.Append(Environment.NewLine);
                 text.Append($"Attributes {field.Attributes}{Environment.NewLine}");
             }

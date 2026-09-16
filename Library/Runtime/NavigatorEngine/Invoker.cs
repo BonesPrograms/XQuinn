@@ -30,8 +30,8 @@ namespace XQuinn.Runtime.NavigatorEngine
         internal object? InvokeFieldOrProperty(FieldString fieldstring)
         {
             Type fromType = _reflector.FindReference(fieldstring, out object? variable);
-            string fname = fieldstring.NameOrValue;
-            MemberInfo? fieldOrProp = InternalCache.FromCache<MemberInfo>(fieldstring.NameOrValue, fromType, out bool typeCached, out bool memberCached);
+            string fname = fieldstring.Name;
+            MemberInfo? fieldOrProp = RuntimeCache.FromCache<MemberInfo>(fieldstring.Name, fromType, out bool typeCached, out bool memberCached);
             if (ReturnField(fieldOrProp, fromType, fname, fieldstring, typeCached, memberCached, variable, out object? ret))
                 return ret;
             if (ReturnProperty(fieldOrProp, fromType, fname, fieldstring, typeCached, memberCached, variable, out ret))
@@ -56,7 +56,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
             if (fieldOrProp is PropertyInfo prop)
             {
-                CacheMember(typeCached, memberCached, fromType, fieldOrProp, fieldstring.NameOrValue);
+               RuntimeCache.CacheMember(typeCached, memberCached, fromType, fieldOrProp, fieldstring.Name);
                 ret = prop.GetValue(TargetInstance(fromType, variable), NavigatorCore.Flag, null, null, null);
                 return true;
             }
@@ -75,7 +75,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 fieldOrProp = fromType.GetField(fname, NavigatorCore.Flag);
             if (fieldOrProp is FieldInfo field)
             {
-                CacheMember(typeCached, memberCached, fromType, fieldOrProp, fieldstring.NameOrValue);
+                 RuntimeCache.CacheMember(typeCached, memberCached, fromType, fieldOrProp, fieldstring.Name);
                 ret = field.GetValue(TargetInstance(fromType, variable));
                 return true;
             }
@@ -85,52 +85,46 @@ namespace XQuinn.Runtime.NavigatorEngine
         internal object? InvokeMethod(MethodString mthdString)
         {
             Type fromType = _reflector.FindReference(mthdString, out object? variable);
-            MethodBase? call = InternalCache.FromCache<MethodBase>(mthdString.StringID, fromType, out bool typeCached, out bool methodCached);
-            ParameterInfo[]? parameters = null;
-            ExternalMethod(ref call, ref parameters, fromType, mthdString);
-            call ??= fromType == _loadedType ? _reflector.FindMethod(mthdString) : throw new MissingMethodException($"No method named {mthdString.NameOrValue} with generic arg count {mthdString.Generics.Count} found in {fromType}'s methods or overload resolutions.");
-            ConvertGeneric(ref call, ref parameters, mthdString);
-            parameters ??= call.GetParameters(); //generics get params first, nongenerics get after
-            CacheMember(typeCached, methodCached, fromType, call, mthdString.StringID);
-            return FinalizeInvoke(call, parameters, mthdString, fromType, variable);
+            MethodBase? call = RuntimeCache.FromCache<MethodBase>(mthdString.StringID, fromType, out bool typeCached, out bool methodCached);
+            ParameterInfo[]? args = null;
+            ExternalMethod(ref call, ref args, fromType, mthdString);
+            call ??= fromType == _loadedType ? _reflector.FindMethod(mthdString) : throw new MissingMethodException($"No method named {mthdString.Name} with generic arg count {mthdString.Generics.Count} found in {fromType}'s methods or overload resolutions.");
+            ConvertGeneric(ref call, ref args, mthdString);
+            args ??= call.GetParameters(); //generics get params first, nongenerics get after
+             RuntimeCache.CacheMember(typeCached, methodCached, fromType, call, mthdString.StringID);
+            return FinalizeInvoke(call, args, mthdString, fromType, variable);
         }
-        void ExternalMethod(ref MethodBase? call, ref ParameterInfo[]? parameters, Type fromType, MethodString mthdString)
+        void ExternalMethod(ref MethodBase? call, ref ParameterInfo[]? args, Type fromType, MethodString mthdString)
         {
             if (call == null && fromType != _loadedType)
             {
-                bool ambiguousMatch = InternalCache.CheckAmbiguousMatch(fromType, mthdString, out Type cachedType, out HashSet<string>? cachedMatches);
+                bool ambiguousMatch = RuntimeCache.CheckAmbiguousMatch(fromType, mthdString, out Type cachedType, out HashSet<string>? cachedMatches);
                 if (!ambiguousMatch)
                 {
                     try
                     {
-                        call = fromType.GetMethod(mthdString.NameOrValue, NavigatorCore.Flag);
+                        call = fromType.GetMethod(mthdString.Name, NavigatorCore.Flag);
                     }
                     catch (AmbiguousMatchException)
                     {
-                        InternalCache.CacheAmbiguousMatch(cachedMatches, cachedType, mthdString);
+                        RuntimeCache.CacheAmbiguousMatch(cachedMatches, cachedType, mthdString);
                         // throw new AmbiguousMatchException($"Method named {mthdString.String} in type {fromType} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
                     }
                     if (call != null)
                     {
-                        parameters = call.GetParameters();
-                        if (!Reflector.SupportedMember(call, parameters))
+                        args = call.GetParameters();
+                        if (!Reflector.SupportedMember(call, args))
                             throw new ArgumentException($"Method {call} in type {call.DeclaringType} has unsupported in out or ref params or ref returntype");
                     }
                 }
                 if (call == null || ambiguousMatch)
                 {
-                    SortAmbiguousMatch(mthdString, fromType, out parameters, out call);
+                    SortAmbiguousMatch(mthdString, fromType, out args, out call);
                 }
             }
 
         }
-        void CacheMember(bool typeCached, bool memberCached, Type fromType, MemberInfo member, string key)
-        {
-            if (Caching)
-            {
-                InternalCache.CacheMember(typeCached, memberCached, fromType, member, key);
-            }
-        }
+
 
         object? TargetInstance(Type paramType, object? variable)
         {
@@ -140,10 +134,10 @@ namespace XQuinn.Runtime.NavigatorEngine
         object? FinalizeInvoke(MethodBase call, ParameterInfo[] parameters, MethodString mthdString, Type fromType, object? variable)
         {
             object? obj = null;
-            object?[] parsedparams = _parser.ParseParameters(parameters, mthdString);
+            object?[] args = _parser.ParseParameters(parameters, mthdString);
             try
             {
-                obj = call is ConstructorInfo ctor ? ctor.Invoke(parsedparams) : call.Invoke(TargetInstance(fromType, variable), parsedparams);
+                obj = call is ConstructorInfo ctor ? ctor.Invoke(args) : call.Invoke(TargetInstance(fromType, variable), args);
             }
             catch (TargetInvocationException ex) when (ex.InnerException != null)
             {
@@ -152,23 +146,23 @@ namespace XQuinn.Runtime.NavigatorEngine
             return obj;
         }
 
-        void ConvertGeneric(ref MethodBase call, ref ParameterInfo[]? parameters, MethodString mthdString)
+        void ConvertGeneric(ref MethodBase call, ref ParameterInfo[]? args, MethodString mthdString)
         {
             if (call is MethodInfo mthd)
             {
                 if (mthd.IsGenericMethodDefinition)
                 {
                     call = mthdString.ConvertToGeneric(mthd, LocalCache);
-                    parameters = call.GetParameters();
+                    args = call.GetParameters();
                 }
                 else if (!mthd.IsGenericMethod && mthdString.Generics.Count > 0)
                     throw new ArgumentException($"method {call} cannot accept type arguments.");
             }
         }
 
-        static void SortAmbiguousMatch(MethodString mthdString, Type fromType, out ParameterInfo[]? parameters, out MethodBase? call)
+        static void SortAmbiguousMatch(MethodString mthdString, Type fromType, out ParameterInfo[]? args, out MethodBase? call)
         {
-            parameters = null;
+            args = null;
             call = null;
             MethodKey query = MethodKey.MethodQuery(mthdString);
             IEnumerable<MethodBase> methodbases = TypeMap.GetUnfilteredMethods(fromType, query.GenericKey.Key.EqualsCaseless("new"));
@@ -178,12 +172,12 @@ namespace XQuinn.Runtime.NavigatorEngine
                 GenericKey key = TypeMap.MethodGenericKey(method);
                 if (key == query.GenericKey) //method.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
                 {
-                    ParameterInfo[] methodparams = method.GetParameters();
-                    if (Reflector.SupportedMember(method, methodparams))
+                    ParameterInfo[] parameters = method.GetParameters();
+                    if (Reflector.SupportedMember(method, parameters))
                     {
                         if (i == query.OverloadIndex)
                         {
-                            parameters = methodparams;
+                            args = parameters;
                             call = method;
                             break;
                         }
