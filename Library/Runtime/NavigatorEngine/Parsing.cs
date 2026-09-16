@@ -1,21 +1,11 @@
 using System.Reflection;
 using XQuinn.Extensions;
-using XQuinn.Reflection;
 using XQuinn.CodeAnalysis.AST;
-using System.Linq;
 using System;
-using System.Collections.Generic;
-using XQuinn.CodeAnalysis;
-using System.Text;
 using System.Collections;
-using System.Runtime.ExceptionServices;
-
-using XQuinn.Runtime;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
-
-
     sealed class Parser : CoreObject
     {
         Invoker _invoker => _core._invoker;

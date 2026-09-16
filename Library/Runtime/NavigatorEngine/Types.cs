@@ -45,7 +45,10 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         public static Type Of<T>() => typeof(T); //typeof(T[])
         public static Type Of(string name) => GetTypeOrThrow(name); //for generic definitions which cant be passed as T without their own typeargs
-        public static T Struct<T>(T obj = default) where T : unmanaged => obj;
+        public static T Struct<T>(T obj = default) where T : unmanaged => obj; //This is essentially a lite version of explicit casting for data types (don't pass variables here in an attempt to convert them, this is not a type converter) 
+                                                                              //If you are passing a literal numeric value to a parameter of type 'object',
+                                                                            //the system will usually parse that as an integer. If you want to specify the argument type, such as byte,
+                                                                            //you would return your argument via invoking Struct<T>.
         public static T Enum<T>(T obj) where T : Enum => obj;
         public static string String(string txt) => txt; //only way to instantiate an isolated new string using the navigator
         public static T[] Array<T>(params T[] arr) => arr.Length == 0 ? System.Array.Empty<T>() : arr;

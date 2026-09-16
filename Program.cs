@@ -56,7 +56,7 @@ namespace XQuinn.Private
         {
             NavigationFeed monitor = new();
             string flag = NavigatorCore.Flag.ToString().Replace(',', '|').Replace(" ", "");
-              Console.WriteLine(monitor.Interface($"~ *types.enum<bindingFlags>({flag}); +flag", out _, out bool chainexception));
+              Console.WriteLine(monitor.Interface($"~ *types.enum<bindingFlags>({flag}); +flag;", out _, out bool chainexception));
             // if (chainexception)
             //   throw new ArgumentException();
             while (true)

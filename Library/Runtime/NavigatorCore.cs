@@ -7,8 +7,6 @@ using System;
 using System.Collections.Generic;
 using XQuinn.CodeAnalysis;
 using System.Text;
-using System.Collections;
-using System.Runtime.ExceptionServices;
 using XQuinn.Runtime.NavigatorEngine;
 
 namespace XQuinn.Runtime

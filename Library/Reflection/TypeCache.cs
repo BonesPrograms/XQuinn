@@ -7,34 +7,19 @@ using XQuinn.CodeAnalysis;
 using XQuinn.Extensions;
 using System.Text;
 using System.Collections;
-using XQuinn.Runtime;
 using System.Runtime.InteropServices;
 using XQuinn.ObjectModel;
 using System.Runtime.CompilerServices;
 using System.Linq;
-using XQuinn.CodeAnalysis.AST;
 using XQuinn.Runtime.NavigatorEngine;
+using System.ComponentModel;
 
 
 namespace XQuinn.Reflection
 {
-
-    internal class DuplicateKeyException : Exception
-    {
-        internal DuplicateKeyException(Type type, Type insert, GenericKey name) : this(type, insert, name.ToString())
-        {
-
-        }
-        internal DuplicateKeyException(Type type, Type insert, string name) : base($"Conflict detected when trying to cache {insert.FullName} with key {name}. Key has already been used for type {type.FullName}. Key names are not case sensitive.")
-        {
-
-        }
-    }
-
     public static partial class TypeCache
     {
 
-        //    public static readonly IReadOnlyDictionary<GenericKey, Type> GlobalCache;
         public static IEnumerable<string> Keys()
         {
             foreach (GenericKey key in s_registry.Keys)
@@ -46,22 +31,6 @@ namespace XQuinn.Reflection
             foreach (KeyValuePair<GenericKey, Type> obj in s_registry)
                 yield return new(obj.Key.ToString(), obj.Value);
         }
-
-
-        //Auto-Caching/Name generators (GetCompatibleName() usage)
-        /// Generic types will have their generic arguments snipped off.
-        /// Generic type definitions will be cached with 'T' at the end and the number of args.
-        /// Ex. GameObject<string> is cached as gameobject, GameObject<T> will cache as GameObjectT1
-
-        /// Exceptions to this are pre-cached generic type definitiosn like tuples and collections. Tuples only have their generic argument count at the end ex. tuple6,
-        /// some generic collections also are not cached with T at the end, none are cached with number of args -
-        ///  such as list<T> being cached as list, or dictionary<k,v> being cached as dictionary,
-        /// compared to icollection<T> which is cached as icollectionT, and ICollection which is cached as icollection
-
-        /// Array versions of types (cached using arraygen) will use short or fullname with a [] tacked on the end. You can also choose to pick your own key.
-        ///  If you let arraygen create the key, it will automatically be snipped using GetCompatibleName
-        /// If you are caching many types at once your should filter your names through GetCompatibleName, because default generic names and nested names (Short or full) are incompatible
-        /// and will throw exceptions. Rule of thumb: alphanumerics and underscores only, do not start with a digit, and [] is allowed but good practice is to reserve that for array types.
         internal static readonly ConcurrentDictionary<GenericKey, Type> s_registry = new()
         {
             [new("object")] = typeof(object), ///Keyword types
@@ -86,25 +55,22 @@ namespace XQuinn.Reflection
             [new("Tuple")] = typeof(ValueTuple),
             [new(nameof(BindingFlags))] = typeof(BindingFlags),
             [new(nameof(Nullable<_>), 1)] = typeof(Nullable<>),
+            [new(nameof(IDisposable))] = typeof(IDisposable),
 
             [new(nameof(Types))] = typeof(Types),
-            // ["arraygen"] = typeof(ArrayGen),
             [new(nameof(InstanceReader))] = typeof(InstanceReader),
             [new(nameof(ILReader))] = typeof(ILReader),
             [new(nameof(TypeCache))] = typeof(TypeCache),
-            //  ["type"] = typeof(Type),
             [new(nameof(Assembly))] = typeof(Assembly),
             [new(nameof(Activator))] = typeof(Activator),
-            // [new(nameof(Convert))] = typeof(Convert),
-
-            [new(nameof(IDisposable))] = typeof(IDisposable),
+            [new(nameof(Convert))] = typeof(Convert),
+            [new(nameof(TypeConverter))] = typeof(TypeConverter),
 
             [new(nameof(Environment))] = typeof(Environment),
             [new(nameof(AppDomain))] = typeof(AppDomain),
             [new(nameof(AppContext))] = typeof(AppContext),
             [new(nameof(RuntimeEnvironment))] = typeof(RuntimeEnvironment),
             [new(nameof(RuntimeInformation))] = typeof(RuntimeInformation),
-
 
             [new(nameof(Array))] = typeof(Array),
             [new(nameof(List<_>), 1)] = typeof(List<>),
@@ -161,14 +127,6 @@ namespace XQuinn.Reflection
             throw new ArgumentException($"Could not find cached type with key {key.Key} and generic arg count {key.Args}.");
         }
 
-        /// <summary>
-        /// returns false if type is already cached with the same key, true if caching was performed
-        /// </summary>
-        /// <param name="key"></param>
-        /// <param name="type"></param>
-        /// <returns></returns>
-        ///
-
 
         public static bool CacheType(Type type, string key)
         {
@@ -213,6 +171,7 @@ namespace XQuinn.Reflection
 
         public static void CacheTypes(IEnumerable<Type> types, Func<Type, string?> keyProvider)
         {
+
             foreach (Type type in types)
             {
                 string? key = keyProvider.Invoke(type);
@@ -248,7 +207,6 @@ namespace XQuinn.Reflection
             }
             return sb;
         }
-        //Not sure if this should be a thing... its mostly so that keys can work with invocationlexer and callinterp. typecache was pretty much made *for* callinterp so not a problem imo
         internal static void ThrowIfBadKey(string key)
         {
             if (string.IsNullOrWhiteSpace(key))
@@ -301,6 +259,18 @@ namespace XQuinn.Reflection
             return false;
         }
         struct _
+        {
+
+        }
+    }
+
+    internal class DuplicateKeyException : Exception
+    {
+        internal DuplicateKeyException(Type type, Type insert, GenericKey name) : this(type, insert, name.ToString())
+        {
+
+        }
+        internal DuplicateKeyException(Type type, Type insert, string name) : base($"Conflict detected when trying to cache {insert.FullName} with key {name}. Key has already been used for type {type.FullName}. Key names are not case sensitive.")
         {
 
         }
