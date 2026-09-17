@@ -23,6 +23,8 @@ namespace XQuinn.Runtime.NavigatorEngine
         {
             if (method is MethodInfo mthd && mthd.ReturnType.IsByRef)
                 return false;
+            if (method is ConstructorInfo ctor && ctor.IsStatic)
+                return false;
             return !parameters.Any(x => x.IsOut || x.IsIn || x.ParameterType.IsByRef);
         }
 
@@ -79,7 +81,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                     return generic;
                 t = typename.ConvertToGeneric(t, LocalCache);
                 //if (Caching)
-                    RuntimeCache.s_reified_generic_types[typename.StringID] = t;
+                RuntimeCache.s_reified_generic_types[typename.StringID] = t;
             }
             else if (!t.IsGenericType && typename.Generics.Count > 0)
                 throw new ArgumentException($"type {t} does not accept type arguments.");
@@ -102,7 +104,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             public readonly Type ObjectType;
             public Assignment(object member)
             {
-               // if (member is VariableBinding)
+                // if (member is VariableBinding)
                 //    throw new NotImplementedException();//  ObjectType = variable.ObjectType;
                 if (member is PropertyInfo prop)
                     ObjectType = prop.PropertyType;
@@ -118,8 +120,8 @@ namespace XQuinn.Runtime.NavigatorEngine
                     prop.SetValue(instance, value, NavigatorCore.Flag, null, null, null);
                 else if (Member is FieldInfo field)
                     field.SetValue(instance, value, NavigatorCore.Flag, null, null);
-              //  else if (Member is VariableBinding variable)
-               //     variable.Object = value!; //Object cant be null, but object handles throwing over this internally
+                //  else if (Member is VariableBinding variable)
+                //     variable.Object = value!; //Object cant be null, but object handles throwing over this internally
             }
         }
     }

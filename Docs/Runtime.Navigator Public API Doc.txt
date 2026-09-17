@@ -67,6 +67,10 @@ Additional Tips:
 Default parameters are supported. Params arrays are supported.
 the values 'default' and 'null' have been included.
 
+If a field or property name conflicts with our "keywords" - null, base, this and default (caseless) - you will have problems
+accessing that field or property. You can access it explicitly using typename, ex Class.this or this.this, obviously
+you will lose the ability to use them in typename-membername pairs for invocation.
+
 Enum OR is supported, but avoid placing whitespace. Send values like|this.
 Strings and chars should be declared just like C#.
 Again, nothing is case sensitive. Type names, field names, variable names, method names, all case insensitive.
@@ -81,7 +85,8 @@ ex. ilist.get_item(1);
 or
 ~ ^ilist; get_item(1); (You will learn more aobut what ~ and ^ does below)
 
-
+Strings have very simple escape support. \ will remove the very next character from the string, whatever it is.
+Putting @ infront of a string will prevent escape.
 
 
 
@@ -233,6 +238,7 @@ If you are curious on the specific rules, check out TypeCache.ThrowIfBadKey(stri
 
 Note: Do not attempt to create string keys such as "Class<T>" for generic definitions. These will be considered invalid and will throw.
 The system internally handles the inclusion of generic parameters in type keys.
+Furthermore, you should not attempt to cache concrete generic types, such as List<int>. The cache only accepts generic definitions.
 Class<T> should be cached with string key "Class", it will not cause conflicts with a nongeneric Class of the same name, 
 or other generic types with the same name and a different number of args.
 
@@ -253,8 +259,8 @@ Class
     OtherClass Field;
 }
 
-If you load Field, and then reassign Field ie. class.Field = OtherClass.new() , your currnet loaded instance
-will lose reference equality with the actual field itself, you will need to reload.
+If you load Field as the current instance, and then reassign Field ie. class.Field = OtherClass.new() , your currnet loaded instance
+will lose reference equality with the actual field itself, you will need to reload class.Field;
 
 
 
@@ -273,6 +279,10 @@ Struct
 }
 
 Load Class.Field, then modify InnerField, then assign Class.Field to this.
+
+example using a chain
+
+~ *class.new(); +var_class; *Field; InnerField = "Hello World"; var_class.Field = this;
 
 
 

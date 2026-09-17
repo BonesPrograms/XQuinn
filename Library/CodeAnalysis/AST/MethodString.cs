@@ -73,7 +73,7 @@ namespace XQuinn.CodeAnalysis.AST
                     sb2.Length = 0;
                     return s;
                 }
-                else return x!.Argument;
+                else return x!.ToString();
             });
         }
 

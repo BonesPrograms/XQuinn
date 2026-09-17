@@ -15,13 +15,13 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         bool _readFirstCharOfName { get => _lexer._readFirstCharOfName; set => _lexer._readFirstCharOfName = value; }
 
-        bool _readEnum {get=> _lexer._readEnum; set=> _lexer._readEnum = value;}
+      //  bool _readEnum { get => _lexer._readEnum; set => _lexer._readEnum = value; }
 
         bool _readQualifiedMember { set => _lexer._readQualifiedMember = value; }
 
-        bool _readArbitraryLegalValue {set => _lexer._readArbitraryLegalValue = value; }
+        bool _readArbitraryLegalValue { set => _lexer._readArbitraryLegalValue = value; }
 
-        bool _methodParamsBegan {set => _lexer._methodParamsBegan = value; }
+        bool _methodParamsBegan { set => _lexer._methodParamsBegan = value; }
 
         bool _terminated { set => _lexer._terminated = value; }
 
@@ -86,6 +86,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             if (_value == MemberAccess && !_readFirstCharOfName)
             {
                 _readFirstCharOfName = true;
+                _readGeneric = false;
                 return true;
             }
             if (!_readGeneric && Termination(_value))
@@ -106,7 +107,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 _readFirstCharOfName = false;
                 ValidIdentifierFirstCharOrThrow(_value, invocation, i);
             }
-            else
+            else if (NonGenericOrGenericChar())
                 _lexer.ValidIdentifier(_value, invocation, i);
             return true;
         }
@@ -121,12 +122,16 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 if (_value == MethodStart)
                 {
                     ReadMain();
+                    _readGeneric = false;
                     _start = false;
                     _methodParamsBegan = true;
                     _beganReadingMainMethodName = false;
                     return false;
                 }
-                _lexer.ValidIdentifier(_value, invocation, i);
+                if (_value == '<')
+                    _readGeneric = true;
+                if (NonGenericOrGenericChar())
+                    _lexer.ValidIdentifier(_value, invocation, i);
                 return true;
             }
             else if (_value == Whitespace)
@@ -135,6 +140,8 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 _beganReadingMainMethodName = true;
             return true;
         }
+
+        bool NonGenericOrGenericChar() => !_readGeneric || _value != ',';
 
         void ReadMain()
         {

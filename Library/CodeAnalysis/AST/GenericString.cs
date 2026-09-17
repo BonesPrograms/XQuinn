@@ -7,9 +7,8 @@ using XQuinn.Runtime.NavigatorEngine;
 
 namespace XQuinn.CodeAnalysis.AST
 {
-    internal abstract class GenericString : ParameterString
+    internal abstract class GenericString : MetadataString
     {
-        public string Name => Argument;
         public string StringID => _id; ///Cache ID for methods and types. Includes raw name, generic arguments, and overload index.
         string _id;                     ///Used for comparison between concrete GenericString objects to see if they represent the same MemberInfo object.
                                         ///For methods, this comparison also includes comparing the StringID of their declaring type
@@ -120,7 +119,7 @@ namespace XQuinn.CodeAnalysis.AST
                         currentGeneric = currentGeneric.NewArg(sb);
                     else
                     {
-                        currentGeneric.Argument = sb.ToString();
+                        currentGeneric._arg = sb.ToString();
                         sb.Length = 0;
                         finishedReadingLeadName = true;
                     }
@@ -131,7 +130,11 @@ namespace XQuinn.CodeAnalysis.AST
                         currentGeneric.NewArg(sb);
                     if (currentGeneric != this)
                     {
-                        currentGeneric.UpdateGenericArgs();
+                        if (currentGeneric.Generics.Count > 0)
+                        {
+                            currentGeneric.GenericID(sb);
+                            sb.Length = 0;
+                        }
                         TypeString currentArg = (TypeString)currentGeneric;
                         currentGeneric = currentArg._typeArgOf!;
                         continue;

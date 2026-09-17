@@ -114,7 +114,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                     {
                         args = call.GetParameters();
                         if (!Reflector.SupportedMember(call, args))
-                            throw new ArgumentException($"Method {call} in type {call.DeclaringType} has unsupported in out or ref params or ref returntype");
+                            throw new ArgumentException($"Method {call} in type {call.DeclaringType} has unsupported in out or ref params or ref returntype, or is a static constructor.");
                     }
                 }
                 if (call == null || ambiguousMatch)

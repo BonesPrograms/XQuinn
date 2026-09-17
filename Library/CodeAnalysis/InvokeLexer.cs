@@ -71,21 +71,23 @@ namespace XQuinn.CodeAnalysis
 
         //Primary reading rulesets - determine how to lex incoming data based on context
         internal bool _readChar;
-        internal bool _readCharValue;
+
         internal bool _readArbitraryLegalValue;
         internal bool _readQualifiedMember;
         internal bool _readDigit;
         internal bool _readString;
-        internal bool _readGeneric;
-        internal bool _noEscape;
 
-        internal bool _readEnum;
+       // internal bool _readEnum; Not yet
+
 
         //These are supporting flags for rulesets, some rulesets have specific rules for specific characters, or need to be read around declaration characters
-        internal bool _readFirstCharOfName;
+        internal bool _readGeneric;
+        internal bool _readFirstCharOfName; //Because it cannot be a digit
         internal bool _readFloat;
         internal bool _finishedReadChar;  //Finishers/Enders are primarily for catching trailing garbage data or skipping whtiespace - ex Method("hello"  , 22, 33 s)
+         internal bool _readCharValue;
         internal bool _stringEnding;         //the trailing whitespace after "hello" willbe skipped, and the trailing s after 33 will cause an exception
+        internal bool _noEscape;
 
         internal bool _beganReadingMainMethodName; //This is a very specific flag that allows you to have leading whitespace for the main method name. Pretned | is string start. you can do |   call("hello")vb kjmhnnnnnnnnnnmm
                                                    // You need this flag to help differentiate if the whitespace is leading, or inside the method name itself, which is of course
@@ -96,6 +98,7 @@ namespace XQuinn.CodeAnalysis
         internal bool _methodParamsBegan;
         internal bool _terminated;
 
+        //This is for additional awareness on how deeply nested a subparameter read is
         internal int _readingSubparams;
         internal int _lastReadingCount;
 
@@ -223,7 +226,7 @@ namespace XQuinn.CodeAnalysis
         {
             if (_lastReadingCount > 0)
                 throw new LexicalException("Nested method parameters not properly terminated. You can usually throw another ending parenthesis at the end of your invocation to fix this. ", invocation, _sb);
-            if (_readGeneric)
+            if (_readGeneric) //if you dont terminate a generic with . or ( then this will throw. genericlex checks to make sure theyre propelry closed with >
                 throw new LexicalException("Invalid generic arguments.", invocation, _sb);
             if (_readChar)
                 throw new LexicalException("Chars require a closing apostrophe character.", invocation, _sb);
@@ -256,7 +259,7 @@ namespace XQuinn.CodeAnalysis
         internal void ValidIdentifier(char value, string invocation, int? i)
         {
             const string error = "Detected illegal character in identifier.";//&&value!='('
-            if (value != '<' && value != '>' && value != ',' && value != ':' && Illegal(value))
+            if (value != '<' && value != '>' && value != ':' && Illegal(value))
                 throw i == null ? new LexicalException(error, invocation, value, _sb) : throw new LexicalException(error, invocation, value, _sb, i.Value);
 
         }
@@ -269,6 +272,7 @@ namespace XQuinn.CodeAnalysis
             _main = null;
             _declaringType = null;
             _implicit_this = null;
+            _value = default;
             _start = true;
             _beganReadingMainMethodName = false;
             _currentMethod = null;

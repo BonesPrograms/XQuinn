@@ -30,15 +30,17 @@ namespace XQuinn.Private
 
     static class Program
     {
-
+        static string field = null;
 
         static void Main(string[] args)
         {
 #if IAPP_BUILD
             XQuinn.NetConsole.Apps.IApp.RunApp(args);
 #else
-
+           // KeyValuePair<KeyValuePair<int,KeyValuePair<bool,char>>,char>
             Cache();
+            object? arr = Array<string>(field);
+            Console.WriteLine(arr ?? "null");
             //Example();
             RunNavigator();
 
@@ -53,6 +55,8 @@ namespace XQuinn.Private
 
         }
 
+        static T[]? Array<T>(params T[]? arr) => arr;
+       static T? method<T>() where T : class => null;
         static void RunNavigator()
         {
             NavigationFeed monitor = new();
@@ -110,6 +114,29 @@ namespace XQuinn.Private
 
         public int msg(int i) => i;
     }
+
+    class Class<T1,T2> : Class<T1>
+    {
+        
+    }
+
+    struct Struct
+    {
+        public int val;
+
+        public int other;
+
+        public Struct(int val, int other)
+        {
+            this.val = val;
+            this.other = other;
+        }
+
+        public override string ToString()
+        {
+            return $"{val} {other}";
+        }
+    }
     class Class<T> //where T : new()
     {
         static T? S_Obj
@@ -123,6 +150,7 @@ namespace XQuinn.Private
         public (T,T) Func(T obj, T obj2) => (obj,obj2);
         public static T Method(T obj) => obj;
         public static X Generic<X>(X obj) => obj;
+        public static (X,Z) GenFunc<X,Z>(X obj, Z obj2)=> (obj, obj2);
         public static T[] Array(params T[] arr)
         {
             return arr;

@@ -94,16 +94,9 @@ namespace XQuinn.Reflection
 
         static TypeCache()
         {
-            //  GlobalCache = new ReadOnlyDictionary<GenericKey, Type>(s_registry);
             Assembly mscorlib = Assembly.Load("System.Private.CoreLib");
             Type runtimeType = mscorlib.GetType("System.RuntimeType", true)!;
-            s_registry[new(nameof(Type))] = runtimeType; //Type doesnt really exist at Runtime, and there is an issue where the methods of Type and RuntimeType are order-swapped
-                                                         //so its hard to tell what overload indexes are by checking Type, you have to load an instance of RuntimeType first
-                                                         //thus we fix this problem by replacing Type with RuntimeType
-                                                         // string[] keywordTypes = new[]
-                                                         //  { "object", "string", "bool", "byte", "sbyte", "char", "int", "uint", "short", "ushort", "ulong", "long", "float", "decimal", "double", "nint", "nuint" };
-                                                         // foreach (string keyword in keywordTypes)
-                                                         //     s_registry[$"{keyword}[]"] = s_registry[keyword].MakeArrayType();
+            s_registry[new(nameof(Type))] = runtimeType; 
         }
 
         public static bool Contains(string name) => s_registry.ContainsKey(GenericKey.TypeQuery(name));

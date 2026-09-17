@@ -44,14 +44,14 @@ namespace XQuinn.Reflection
             sb.Append(p.Name);
             sb.Append(' ');
             MethodInfo? getter = p.GetGetMethod(true);
-            if(getter!=null)
+            if (getter != null)
             {
                 AccessModifiers modifiers = new(getter);
                 sb.Append(modifiers.ToString());
                 sb.Append(" get; ");
             }
             MethodInfo? setter = p.GetSetMethod(true);
-            if(setter!=null)
+            if (setter != null)
             {
                 AccessModifiers modifiers = new(setter);
                 sb.Append(modifiers.ToString());
@@ -68,7 +68,7 @@ namespace XQuinn.Reflection
             else if (info is FieldInfo f)
                 FieldToString(sb, f);
             else if (info is PropertyInfo p)
-            PropertyToString(sb, p);
+                PropertyToString(sb, p);
 
         }
 
@@ -99,8 +99,12 @@ namespace XQuinn.Reflection
         static StringBuilder FieldToString(StringBuilder sb, FieldInfo field)
         {
             sb.Append(new AccessModifiers(field).ToString() + ' ');
-            if (field.IsLiteral) return sb.Append("const ");
-            else if (field.IsStatic) return sb.Append("static ");
+            if (field.IsLiteral)
+                sb.Append("const ");
+            else if (field.IsStatic)
+                sb.Append("static ");
+            if (field.IsInitOnly)
+                sb.Append("readonly ");
             return sb;
 
         }

@@ -32,6 +32,7 @@ namespace XQuinn.Runtime
         internal readonly Dictionary<string, VariableBinding> _variables = new(StringComparer.OrdinalIgnoreCase);
         // public bool Caching = true;
         bool _chaining = false;
+        bool _loading = false;
         internal const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
         public NavigatorCore()
@@ -43,7 +44,7 @@ namespace XQuinn.Runtime
 
         public object? Interface(string invocation, out bool chainexception) ///This is the primary and sole method for interfacing with the Navigator via strings.
         {
-
+            _loading = false;
             chainexception = false;
             //  if (invocation.Length == 0 || string.IsNullOrWhiteSpace(invocation))
             //     return "No command detected.";
@@ -184,6 +185,7 @@ namespace XQuinn.Runtime
         //Checks for method or field syntax. If it detects a method, it diverts to an isolated type load and method invocation.
         object LoadInstance(string invocation)
         {
+            _loading = true;
             object? instance = null;
             Type? objectType = null;
             _variable = null;
@@ -245,6 +247,8 @@ namespace XQuinn.Runtime
             assignedValue = null;
             if (!MiniLexer.AssignmentSubstring(invocation, out string? left, out string? right))
                 return false;
+            if (_loading)
+                throw new ArgumentException("Cannot perform a load and assignment at the same time. Your loaded value will be desynced with the field or property you are assigning to.");
             string lefthand = left!.Trim();
             string righthand = right!;
             string? lefthandTypeName = MiniLexer.ResolveMemberAccess(lefthand, out lefthand, out bool lefthandfield);

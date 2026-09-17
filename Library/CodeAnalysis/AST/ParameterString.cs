@@ -1,28 +1,27 @@
 namespace XQuinn.CodeAnalysis.AST
 {
-    //This is tightly coupled to CallInterpreter. It can be used elsewhere (I use it in RuntimeCommands) but actually turning parameters to objects or generic parameters to type arrays
-    //relies on methods in CallInterpreter. I may decouple it later, but I found it difficult - CallInterpreter.GetGenerics() relies on CallInterpreter.
-    // FindType(), and I think it is just weird to encapsulate
-    //FindType(TypeString) behind GenericParameter, it should be encapsulated as part of the TypeString class, but GenericParameter would need access to that method, its just a mess rn lol
-    //Parameter doesnt support Generics so you cannot just move it all up to the top class
     internal abstract class ParameterString
     {
-        public string Argument
-        {
-            get => _arg;
-            protected set => _arg = value;
-        }
-
-        string _arg;
+        protected string _arg;
         internal ParameterString(string String)
         {
             _arg = String;
         }
         public override string ToString()
         {
-            return Argument;
+            return _arg;
         }
 
+
+    }
+
+    internal abstract class MetadataString : ParameterString 
+    {
+        public string Name => _arg;
+        protected MetadataString(string arg) : base(arg)
+        {
+
+        }
 
     }
 }
