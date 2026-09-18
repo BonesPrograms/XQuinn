@@ -47,7 +47,7 @@ namespace XQuinn.CodeAnalysis.AST
                 if (ParsePrimitive(asType, out object? primitive))
                     return primitive;
             }
-            throw asType.IsPrimitive || asType == typeof(object) ?
+            throw asType.IsPrimitive || asType == typeof(object) || asType.IsEnum ?
             new FormatException($"Failed to convert {_arg} to {asType}.") :
             new NotSupportedException($"Cannot convert values to user defined struct instances. struct type: {asType}. Value: {_arg}");
 

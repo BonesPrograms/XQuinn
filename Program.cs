@@ -69,7 +69,7 @@ namespace XQuinn.Private
             NavigationFeed monitor = new();
             string flag = NavigatorCore.Flag.ToString().Replace(',', '|').Replace(" ", "");
             string path = Path.Combine(XQuinn.IO.Finders.CodeLabFinder.s_path, @"XQuinnLib\dump\instance.log");
-            string ret = monitor.SafeInterface($"~ *types.enum<bindingFlags>({flag}); +flag; *InstanceReader.new(@\"{path}\", true, types.of<object>()); +reader; *program._capture", out _, out bool chainexception);
+            string ret = monitor.SafeInterface($"~ *types.enum<bindingFlags>({flag}); +flag; *InstanceReader.new(@\"{path}\", true, types.of<object>()); +reader; *program._capture; +capture", out _, out bool chainexception);
             Console.WriteLine(ret);
              if (chainexception)
                throw new ArgumentException();
@@ -85,7 +85,7 @@ namespace XQuinn.Private
             Assembly xquinn = Assembly.Load("XQuinn");
             TypeCache.CacheTypes(xquinn.GetTypes(), false);
             TypeCache.CacheType<Harmony>(false);
-            TypeCache.CacheType(typeof(KeyValuePair<,>), false);
+            //TypeCache.CacheType(typeof(KeyValuePair<,>), false);
             TypeCache.CacheType(typeof(AccessTools), false);
             TypeCache.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
             //   TypeCache.CacheType(typeof(BitConverter), false);
