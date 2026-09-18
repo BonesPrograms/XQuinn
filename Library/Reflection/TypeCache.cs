@@ -125,12 +125,12 @@ namespace XQuinn.Reflection
             int[] array = new int[] { 8, 16, 32 };
         }
 
-        static Type? Captured;
+
         public static bool CacheType(Type type, string key)
         {
             if (type.Name == "__StaticArrayInitTypeSize=12")
             {
-                Captured = type;
+                XQuinn.Private.Program._capture = type;
                 return false;
             }
             if (type.IsDefined(typeof(CompilerGeneratedAttribute), true) || TypeBook.IsFileType(type))
