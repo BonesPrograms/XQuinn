@@ -69,10 +69,8 @@ namespace XQuinn.Private
             NavigationFeed monitor = new();
             string flag = NavigatorCore.Flag.ToString().Replace(',', '|').Replace(" ", "");
             string path = Path.Combine(XQuinn.IO.Finders.CodeLabFinder.s_path, @"XQuinnLib\dump\instance.log");
-            string ret = monitor.SafeInterface($"~ *types.enum<bindingFlags>({flag}); +flag; *InstanceReader.new(@\"{path}\", true, types.of<object>()); +reader; *program._capture; +capture", out _, out bool chainexception);
+            string ret = monitor.SafeInterface($"~ *types.enum<bindingFlags>({flag}); +flag; *InstanceReader.new(@\"{path}\", true, types.of<object>()); +reader; @program", out _, out bool chainexception);
             Console.WriteLine(ret);
-             if (chainexception)
-               throw new ArgumentException();
             while (true)
             {
                 string? msg = Console.ReadLine();

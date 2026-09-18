@@ -78,7 +78,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 {
                     object? arg = ParameterToObject(parameter, elementType);
                     if (!arg?.GetType().IsArray ?? true) //list && list.GetType() == actualParameters[lastparam].ParameterType) //i dont bother checking conversions most of the time runtime does it for me
-                        arg = SingleArgArray(arg, elementType);
+                        arg = arg == null ? Array.CreateInstance(elementType, 1) : SingleArgArray(arg, elementType);
                     args[lastparam] = arg;
                 }
             }
