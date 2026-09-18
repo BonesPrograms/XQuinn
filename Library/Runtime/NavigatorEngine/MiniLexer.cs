@@ -1,3 +1,5 @@
+using System;
+
 namespace XQuinn.Runtime.NavigatorEngine
 {
 
@@ -9,7 +11,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         {
             left = null;
             right = null;
-            int? sub = null;
+            int? assignment = null;
             for (int i = 0; i < invocation.Length; i++)
             {
                 char value = invocation[i];
@@ -19,14 +21,14 @@ namespace XQuinn.Runtime.NavigatorEngine
                     return false;
                 if (value == '=')
                 {
-                    sub = i;
+                    assignment = i;
                     break;
                 }
             }
-            if (sub == null)
+            if (assignment == null)
                 return false;
-            left = invocation.Remove(sub.Value);
-            right = invocation.Substring(sub.Value + 1);
+            left = invocation.Remove(assignment.Value);
+            right = invocation.Substring(assignment.Value + 1);
             return true;
 
         }
@@ -34,13 +36,21 @@ namespace XQuinn.Runtime.NavigatorEngine
         internal static string? ResolveMemberAccess(string invocation, out string member, out bool field) //returns typename, outputs the accessed member
         {
             int? lastAccessorIndex = null;
-            int paramStart = invocation.IndexOf('(');
-            field = paramStart < 0;
+            field = true;
+            member = invocation;
             for (int i = 0; i < invocation.Length; i++) //this resolves typenames vs member names, lexer does something similar but not exactly the same - this one is pretty much universal
             {                                        //works with anything like field or method() (no type name) or namespace.typename.method(22, "hello", othertype.method()) //methods are broken off from the typename with all their parameters included
-                if (i == paramStart)
+                char value = invocation[i];
+                if (CharOrString(value))
+                {
+                    return lastAccessorIndex == null ? null : throw new ArgumentException($"Invalid string format or member name. {invocation}.");
+                }
+                if (value == '(')
+                {
+                    field = false;
                     break;
-                if (invocation[i] == '.')
+                }
+                if (value == '.')
                     lastAccessorIndex = i;
             }
             if (lastAccessorIndex != null)
@@ -49,9 +59,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 string typename = invocation.Remove(lastAccessorIndex.Value);
                 return typename;
             }
-            else
-                member = invocation;
-            return null; //no type name, just a member, defaults to implicit this as thje type
+            return null;
         }
 
         internal static bool ImplicitThisMethodCall(string righthand) //makes sure that the '(' contained is not part of a string and is actually a method parameter

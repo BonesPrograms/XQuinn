@@ -1,0 +1,396 @@
+Beginning read of fields in System.RuntimeType
+
+
+Beginning read for fields of type System.RuntimeType.
+Reading FIELD "m_keepalive" from type RuntimeType:
+Type: Object
+Value: 
+Declared in: System.RuntimeType
+Attributes Private, InitOnly
+
+Reading FIELD "m_cache" from type RuntimeType:
+Type: IntPtr
+Value: 2589679296472
+Declared in: System.RuntimeType
+Attributes Private
+
+Reading FIELD "m_handle" from type RuntimeType:
+Type: IntPtr
+Value: 140733278852568
+Declared in: System.RuntimeType
+Attributes Assembly
+
+Reading FIELD "s_ForwardCallBinder" from type RuntimeType:
+Type: OleAutBinder
+Value: 
+Declared in: System.RuntimeType
+Attributes Private, Static
+
+Reading FIELD "GenericParameterCountAny" from type RuntimeType:
+Type: Int32
+Value: -1
+Declared in: System.RuntimeType
+Attributes Private, Static, Literal, HasDefault
+
+Reading FIELD "ValueType" from type RuntimeType:
+Type: RuntimeType
+Value: System.ValueType
+Declared in: System.RuntimeType
+Attributes Assembly, Static, InitOnly
+
+"ValueType" is a custom type, reading fields.
+Beginning read for fields of type System.RuntimeType.
+Reading FIELD "m_keepalive" from type RuntimeType:
+Type: Object
+Value: 
+Declared in: System.RuntimeType
+Attributes Private, InitOnly
+
+Reading FIELD "m_cache" from type RuntimeType:
+Type: IntPtr
+Value: 2589679296400
+Declared in: System.RuntimeType
+Attributes Private
+
+Reading FIELD "m_handle" from type RuntimeType:
+Type: IntPtr
+Value: 140733274933624
+Declared in: System.RuntimeType
+Attributes Assembly
+
+Reading FIELD "s_ForwardCallBinder" from type RuntimeType:
+Type: OleAutBinder
+Value: 
+Declared in: System.RuntimeType
+Attributes Private, Static
+
+Reading FIELD "GenericParameterCountAny" from type RuntimeType:
+Type: Int32
+Value: -1
+Declared in: System.RuntimeType
+Attributes Private, Static, Literal, HasDefault
+
+Reading FIELD "ValueType" from type RuntimeType:
+Type: RuntimeType
+Value: System.ValueType
+Declared in: System.RuntimeType
+Attributes Assembly, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "ObjectType" from type RuntimeType:
+Type: RuntimeType
+Value: System.Object
+Declared in: System.RuntimeType
+Attributes Private, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "StringType" from type RuntimeType:
+Type: RuntimeType
+Value: System.String
+Declared in: System.RuntimeType
+Attributes Private, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "<DefaultBinder>k__BackingField" from type RuntimeType:
+Type: Binder
+Value: 
+Declared in: System.Type
+Attributes Private, Static
+
+Reading FIELD "Delimiter" from type RuntimeType:
+Type: Char
+Value: .
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "FilterAttribute" from type RuntimeType:
+Type: MemberFilter
+Value: System.Reflection.MemberFilter
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "FilterName" from type RuntimeType:
+Type: MemberFilter
+Value: System.Reflection.MemberFilter
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "FilterNameIgnoreCase" from type RuntimeType:
+Type: MemberFilter
+Value: System.Reflection.MemberFilter
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "EmptyTypes" from type RuntimeType:
+Type: Type[]
+Value: System.Type[]
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "Missing" from type RuntimeType:
+Type: Object
+Value: System.Reflection.Missing
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "ObjectType" from type RuntimeType:
+Type: RuntimeType
+Value: System.Object
+Declared in: System.RuntimeType
+Attributes Private, Static, InitOnly
+
+"ObjectType" is a custom type, reading fields.
+Beginning read for fields of type System.RuntimeType.
+Reading FIELD "m_keepalive" from type RuntimeType:
+Type: Object
+Value: 
+Declared in: System.RuntimeType
+Attributes Private, InitOnly
+
+Reading FIELD "m_cache" from type RuntimeType:
+Type: IntPtr
+Value: 2589679296392
+Declared in: System.RuntimeType
+Attributes Private
+
+Reading FIELD "m_handle" from type RuntimeType:
+Type: IntPtr
+Value: 140733274933048
+Declared in: System.RuntimeType
+Attributes Assembly
+
+Reading FIELD "s_ForwardCallBinder" from type RuntimeType:
+Type: OleAutBinder
+Value: 
+Declared in: System.RuntimeType
+Attributes Private, Static
+
+Reading FIELD "GenericParameterCountAny" from type RuntimeType:
+Type: Int32
+Value: -1
+Declared in: System.RuntimeType
+Attributes Private, Static, Literal, HasDefault
+
+Reading FIELD "ValueType" from type RuntimeType:
+Type: RuntimeType
+Value: System.ValueType
+Declared in: System.RuntimeType
+Attributes Assembly, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "ObjectType" from type RuntimeType:
+Type: RuntimeType
+Value: System.Object
+Declared in: System.RuntimeType
+Attributes Private, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "StringType" from type RuntimeType:
+Type: RuntimeType
+Value: System.String
+Declared in: System.RuntimeType
+Attributes Private, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "<DefaultBinder>k__BackingField" from type RuntimeType:
+Type: Binder
+Value: 
+Declared in: System.Type
+Attributes Private, Static
+
+Reading FIELD "Delimiter" from type RuntimeType:
+Type: Char
+Value: .
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "FilterAttribute" from type RuntimeType:
+Type: MemberFilter
+Value: System.Reflection.MemberFilter
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "FilterName" from type RuntimeType:
+Type: MemberFilter
+Value: System.Reflection.MemberFilter
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "FilterNameIgnoreCase" from type RuntimeType:
+Type: MemberFilter
+Value: System.Reflection.MemberFilter
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "EmptyTypes" from type RuntimeType:
+Type: Type[]
+Value: System.Type[]
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "Missing" from type RuntimeType:
+Type: Object
+Value: System.Reflection.Missing
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "StringType" from type RuntimeType:
+Type: RuntimeType
+Value: System.String
+Declared in: System.RuntimeType
+Attributes Private, Static, InitOnly
+
+"StringType" is a custom type, reading fields.
+Beginning read for fields of type System.RuntimeType.
+Reading FIELD "m_keepalive" from type RuntimeType:
+Type: Object
+Value: 
+Declared in: System.RuntimeType
+Attributes Private, InitOnly
+
+Reading FIELD "m_cache" from type RuntimeType:
+Type: IntPtr
+Value: 2589679294152
+Declared in: System.RuntimeType
+Attributes Private
+
+Reading FIELD "m_handle" from type RuntimeType:
+Type: IntPtr
+Value: 140733275954568
+Declared in: System.RuntimeType
+Attributes Assembly
+
+Reading FIELD "s_ForwardCallBinder" from type RuntimeType:
+Type: OleAutBinder
+Value: 
+Declared in: System.RuntimeType
+Attributes Private, Static
+
+Reading FIELD "GenericParameterCountAny" from type RuntimeType:
+Type: Int32
+Value: -1
+Declared in: System.RuntimeType
+Attributes Private, Static, Literal, HasDefault
+
+Reading FIELD "ValueType" from type RuntimeType:
+Type: RuntimeType
+Value: System.ValueType
+Declared in: System.RuntimeType
+Attributes Assembly, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "ObjectType" from type RuntimeType:
+Type: RuntimeType
+Value: System.Object
+Declared in: System.RuntimeType
+Attributes Private, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "StringType" from type RuntimeType:
+Type: RuntimeType
+Value: System.String
+Declared in: System.RuntimeType
+Attributes Private, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "<DefaultBinder>k__BackingField" from type RuntimeType:
+Type: Binder
+Value: 
+Declared in: System.Type
+Attributes Private, Static
+
+Reading FIELD "Delimiter" from type RuntimeType:
+Type: Char
+Value: .
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "FilterAttribute" from type RuntimeType:
+Type: MemberFilter
+Value: System.Reflection.MemberFilter
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "FilterName" from type RuntimeType:
+Type: MemberFilter
+Value: System.Reflection.MemberFilter
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "FilterNameIgnoreCase" from type RuntimeType:
+Type: MemberFilter
+Value: System.Reflection.MemberFilter
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "EmptyTypes" from type RuntimeType:
+Type: Type[]
+Value: System.Type[]
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "Missing" from type RuntimeType:
+Type: Object
+Value: System.Reflection.Missing
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "<DefaultBinder>k__BackingField" from type RuntimeType:
+Type: Binder
+Value: 
+Declared in: System.Type
+Attributes Private, Static
+
+Reading FIELD "Delimiter" from type RuntimeType:
+Type: Char
+Value: .
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "FilterAttribute" from type RuntimeType:
+Type: MemberFilter
+Value: System.Reflection.MemberFilter
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "FilterName" from type RuntimeType:
+Type: MemberFilter
+Value: System.Reflection.MemberFilter
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "FilterNameIgnoreCase" from type RuntimeType:
+Type: MemberFilter
+Value: System.Reflection.MemberFilter
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+Reading FIELD "EmptyTypes" from type RuntimeType:
+Type: Type[]
+Value: System.Type[]
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+READING ILIST OF COUNT 0
+ILIST FINISHED
+Reading FIELD "Missing" from type RuntimeType:
+Type: Object
+Value: System.Reflection.Missing
+Declared in: System.Type
+Attributes Public, Static, InitOnly
+
+"Missing" is a custom type, reading fields.
+Beginning read for fields of type System.Reflection.Missing.
+Reading FIELD "Value" from type Missing:
+Type: Missing
+Value: System.Reflection.Missing
+Declared in: System.Reflection.Missing
+Attributes Public, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.

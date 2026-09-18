@@ -37,18 +37,23 @@ namespace XQuinn.Private
 #if IAPP_BUILD
             XQuinn.NetConsole.Apps.IApp.RunApp(args);
 #else
-           // KeyValuePair<KeyValuePair<int,KeyValuePair<bool,char>>,char>
+            // KeyValuePair<KeyValuePair<int,KeyValuePair<bool,char>>,char>
             Cache();
             object? arr = Array<string>(field);
             Console.WriteLine(arr ?? "null");
+          //  method(8);
             //Example();
             RunNavigator();
 
- 
-#endif
+
+
         }
 
 
+        static void mutate(ref int i)
+        {
+            i = 12;
+        }
 
         static class BitConv
         {
@@ -56,14 +61,16 @@ namespace XQuinn.Private
         }
 
         static T[]? Array<T>(params T[]? arr) => arr;
-       static T? method<T>() where T : class => null;
+        static T? method<T>() where T : class => null;
         static void RunNavigator()
         {
             NavigationFeed monitor = new();
             string flag = NavigatorCore.Flag.ToString().Replace(',', '|').Replace(" ", "");
-              Console.WriteLine(monitor.Interface($"~ *types.enum<bindingFlags>({flag}); +flag; @program", out _, out bool chainexception));
-            // if (chainexception)
-            //   throw new ArgumentException();
+            string path = Path.Combine(XQuinn.IO.Finders.CodeLabFinder.s_path, @"XQuinnLib\dump\instance.log");
+            string ret = monitor.SafeInterface($"~ *types.enum<bindingFlags>({flag}); +flag; *InstanceReader.new(@\"{path}\", true, types.of<object>()); +reader; *TypeCache.Captured", out _, out bool chainexception);
+            Console.WriteLine(ret);
+             if (chainexception)
+               throw new ArgumentException();
             while (true)
             {
                 string? msg = Console.ReadLine();
@@ -115,9 +122,9 @@ namespace XQuinn.Private
         public int msg(int i) => i;
     }
 
-    class Class<T1,T2> : Class<T1>
+    class Class<T1, T2> : Class<T1>
     {
-        
+
     }
 
     struct Struct
@@ -147,10 +154,15 @@ namespace XQuinn.Private
         static T? _s_obj = default;
         T? Obj { get => _obj; set => _obj = value; }
         T? _obj = default;
-        public (T,T) Func(T obj, T obj2) => (obj,obj2);
+
+        public static string Void()
+        {
+            return "Void";
+        }
+        public (T, T) Func(T obj, T obj2) => (obj, obj2);
         public static T Method(T obj) => obj;
         public static X Generic<X>(X obj) => obj;
-        public static (X,Z) GenFunc<X,Z>(X obj, Z obj2)=> (obj, obj2);
+        public static (X, Z) GenFunc<X, Z>(X obj, Z obj2) => (obj, obj2);
         public static T[] Array(params T[] arr)
         {
             return arr;
@@ -302,6 +314,6 @@ namespace XQuinn.Private
 //     static char sex(char i, char x) => 'd';
 // }
 
-
+#endif
 // //char(lex.get(lex.oth('x', lex.get('y'))), lex.get(lex.get(lex.get(lex.oth('x',lex.get('y')))))
 #endif

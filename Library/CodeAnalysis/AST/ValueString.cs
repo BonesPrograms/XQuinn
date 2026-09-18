@@ -12,7 +12,6 @@ namespace XQuinn.CodeAnalysis.AST
         public string Argument => _arg;
         internal ValueString(string String) : base(String)
         {
-
         }
         ///This does not work with FieldString,MethodString or TypeString. it is for true ParameterStrings
         public object? Parse(Type asType)

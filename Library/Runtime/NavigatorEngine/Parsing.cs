@@ -72,45 +72,34 @@ namespace XQuinn.Runtime.NavigatorEngine
             if (invocation.Params.Count == parameters.Length)
             {
                 ParameterString parameter = invocation.Params[lastparam];
-                ValueString? val = parameter as ValueString;
-                if (val != null && (val.Argument.EqualsCaseless("null") || val.Argument.EqualsCaseless("default")))
-                    args[lastparam] = null; //if element type is non nullable, then attempting to pass "null" for the params array will throw a format exception (because ParameterToObject attempts to parse the argument as the element type)
-                else                        //so if your arg is literally "null", special case takes over and assigns null for the params array
+                if (parameter is ValueString val && (val.Argument.EqualsCaseless("null") || val.Argument.EqualsCaseless("default")))
+                    args[lastparam] = null;
+                else
                 {
                     object? arg = ParameterToObject(parameter, elementType);
-                    if (arg == null)
-                    {
-                        if (parameter is MethodString or FieldString) //in C#, if a method or field-as-parameter returns null, params array will create a single arg array out of the null value
-                            arg = SingleArgArray(null, elementType);
-                    }
-                    else if (arg.GetType().IsArray) //list && list.GetType() == actualParameters[lastparam].ParameterType) //i dont bother checking conversions most of the time runtime does it for me
-                    {
-                        args[lastparam] = arg;
-                    }
-                    else if (arg != null) ////this checks to see if youve sent an array. if the object is not an array or null, divert to creating an array. I have some notes about this choice below
-                    {
+                    if (!arg?.GetType().IsArray ?? true) //list && list.GetType() == actualParameters[lastparam].ParameterType) //i dont bother checking conversions most of the time runtime does it for me
                         arg = SingleArgArray(arg, elementType);
-                    }
                     args[lastparam] = arg;
-                    //so this is secure
-                    //if you directly assign null/default as a single arg, then we return the array as null
-                    //otherwise if you return null from a method field or property, it becomes a singleargarray
-                    //otherwise if you provide an array, we assign it
-                    //otherwise if you assign a single value, another singleargarray
-                    //so if you want to directly assign "null" and have a singleargarray come out - you cant, you need to precreate an array of size one with a single "null" element
-                    //i explain further below why this is correct and in line with C#
                 }
-                return;
-                //Fixes a bug wherein; if you send an already initialized array[] to a method with the 'params' keyword, it would create a new array (of arrays)
-                //and assign the array you passed us as an element nested inside of the new array.
             }
-            //constructs nonarray args into an array
-            Array paramsArray = Array.CreateInstance(elementType, invocation.Params.Count - lastparam); //assign array type via reflection becuase object[] wont work for params keyword
-            for (int i = lastparam; i < invocation.Params.Count; i++)
-                paramsArray.SetValue(ParameterToObject(invocation.Params[i], elementType), i - lastparam);
-            args[lastparam] = paramsArray;
+            else
+            {
+                Array paramsArray = Array.CreateInstance(elementType, invocation.Params.Count - lastparam); //assign array type via reflection becuase object[] wont work for params keyword
+                for (int i = lastparam; i < invocation.Params.Count; i++)
+                    paramsArray.SetValue(ParameterToObject(invocation.Params[i], elementType), i - lastparam);
+                args[lastparam] = paramsArray;
+            }
         }
 
+
+
+        //so this is secure
+        //if you directly assign null/default as a single arg (ValueString), then we return the array as null
+        //otherwise if you return null from a method field or property, it becomes a singleargarray with a null element
+        //otherwise if you provide an array, we assign it
+        //otherwise if you assign a single value, we add it to a singleargarray
+        //so if you want to directly assign "null" and have a singleargarray come out - you cant, you need to precreate an array of size one with a single "null" element
+        //i explain further below why this is correct and in line with C#
         static Array SingleArgArray(object? arg, Type elementType)
         {
             Array singleArgArray = Array.CreateInstance(elementType, 1);

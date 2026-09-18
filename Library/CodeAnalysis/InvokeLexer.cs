@@ -77,7 +77,7 @@ namespace XQuinn.CodeAnalysis
         internal bool _readDigit;
         internal bool _readString;
 
-       // internal bool _readEnum; Not yet
+        // internal bool _readEnum; Not yet
 
 
         //These are supporting flags for rulesets, some rulesets have specific rules for specific characters, or need to be read around declaration characters
@@ -85,7 +85,7 @@ namespace XQuinn.CodeAnalysis
         internal bool _readFirstCharOfName; //Because it cannot be a digit
         internal bool _readFloat;
         internal bool _finishedReadChar;  //Finishers/Enders are primarily for catching trailing garbage data or skipping whtiespace - ex Method("hello"  , 22, 33 s)
-         internal bool _readCharValue;
+        internal bool _readCharValue;
         internal bool _stringEnding;         //the trailing whitespace after "hello" willbe skipped, and the trailing s after 33 will cause an exception
         internal bool _noEscape;
 
@@ -115,9 +115,18 @@ namespace XQuinn.CodeAnalysis
             //   throw new ArgumentException("Invocation cannot be null or whitespace.");
             Clear();
             int? breakpoint = Breakpoint(invocation);
-            int i = 0;
             _declaringType = declaringType; //this is specifically to support trycatch, though otherwise not necessary because it always clears at the end to avoid holding onto stale data
             _implicit_this = implicitAccess;
+            StringBuffer(invocation, breakpoint);
+            FatalLexicalError(invocation);
+            MethodString method = _main!;
+            Clear();
+            return method;
+        }
+
+        void StringBuffer(string invocation, int? breakpoint)
+        {
+            int i = 0;
             while (i < invocation.Length)
             {
                 if (i == breakpoint)
@@ -188,12 +197,7 @@ namespace XQuinn.CodeAnalysis
             Increment:
                 i++;
             }
-            FatalLexicalError(invocation);
-            MethodString method = _main!;
-            Clear();
-            return method;
         }
-
         void GetContext(string invocation, ref int i) //helps us figure out whats about to be read 
         {
             if (_value == CharDeclr)

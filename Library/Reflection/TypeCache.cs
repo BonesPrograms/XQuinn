@@ -96,7 +96,7 @@ namespace XQuinn.Reflection
         {
             Assembly mscorlib = Assembly.Load("System.Private.CoreLib");
             Type runtimeType = mscorlib.GetType("System.RuntimeType", true)!;
-            s_registry[new(nameof(Type))] = runtimeType; 
+            s_registry[new(nameof(Type))] = runtimeType;
         }
 
         public static bool Contains(string name) => s_registry.ContainsKey(GenericKey.TypeQuery(name));
@@ -120,9 +120,19 @@ namespace XQuinn.Reflection
             throw new ArgumentException($"Could not find cached type with key {key.Key} and generic arg count {key.Args}.");
         }
 
+        static void method()
+        {
+            int[] array = new int[] { 8, 16, 32 };
+        }
 
+        static Type? Captured;
         public static bool CacheType(Type type, string key)
         {
+            if (type.Name == "__StaticArrayInitTypeSize=12")
+            {
+                Captured = type;
+                return false;
+            }
             if (type.IsDefined(typeof(CompilerGeneratedAttribute), true) || TypeBook.IsFileType(type))
                 return false;
             if (type.IsGenericType && !type.IsGenericTypeDefinition)
