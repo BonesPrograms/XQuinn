@@ -17,7 +17,6 @@ namespace XQuinn.Runtime
     public sealed class NavigationFeed
     {
         readonly StringBuilder _feed = new();
-        readonly StringBuilder _collectionWriter = new();
         readonly internal NavigatorCore _core = new();
         Type? _lastLoadedType;
         string? _lastloadedString;
@@ -77,8 +76,10 @@ namespace XQuinn.Runtime
                 if (empty)
                     _feed.AppendLine("Enumerable is empty.");
                 else
-                    _feed.AppendLine($"{_collectionWriter.AppendMany(enumerable, Environment.NewLine, true, x => x is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : x?.ToString())}");
-                _collectionWriter.Length = 0;
+                {
+                    _feed.AppendMany(enumerable, Environment.NewLine, true, x => x is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : x?.ToString());
+                    _feed.AppendLine();
+                }
             }
             else
                 _feed.AppendLine(ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString() ?? "null");

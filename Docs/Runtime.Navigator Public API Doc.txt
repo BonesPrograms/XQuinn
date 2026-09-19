@@ -46,7 +46,7 @@ enumerable values are not read automatically when returned, they must be loaded 
 
 Member access is restricted for method return values. IE. You cannot do Method().Field this is restricted.
 
-Methods with in/out/ref parameters and ref returntype are not supported. You cannot yet pass methods as arguments for delegates, but you may be able to later.
+Methods with in/out/ref parameters and ref returntype are not supported. You cannot pass method groups as arguments for delegates.
 
 Expressions are not supported. You cannot do math, you cannot create lambda expressions, the only available expression is assignment.
 
@@ -71,7 +71,7 @@ If a field or property name conflicts with our "keywords" - null, base, this and
 accessing that field or property. You can access it explicitly using typename, ex Class.this or this.this, obviously
 you will lose the ability to use them in typename-membername pairs for invocation.
 
-Enum OR is supported, but avoid placing whitespace. Send values like|this.
+Enum OR is supported.
 Strings and chars should be declared just like C#.
 Again, nothing is case sensitive. Type names, field names, variable names, method names, all case insensitive.
 Variables can be used in assignment. They cannot be assigned null.

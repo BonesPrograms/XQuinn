@@ -60,19 +60,18 @@ namespace XQuinn.CodeAnalysis.AST
             {
                 string arg = Argument;
                 bool noescape = false;
-                int lastIndex = arg.Length - 1;
-                if (arg[0] == '@')
+                if (arg[0] == InvokeLexer.NoEscDeclr)
                 {
-                    if (arg[1] != '"')
+                    if (arg[1] != InvokeLexer.StringDeclr)
                         throw new LexicalException("Invalid string format. A quote char must immediately follow the @ char.", arg);
                     noescape = true;
                     arg = arg.Substring(1);
-                    lastIndex--;
                 }
+                int lastIndex = arg.Length - 1;
                 if (arg[0] == '"' && arg[lastIndex] == '"')
                 {
                     if (arg.Length <= 3) //technically speaking, you can do """ in assignment, or "\" and it will assign signle char string " or \, however this is only in assignment, if you try to send a string like """ or "\" to the lexer as a parameter for a method, it will throw
-                        extract = arg.Length == 2 ? string.Empty : arg[1].ToString(); 
+                        extract = arg.Length == 2 ? string.Empty : arg[1].ToString();
                     else
                     {
                         StringBuilder sb = new();
@@ -82,8 +81,8 @@ namespace XQuinn.CodeAnalysis.AST
                             char val = arg[i];
                             if (escaping)
                             {
-                                if (val != InvokeLexer.EscSeq && val != '"')
-                                    throw new LexicalException("Can only escape the quote char \" or escape char \\.", arg);
+                                if (val != InvokeLexer.EscSeq && val != InvokeLexer.StringDeclr)
+                                    throw new LexicalException("Can only escape the quote char \" or escape char \\. ", arg);
                                 escaping = false;
                             }
                             else if (val == InvokeLexer.EscSeq && !noescape)
@@ -91,10 +90,10 @@ namespace XQuinn.CodeAnalysis.AST
                                 escaping = true;
                                 continue;
                             }
-                            else if (val == '"') //intentionally cut off early so you know if your format is fucked up, even if i cant throw an exception
-                                break;              //ex. @"Hello \"World" will print as "Hello \" which will help make it obvious to you where you faulted
-                            sb.Append(arg[i]);     //the lexer will throw an exception over that, but assignment will not, assignment relies purely on this method
-                        }                           
+                            else if (val == InvokeLexer.StringDeclr)
+                                throw new LexicalException($"Invalid string format ", arg);
+                            sb.Append(arg[i]);
+                        }
                         extract = sb.ToString();
                     }
                     return true;

@@ -165,12 +165,12 @@ namespace XQuinn.Runtime.NavigatorEngine
             args = null;
             call = null;
             MethodKey query = MethodKey.MethodQuery(mthdString);
-            IEnumerable<MethodBase> methodbases = TypeMap.GetUnfilteredMethods(fromType, query.GenericKey.Key.EqualsCaseless("new"));
+            IEnumerable<MethodBase> methodbases = TypeMap.GetUnfilteredMethods(fromType, query.GenericID.Name.EqualsCaseless("new"));
             int i = 0;
             foreach (MethodBase method in methodbases)
             {
                 GenericKey key = TypeMap.MethodGenericKey(method);
-                if (key == query.GenericKey) //method.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
+                if (key == query.GenericID) //method.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
                 {
                     ParameterInfo[] parameters = method.GetParameters();
                     if (Reflector.SupportedMember(method, parameters))

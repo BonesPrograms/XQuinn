@@ -246,7 +246,7 @@ namespace XQuinn.Runtime
             string righthand = right!;
             string? lefthandTypeName = MiniLexer.ResolveMemberAccess(lefthand, out lefthand, out bool lefthandfield);
             if (!lefthandfield)
-                throw new ArgumentException($"Can only assign to fields, properties or variables. Bad input: {lefthand}");
+                throw new ArgumentException($"Can only assign to fields or properties.. Bad input: {lefthand}");
             Type? lefthandtype;
             object? lefthandInstance;
             Reflector.Assignment assigningTo;

@@ -117,13 +117,8 @@ namespace XQuinn.Reflection
         {
             if (s_registry.TryGetValue(key, out Type? cachedType))
                 return cachedType;
-            throw new ArgumentException($"Could not find cached type with key {key.Key} and generic arg count {key.Args}.");
+            throw new ArgumentException($"Could not find cached type with key {key.Name} and generic arg count {key.Args}.");
         }
-
-        // static void method()
-        // {
-        //     int[] array = new int[] { 8, 16, 32 };
-        // }
 
 
         public static bool CacheType(Type type, string key)

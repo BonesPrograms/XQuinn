@@ -52,11 +52,15 @@ namespace XQuinn.CodeAnalysis
 
         internal const char CharDeclr = '\'';
 
+        internal const char EnumOR = '|';
+
+        internal const char NoEscDeclr = '@';
+
         internal readonly StringBuilder _sb = new();
 
         readonly ValueReader _valueReader;
 
-        readonly ArbitraryReader _arbitraryReader;
+       internal readonly ArbitraryReader _arbitraryReader;
 
         internal MethodString? _main;
 
@@ -76,6 +80,7 @@ namespace XQuinn.CodeAnalysis
         internal bool _readQualifiedMember;
         internal bool _readDigit;
         internal bool _readString;
+        internal bool _readEnumOR;
 
         // internal bool _readEnum; Not yet
 
@@ -91,6 +96,8 @@ namespace XQuinn.CodeAnalysis
         internal bool _readNoEscDeclr;
         internal bool _escaping;
         internal bool _justEscaped;
+        internal bool _readOR;
+        internal bool _readORVal;
 
         internal bool _beganReadingMainMethodName; //This is a very specific flag that allows you to have leading whitespace for the main method name. Pretned | is string start. you can do |   call("hello")vb kjmhnnnnnnnnnnmm
                                                    // You need this flag to help differentiate if the whitespace is leading, or inside the method name itself, which is of course
@@ -140,6 +147,11 @@ namespace XQuinn.CodeAnalysis
                     if (_arbitraryReader.ReadMainMethod(ref i, invocation))
                         goto Append;
                     goto Increment;
+                }
+                else if (_readEnumOR)
+                {
+                    if (_valueReader.ReadEnumOR(ref i, invocation))
+                        goto Append;
                 }
                 else if (_readDigit)
                 {
@@ -194,7 +206,7 @@ namespace XQuinn.CodeAnalysis
                     goto Increment;
                 }
             Append:
-                if (!_readArbitraryLegalValue && !_readChar && !_readDigit && !_readString && !_readQualifiedMember && !_start)
+                if (!_readArbitraryLegalValue && !_readChar && !_readDigit && !_readString && !_readQualifiedMember && !_start && !_readEnumOR)
                     ValidIdentifier(_value, invocation, i);
                 _sb.Append(_value);
             Increment:
@@ -205,9 +217,9 @@ namespace XQuinn.CodeAnalysis
         {
             if (_value == CharDeclr)
                 _readChar = true;
-            else if (_value == StringDeclr || _value == '@')
+            else if (_value == StringDeclr || _value == NoEscDeclr)
             {
-                if (_value == '@') //there can be an invalid sequence here but it wont throw until we get to ValueString
+                if (_value == NoEscDeclr) //there can be an invalid sequence here but it wont throw until we get to ValueString
                 {
                     _noEscape = true;
                     _readNoEscDeclr = true;
@@ -270,7 +282,7 @@ namespace XQuinn.CodeAnalysis
             _readFloat = false;
             _readString = false;
             _noEscape = false;
-            _escaping=false;
+            _escaping = false;
             _justEscaped = false;
             _readNoEscDeclr = false;
             _readGeneric = false;
@@ -280,6 +292,9 @@ namespace XQuinn.CodeAnalysis
             _finishedReadChar = false;
             _readCharValue = false;
             _readChar = false;
+            _readEnumOR = false;
+            _readOR = false;
+            _readORVal = false;
             _readArbitraryLegalValue = false;
             _methodParamsBegan = false;
             _terminated = false;
@@ -333,18 +348,18 @@ namespace XQuinn.CodeAnalysis
         //so essentially you break out of the loop and the stringread method doesnt get a chance to invoke and that causes the bug
 
 
-    ///more private notes
-    /// if you have extra empty parameters ie Method(22,32,,,)
-    /// the system generally ignores it
-    /// we ignore it to prevent a different bug
-    /// Method(22, 23, OtherMethod(), 15)
-    /// ) is considered a valid parameter terminator, but so is ,
-    /// so the system would, normally, try to append the 'text' between ) and ,
-    /// this would not only append an empty string but it will also lead to a parameter count mismatch
-    /// since , and ) both need to be able to terminate parameters, i have no way to prevent empty parameters
-    /// without also recreating that original bug
-    /// (we solve the bug by checking if our StringBuilder is empty before appending, which would also be the logical
-    /// point to throw an 'empty parameter' exception, so doesnt really work)
+        ///more private notes
+        /// if you have extra empty parameters ie Method(22,32,,,)
+        /// the system generally ignores it
+        /// we ignore it to prevent a different bug
+        /// Method(22, 23, OtherMethod(), 15)
+        /// ) is considered a valid parameter terminator, but so is ,
+        /// so the system would, normally, try to append the 'text' between ) and ,
+        /// this would not only append an empty string but it will also lead to a parameter count mismatch
+        /// since , and ) both need to be able to terminate parameters, i have no way to prevent empty parameters
+        /// without also recreating that original bug
+        /// (we solve the bug by checking if our StringBuilder is empty before appending, which would also be the logical
+        /// point to throw an 'empty parameter' exception, so doesnt really work)
 
 
     }

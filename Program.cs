@@ -38,6 +38,11 @@ namespace XQuinn.Private
             Cache();
             RunNavigator();
         }
+        //  static void method()
+        //  {
+        //      int[] array = new int[] { 8, 16, 32 };
+        // }
+
 
         static void RunNavigator()
         {
@@ -58,15 +63,9 @@ namespace XQuinn.Private
             Assembly xquinn = Assembly.Load("XQuinn");
             TypeCache.CacheTypes(xquinn.GetTypes(), false);
             TypeCache.CacheType<Harmony>(false);
-            //TypeCache.CacheType(typeof(KeyValuePair<,>), false);
             TypeCache.CacheType(typeof(AccessTools), false);
             TypeCache.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
-            //   TypeCache.CacheType(typeof(BitConverter), false);
-            //@ TypeCache.CacheType(typeof(BytesLittleEndian), "bytes");
         }
-
-        class Class { }
-
         class Class<T>
         {
 

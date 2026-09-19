@@ -8,9 +8,8 @@ namespace XQuinn.Runtime.NavigatorEngine
 {
     internal readonly struct GenericKey : IEquatable<GenericKey>
     {
-        public string Key => _key ?? throw new InvalidOperationException(); ///The default state of a GenericKey is invalid.
+        public readonly string Name;
         public readonly int Args;
-        readonly string _key;
         public static GenericKey TypeQuery(string typename)
         {
             if (GenericString.HasTypeArgs(typename))
@@ -29,7 +28,7 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         public GenericKey(string key, int args = 0)
         {
-            _key = key;
+            Name = key;
             Args = args;
         }
 
@@ -54,7 +53,7 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         public bool Equals(GenericKey key)
         {
-            return Args == key.Args && Key.EqualsCaseless(key.Key);
+            return Args == key.Args && Name.EqualsCaseless(key.Name);
         }
 
         public override int GetHashCode()
@@ -62,7 +61,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             int hash = 17;
             unchecked
             {
-                hash = hash * 23 + StringComparer.OrdinalIgnoreCase.GetHashCode(Key);
+                hash = hash * 23 + StringComparer.OrdinalIgnoreCase.GetHashCode(Name);
                 hash = hash * 23 + Args.GetHashCode();
             }
             return hash;
@@ -96,11 +95,11 @@ namespace XQuinn.Runtime.NavigatorEngine
             if (Args > 0)
             {
                 if (Args == 1)
-                    return $"{Key}<T>";
-               return ArgsToString(new(Key));
+                    return $"{Name}<T>";
+               return ArgsToString(new(Name));
 
             }
-            return Key;
+            return Name;
         }
 
     }

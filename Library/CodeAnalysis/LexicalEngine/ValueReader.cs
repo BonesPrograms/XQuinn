@@ -30,6 +30,12 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         bool _justEscaped { get => _lexer._justEscaped; set => _lexer._justEscaped = value; }
 
+        bool _readEnumOR { get => _lexer._readEnumOR; set => _lexer._readEnumOR = value; }
+
+        bool _readOR { get => _lexer._readOR; set => _lexer._readOR = value; }
+
+        bool _readORVal { get => _lexer._readORVal; set => _lexer._readORVal = value; }
+
         public ValueReader(InvokeLexer lexer) : base(lexer)
         {
             _lexer = lexer;
@@ -40,6 +46,41 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             ValueString param = new(prm);
             _sb.Length = 0;
             _lexer._currentMethod!.AddParameter(param);
+        }
+
+        internal bool ReadEnumOR(ref int i, string invocation)
+        {
+            if (Termination(_value))
+            {
+                if (_readOR)
+                    throw new LexicalException("Invalid enum OR args.", invocation, _value, _sb);
+                _readEnumOR = false;
+                return false;
+
+            }
+            if (_value == Whitespace)
+            {
+                _readORVal = false;
+            }
+            else if (_value == EnumOR)
+            {
+                if (_readOR)
+                    throw new LexicalException("Invalid enum OR args.", invocation, _value, _sb);
+                _readOR = true;
+                _readORVal = false;
+            }
+            else if (_readOR)
+            {
+                _lexer._arbitraryReader.ValidIdentifierFirstCharOrThrow(_value, invocation, i);
+                _readOR = false;
+                _readORVal = true;
+            }
+            else if (_readORVal)
+                _lexer.ValidIdentifier(_value, invocation, _value);
+            return true;
+
+
+
         }
         internal bool ReadChar(ref int i, string invocation)
         {

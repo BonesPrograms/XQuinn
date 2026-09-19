@@ -8,18 +8,17 @@ namespace XQuinn.Runtime.NavigatorEngine
     internal readonly struct MethodKey : IEquatable<MethodKey>
     {
         public readonly int OverloadIndex;
-        public readonly GenericKey GenericKey;
+        public readonly GenericKey GenericID;
         internal MethodKey(int index, GenericKey key)
         {
             OverloadIndex = index;
-            GenericKey = key;
+            GenericID = key;
         }
 
         internal static MethodKey MethodQuery(MethodString mthdString)
         {
             string name = mthdString.Name;
             int split = name.IndexOf(':');
-            //  string[] query = name.Split(':');
             int index = 0;
             if (split >= 0)
             {
@@ -41,21 +40,21 @@ namespace XQuinn.Runtime.NavigatorEngine
             unchecked
             {
                 hash = hash * 31 + OverloadIndex.GetHashCode();
-                hash = hash * 31 + GenericKey.GetHashCode();
+                hash = hash * 31 + GenericID.GetHashCode();
             }
             return hash;
         }
 
         public override string ToString()
         {
-            StringBuilder sb = new(GenericKey.Key);
+            StringBuilder sb = new(GenericID.Name);
             if (OverloadIndex > 0)
                 sb.Append($":{OverloadIndex}");
-            return GenericKey.Args == 0 ? sb.ToString() : GenericKey.Args == 1 ? sb.Append("<T>").ToString() : GenericKey.ArgsToString(sb);
+            return GenericID.Args == 0 ? sb.ToString() : GenericID.Args == 1 ? sb.Append("<T>").ToString() : GenericID.ArgsToString(sb);
         }
         public bool Equals(MethodKey overload)
         {
-            return overload.OverloadIndex == OverloadIndex && overload.GenericKey == GenericKey;
+            return overload.OverloadIndex == OverloadIndex && overload.GenericID == GenericID;
         }
 
         public override bool Equals(object? obj)

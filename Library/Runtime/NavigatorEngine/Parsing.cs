@@ -73,12 +73,21 @@ namespace XQuinn.Runtime.NavigatorEngine
             {
                 ParameterString parameter = invocation.Params[lastparam];
                 if (parameter is ValueString val && (val.Argument.EqualsCaseless("null") || val.Argument.EqualsCaseless("default")))
-                    args[lastparam] = null;
-                else
+                    args[lastparam] = null; //we do this because ParameterToObject pases vs elementType rather than array type. If elementType is a struct, it will fail to parse null,
+                else                        //so for single-arguments that are explicitly null or default, there is a special case where we check early. more info on why below.
                 {
                     object? arg = ParameterToObject(parameter, elementType);
                     if (!arg?.GetType().IsArray ?? true) //list && list.GetType() == actualParameters[lastparam].ParameterType) //i dont bother checking conversions most of the time runtime does it for me
-                        arg = arg == null ? Array.CreateInstance(elementType, 1) : SingleArgArray(arg, elementType);
+                    {
+                        if (arg != null)
+                        {
+                            Array singleArgArray = Array.CreateInstance(elementType, 1);
+                            singleArgArray.SetValue(arg, 0);
+                            arg = singleArgArray;
+                        }
+                        else
+                            arg = Array.CreateInstance(elementType, 1);
+                    }
                     args[lastparam] = arg;
                 }
             }
@@ -100,12 +109,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         //otherwise if you assign a single value, we add it to a singleargarray
         //so if you want to directly assign "null" and have a singleargarray come out - you cant, you need to precreate an array of size one with a single "null" element
         //i explain further below why this is correct and in line with C#
-        static Array SingleArgArray(object? arg, Type elementType)
-        {
-            Array singleArgArray = Array.CreateInstance(elementType, 1);
-            singleArgArray.SetValue(arg, 0);
-            return singleArgArray;
-        }
+
         //Notes:
         //If you send 'null' as your single argument to a 'params' array, I have a choice between creating an array of size 1 with a null value at index 0,
         //or I have the choice of treating the entire argument as 'null' and returning 'null' for the params array.
@@ -114,6 +118,8 @@ namespace XQuinn.Runtime.NavigatorEngine
         //So we match that decision here as well.
         //In essence if you want to have a 'params array' compile as a size 1 array with a single null element, you actually need to create your own array
         //and pass it instead rather than utilizing the 'params' feature.
+        //Furthermore, if a method, property or field returns null, that value is turned into a single arg array in standard C#. So only explicit "null" or "default" will assign
+        //null to the array parameter.
         internal object? ParameterToObject(ParameterString value, Type paramType)
         {
             object? obj;
@@ -124,8 +130,8 @@ namespace XQuinn.Runtime.NavigatorEngine
             else
             {
                 obj = ParseValue((ValueString)value, paramType);
-                if (obj == null && !(paramType.IsClass || (paramType.IsGenericType && paramType.GetGenericTypeDefinition() == typeof(Nullable<>))))
-                    throw new ArgumentException($"Expected method syntax for type {paramType}, but received {value}");
+                //  if (obj == null && !(paramType.IsClass || (paramType.IsGenericType && paramType.GetGenericTypeDefinition() == typeof(Nullable<>))))
+                //    throw new ArgumentException($"Expected method syntax for type {paramType}, but received {value}");
             }
             return obj;
 

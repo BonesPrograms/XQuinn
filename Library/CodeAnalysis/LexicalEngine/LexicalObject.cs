@@ -19,7 +19,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                     return;
                 if (_value != InvokeLexer.Whitespace)
                     throw new LexicalException("Detected trailing input after whitespace.", invocation, _value, _sb, i);
-            } //if we dont do this, then values like 22 2 will parse to 222 because we otherwise skip whitespace
+            } 
         }
         public LexicalObject(InvokeLexer lexer)
         {

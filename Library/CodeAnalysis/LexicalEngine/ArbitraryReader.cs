@@ -15,7 +15,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         bool _readFirstCharOfName { get => _lexer._readFirstCharOfName; set => _lexer._readFirstCharOfName = value; }
 
-      //  bool _readEnum { get => _lexer._readEnum; set => _lexer._readEnum = value; }
+        //  bool _readEnum { get => _lexer._readEnum; set => _lexer._readEnum = value; }
 
         bool _readQualifiedMember { set => _lexer._readQualifiedMember = value; }
 
@@ -24,6 +24,10 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         bool _methodParamsBegan { set => _lexer._methodParamsBegan = value; }
 
         bool _terminated { set => _lexer._terminated = value; }
+
+        bool _readEnumOR { get => _lexer._readEnumOR; set => _lexer._readEnumOR = value; }
+
+        bool _readORVal {get=> _lexer._readORVal; set=> _lexer._readORVal = value;}
 
         TypeString? _declaringType => _lexer._declaringType;
 
@@ -51,9 +55,27 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         internal int ReadArbitrary(ref int i, string invocation)
         {
             if (_value == Whitespace)
-                SkipWhitespaceTrail(ref i, invocation);
-            if (_value == '<')
+                while (i < invocation.Length)
+                {
+                    i++;
+                    _value = invocation[i];
+                    if (InvokeLexer.Termination(_value) || ((_lexer._readQualifiedMember || _lexer._beganReadingMainMethodName || _lexer._readArbitraryLegalValue) && _value == InvokeLexer.MethodStart))
+                        return 0;
+                    if (_value == EnumOR)
+                    {
+                        ReadingEnumOR(invocation);
+                        return 1;
+                    }
+                    if (_value != InvokeLexer.Whitespace)
+                        throw new LexicalException("Detected trailing input after whitespace.", invocation, _value, _sb, i);
+                }
+            else if (_value == EnumOR)
+                ReadingEnumOR(invocation);
+            else if (_value == '<')
+            {
                 _readGeneric = true;
+                return 1;
+            }
             else if (_value == MemberAccess)
             {
                 _readGeneric = false;
@@ -70,13 +92,20 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 ReadMethod();
                 return 2; //special case where we need to skip to increment if a method is detected
             }           //otherwise it will throw
-            else if (!Termination(_value) && _value != '|')
+            else if (!Termination(_value))
                 _lexer.ValidIdentifier(_value, invocation, i);
             else if (_readGeneric)
                 return 1; //true
             return 0; //false
         }
-
+        void ReadingEnumOR(string invocation)
+        {
+            if (_readGeneric)
+                throw new LexicalException("Invalid EnumOR or generic", invocation, _value, _sb);
+            _readArbitraryLegalValue = false;
+            _readEnumOR = true;
+            _readORVal = true;
+        }
         internal bool ReadIdentifier(ref int i, string invocation) //once an arbitrary is determined to be an identifier, it is read with stricter rules
         {
             if (_value == '<')
@@ -141,7 +170,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             return true;
         }
 
-        bool NonGenericOrGenericChar() => !_readGeneric || _value != ',';
+        bool NonGenericOrGenericChar() => !_readGeneric || _value != ParamTerminate;
 
         void ReadMain()
         {
@@ -205,9 +234,9 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             return null;
         }
 
-        bool ValidIdentifierFirstCharOrThrow(char next, string invocation, int? i)
+        internal bool ValidIdentifierFirstCharOrThrow(char next, string invocation, int? i)
         {
-            const string error = "Identifier names must start with a letter, @ or an underscore.";
+            const string error = "Identifier names must start with a letter or an underscore.";
             if (!ValidIdentifierFirstChar(next))
                 throw i == null ? new LexicalException(error, invocation, next, _sb) : new LexicalException(error, invocation, next, _sb, i.Value);
             return true;
