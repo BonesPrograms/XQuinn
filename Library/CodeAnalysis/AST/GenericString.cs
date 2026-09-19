@@ -68,11 +68,7 @@ namespace XQuinn.CodeAnalysis.AST
                     }
                 }
             }
-            if (genericEnd && genericStart)
-                return true;
-            if (genericEnd || genericStart)
-                throw new FormatException($"Invalid generic argument format. {NameOrValue}");
-            return false;
+            return genericEnd || (genericStart ? throw new FormatException($"Invalid generic argument format. {NameOrValue}") : false);
         }
         public Type[] ConvertGenericArguments(TypeBook? dic)
         {
@@ -108,15 +104,22 @@ namespace XQuinn.CodeAnalysis.AST
         {
             GenericString currentGeneric = this;
             bool finishedReadingLeadName = false;
+            int readingsubparams = 0;
+            int lastread = 0;
             for (int i = 0; i < _id.Length; i++) //this ones a lot simpler doesnt have smart whitespace skipping and doesnt actually check for context like
             {                                           //whether or not its reading a proper identifier and not 83528474
                 char c = _id[i];                  //kinda busted it out quickly so it will allow things that the invocationlexer would throw for
+
                 if (c == ' ')
                     continue;                 //like collecting < s t r i n g> into string or allowing impossible names to lex
                 if (c == '<')
                 {
                     if (finishedReadingLeadName)
+                    {
+                        readingsubparams++;
+                        lastread++;
                         currentGeneric = currentGeneric.NewArg(sb);
+                    }
                     else
                     {
                         currentGeneric._arg = sb.ToString();
@@ -126,6 +129,8 @@ namespace XQuinn.CodeAnalysis.AST
                 }
                 else if (c == '>')
                 {
+                    if (lastread > readingsubparams)
+                        lastread--;
                     if (sb.Length > 0)
                         currentGeneric.NewArg(sb);
                     if (currentGeneric != this)
@@ -137,6 +142,8 @@ namespace XQuinn.CodeAnalysis.AST
                         }
                         TypeString currentArg = (TypeString)currentGeneric;
                         currentGeneric = currentArg._typeArgOf!;
+                        if (readingsubparams > 0)
+                            readingsubparams--;
                         continue;
                     }
                     break;
@@ -148,8 +155,11 @@ namespace XQuinn.CodeAnalysis.AST
                 }
                 else sb.Append(c);
             }
+            if (lastread > 0)
+                throw new LexicalException($"Nested generics not properly terminated. You can usually fix this by throwing an extra > at the end. Generic:", _id);
         }
-
+        //subparameter exceptions are not *totally* necessary, often times the system will resolve ur args properly anyways
+        //but sometimes you do genuinely fuck up your subparameters so, incase that happens, it throws whenever a subread is fucked up
         TypeString NewArg(StringBuilder sb)
         {
             string name = sb.ToString();

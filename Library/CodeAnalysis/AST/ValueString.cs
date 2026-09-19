@@ -24,7 +24,7 @@ namespace XQuinn.CodeAnalysis.AST
                     return null;
                 if (AsObjectOr<string>(asType))
                 {
-                    if (IsFormattedLikeAString(asType == typeof(string), out string? extract))
+                    if (StringFormat(asType == typeof(string), out string? extract))
                         return extract;
                 }
                 else
@@ -42,32 +42,59 @@ namespace XQuinn.CodeAnalysis.AST
                 if (EnumNet20.TryParse(_arg.Replace('|', ','), asType, true, out Enum? @enum))
                     return @enum;
             }
-            else if (asType.IsPrimitive || AsObjectOr<decimal>(asType))
+            else if (asType.IsPrimitive || AsObjectOr<decimal>(asType)) //they told me enums were primitive, they were wrong!
             {
                 if (ParsePrimitive(asType, out object? primitive))
                     return primitive;
             }
-            throw asType.IsPrimitive || asType == typeof(object) || asType.IsEnum ?
+            throw asType.IsPrimitive || asType.IsEnum || AsObjectOr<decimal>(asType) ?
             new FormatException($"Failed to convert {_arg} to {asType}.") :
             new NotSupportedException($"Cannot convert values to user defined struct instances. struct type: {asType}. Value: {_arg}");
 
         }
 
-        bool IsFormattedLikeAString(bool formatException, out string? extract)
+        bool StringFormat(bool formatException, out string? extract)
         {
             extract = null;
-            if (_arg.Length > 2)
+            if (_arg.Length >= 2)
             {
-                int lastIndex = _arg.Length - 1;
-                if (_arg[0] == '"' && _arg[lastIndex] == '"')
+                string arg = _arg;
+                bool noescape = false;
+                int lastIndex = arg.Length - 1;
+                if (arg[0] == '@')
                 {
-                    if (_arg.Length <= 3)
-                        extract = _arg.Length == 2 ? string.Empty : _arg[1].ToString(); //size can only be 2 or 3, first and last index are removed
+                    if (arg[1] != '"')
+                        throw new LexicalException("Invalid string format. A quote char must immediately follow the @ char.", arg);
+                    noescape = true;
+                    arg = arg.Substring(1);
+                    lastIndex--;
+                }
+                if (arg[0] == '"' && arg[lastIndex] == '"')
+                {
+                    if (arg.Length <= 3) //technically speaking, you can do """ in assignment, or "\" and it will assign signle char string " or \, however this is only in assignment, if you try to send a string like """ or "\" to the lexer as a parameter for a method, it will throw
+                        extract = arg.Length == 2 ? string.Empty : arg[1].ToString(); 
                     else
                     {
                         StringBuilder sb = new();
+                        bool escaping = false;
                         for (int i = 1; i < lastIndex; i++)
-                            sb.Append(_arg[i]);
+                        {
+                            char val = arg[i];
+                            if (escaping)
+                            {
+                                if (val != InvokeLexer.EscSeq && val != '"')
+                                    throw new LexicalException("Can only escape the quote char \" or escape char \\.", arg);
+                                escaping = false;
+                            }
+                            else if (val == InvokeLexer.EscSeq && !noescape)
+                            {
+                                escaping = true;
+                                continue;
+                            }
+                            else if (val == '"') //intentionally cut off early so you know if your format is fucked up, even if i cant throw an exception
+                                break;              //ex. @"Hello \"World" will print as "Hello \" which will help make it obvious to you where you faulted
+                            sb.Append(arg[i]);     //the lexer will throw an exception over that, but assignment will not, assignment relies purely on this method
+                        }                           
                         extract = sb.ToString();
                     }
                     return true;

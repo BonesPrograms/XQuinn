@@ -85,8 +85,11 @@ ex. ilist.get_item(1);
 or
 ~ ^ilist; get_item(1); (You will learn more aobut what ~ and ^ does below)
 
-Strings have very simple escape support. \ will remove the very next character from the string, whatever it is.
+Strings have very simple escape support. Escape sequences will append the next char only if the char is \ or ". Otherwise,
+it will throw.
 Putting @ infront of a string will prevent escape.
+The apostrophe literal ' does not need an escape sequence when used as part of a char. Ex. ''' is valid. '\'' will cause
+an exception.
 
 
 

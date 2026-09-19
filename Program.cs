@@ -30,7 +30,7 @@ namespace XQuinn.Private
 
     static class Program
     {
-
+        static string arg = "@\"Hello World\"";
         internal static Type? _capture;
         static string field = null;
 
@@ -69,13 +69,13 @@ namespace XQuinn.Private
             NavigationFeed monitor = new();
             string flag = NavigatorCore.Flag.ToString().Replace(',', '|').Replace(" ", "");
             string path = Path.Combine(XQuinn.IO.Finders.CodeLabFinder.s_path, @"XQuinnLib\dump\instance.log");
-            string ret = monitor.SafeInterface($"~ *types.enum<bindingFlags>({flag}); +flag; *InstanceReader.new(@\"{path}\", true, types.of<object>()); +reader; @program", out _, out bool chainexception);
+            string ret = monitor.SafeInterface($"~ *types.enum<bindingFlags>({flag}); +flag; *InstanceReader.new(@\"{path}\", true, types.of<object>()); +reader; @program");
             Console.WriteLine(ret);
             while (true)
             {
                 string? msg = Console.ReadLine();
                 if (msg != null)
-                    Console.WriteLine(monitor.SafeInterface(msg, out _, out _));
+                    Console.WriteLine(monitor.SafeInterface(msg));
             }
         }
         static void Cache()
@@ -91,59 +91,6 @@ namespace XQuinn.Private
         }
 
 
-        class Class
-        {
-            public string Field;
-
-            public Class(string f)
-            {
-                Field = f;
-            }
-        }
-
-
-    }
-
-    class PrivBase
-    {
-        int field;
-        int method(int i) => i;
-
-        class Nest
-        {
-
-        }
-    }
-
-    class inh : PrivBase
-    {
-        int call(int i) => i;
-
-        public int msg(int i) => i;
-    }
-
-    class Class<T1, T2> : Class<T1>
-    {
-
-    }
-
-    struct Struct
-    {
-        public int val;
-
-        public int other;
-
-        public Struct(int val, int other)
-        {
-            this.val = val;
-            this.other = other;
-        }
-
-        public override string ToString()
-        {
-            return $"{val} {other}";
-        }
-    }
     class Class<T> //where T : new()
     {
         static T? S_Obj
@@ -287,6 +234,7 @@ namespace XQuinn.Private
 
     //   }
 
+}
 }
 
 

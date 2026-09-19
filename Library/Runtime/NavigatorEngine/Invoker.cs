@@ -126,9 +126,9 @@ namespace XQuinn.Runtime.NavigatorEngine
         }
 
 
-        object? TargetInstance(Type paramType, object? variable)
+        internal object? TargetInstance(Type fromType, object? variable)
         {
-            return variable ?? (paramType.IsAssignableFrom(_instanceType) ? _instance : null);
+            return variable ?? (fromType.IsAssignableFrom(_instanceType) ? _instance : null);
         }
 
         object? FinalizeInvoke(MethodBase call, ParameterInfo[] parameters, MethodString mthdString, Type fromType, object? variable)

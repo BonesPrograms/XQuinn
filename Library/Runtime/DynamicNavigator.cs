@@ -105,12 +105,11 @@ namespace XQuinn.Runtime
             return monitor;
         }
 
-        public object? Interface(string invocation, out string output, out bool exception)
+        public string Interface(string invocation)
         {
             if (CheckForReload())
                 Reload();
-            output = _monitor.SafeInterface(invocation, out object? ret, out exception);
-            return ret;
+            return _monitor.SafeInterface(invocation);
         }
 
         //This is the dynamic part

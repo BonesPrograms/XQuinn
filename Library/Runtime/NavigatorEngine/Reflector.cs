@@ -71,21 +71,25 @@ namespace XQuinn.Runtime.NavigatorEngine
                     throw new InvalidOperationException("Cannot get instance base, instance is null.");
                 return _instanceType.BaseType ?? throw new ArgumentException("Base type of instance is null.");
             }
-            Type? t = null;
             GenericKey key = new(typename);
-            LocalCache?.TryGetValue(key, out t);
-            t ??= TypeCache.GetTypeOrThrow(key);
-            if (t.IsGenericTypeDefinition)
+            Type? type = null;
+            if (key.Args > 0)
             {
                 if (RuntimeCache.s_reified_generic_types.TryGetValue(typename.StringID, out Type? generic))
                     return generic;
-                t = typename.ConvertToGeneric(t, LocalCache);
-                //if (Caching)
-                RuntimeCache.s_reified_generic_types[typename.StringID] = t;
+                LocalCache?.TryGetValue(key, out type);
+                type ??= TypeCache.GetTypeOrThrow(key);
+                type = typename.ConvertToGeneric(type, LocalCache);
+                RuntimeCache.s_reified_generic_types[typename.StringID] = type;
             }
-            else if (!t.IsGenericType && typename.Generics.Count > 0)
-                throw new ArgumentException($"type {t} does not accept type arguments.");
-            return t;
+            else
+            {
+                LocalCache?.TryGetValue(key, out type);
+                type ??= TypeCache.GetTypeOrThrow(key);
+            }
+            // else if (!t.IsGenericType && typename.Generics.Count > 0) //not necessary, our new key system would never allow you to accidentally find a nongeneric type when you are providing generic args
+            //     throw new ArgumentException($"type {t} does not accept type arguments.");
+            return type;
 
         }
 
@@ -116,6 +120,11 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
             public void SetValue(object? instance, object? value)
             {
+                if (value == null)
+                {
+                    if (!(ObjectType.IsClass || (ObjectType.IsGenericType && ObjectType.GetGenericTypeDefinition() == typeof(Nullable<>))))
+                        throw new ArgumentException($"Cannot assign null to type {ObjectType}");
+                }
                 if (Member is PropertyInfo prop)
                     prop.SetValue(instance, value, NavigatorCore.Flag, null, null, null);
                 else if (Member is FieldInfo field)

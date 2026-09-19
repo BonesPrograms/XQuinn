@@ -32,7 +32,6 @@ namespace XQuinn.Runtime
         internal readonly Dictionary<string, VariableBinding> _variables = new(StringComparer.OrdinalIgnoreCase);
         // public bool Caching = true;
         bool _chaining = false;
-        bool _loading = false;
         internal const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
         public NavigatorCore()
@@ -42,10 +41,9 @@ namespace XQuinn.Runtime
             _invoker = new(this);
         }
 
-        public object? Interface(string invocation, out bool chainexception) ///This is the primary and sole method for interfacing with the Navigator via strings.
+        public object? Interface(string invocation) ///This is the primary and sole method for interfacing with the Navigator via strings.
         {
-            _loading = false;
-            chainexception = false;
+
             //  if (invocation.Length == 0 || string.IsNullOrWhiteSpace(invocation))
             //     return "No command detected.";
             char controller = default;
@@ -68,7 +66,7 @@ namespace XQuinn.Runtime
                 '@' => LoadTypeStatic(invocation.Substring(substring)),
                 '*' => LoadInstance(invocation.Substring(substring)),
                 '^' => CastInstance(invocation.Substring(substring)),
-                '~' => ChainInvoke(out chainexception, invocation.Substring(substring).Split(';')),
+                '~' => ChainInvoke(invocation.Substring(substring).Split(';')),
                 '?' => Query(invocation.Substring(substring)),
                 _ => InvokeOrAssign(invocation) //No controller
             };
@@ -123,9 +121,8 @@ namespace XQuinn.Runtime
             throw new TargetParameterCountException("Local query is max 2 params: a containig string and bindingflags search flags.");
         }
 
-        List<string> ChainInvoke(out bool exception, params string[] commands)
+        List<string> ChainInvoke(params string[] commands)
         {
-            exception = false;
             if (_chaining)
                 throw new NotSupportedException("Cannot invoke nested chains.");
             _chaining = true;
@@ -135,15 +132,14 @@ namespace XQuinn.Runtime
                 string cmd = commands[i];
                 try
                 {
-                    object? ret = Interface(cmd, out _);
+                    object? ret = Interface(cmd);
                     if (ret is string s && s == "No command detected.")
                         continue;
                     string? retstring = ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString();
-                    invocations.Add($"[Invocation: {cmd} :: Returned: {retstring ?? "null"}]");
+                    invocations.Add($"[Instruction: {cmd} :: Returned: {retstring ?? "null"}]");
                 }
                 catch (Exception ex)
                 {
-                    exception = true;
                     _chaining = false;
                     StringBuilder sb = new();
                     sb.CatchException(ex);
@@ -185,7 +181,6 @@ namespace XQuinn.Runtime
         //Checks for method or field syntax. If it detects a method, it diverts to an isolated type load and method invocation.
         object LoadInstance(string invocation)
         {
-            _loading = true;
             object? instance = null;
             Type? objectType = null;
             _variable = null;
@@ -247,8 +242,6 @@ namespace XQuinn.Runtime
             assignedValue = null;
             if (!MiniLexer.AssignmentSubstring(invocation, out string? left, out string? right))
                 return false;
-            if (_loading)
-                throw new ArgumentException("Cannot perform a load and assignment at the same time. Your loaded value will be desynced with the field or property you are assigning to.");
             string lefthand = left!.Trim();
             string righthand = right!;
             string? lefthandTypeName = MiniLexer.ResolveMemberAccess(lefthand, out lefthand, out bool lefthandfield);
@@ -311,7 +304,7 @@ namespace XQuinn.Runtime
                 assignedValue = _parser.ParseValue(valueStr, assigningTo.ObjectType);
             }
 
-            assigningTo.SetValue(lefthandInstance, assignedValue);
+            assigningTo.SetValue(_invoker.TargetInstance(lefthandtype, lefthandInstance), assignedValue);
             // if (assignedValue != null && lefthandInstance != null && (lefthandInstance == _instance || var != null ))
             // {
             //     if (var != null)

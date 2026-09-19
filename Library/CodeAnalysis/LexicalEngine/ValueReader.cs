@@ -24,6 +24,12 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         bool _readChar { set => _lexer._readChar = value; }
 
+        bool _escaping { get => _lexer._escaping; set => _lexer._escaping = value; }
+
+        bool _readNoEscDeclr { get => _lexer._readNoEscDeclr; set => _lexer._readNoEscDeclr = value; }
+
+        bool _justEscaped { get => _lexer._justEscaped; set => _lexer._justEscaped = value; }
+
         public ValueReader(InvokeLexer lexer) : base(lexer)
         {
             _lexer = lexer;
@@ -95,8 +101,8 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         }
 
         internal bool ReadString(ref int i, string invocation)
-        {
-
+        { //here as well, just like in GetContext, there can be some invalid sequences here
+            //that will only throw once we reach ValueString (i didnt want to have duplicate checking code in 2 places)
             if (_stringEnding)
             {
                 if (_value == Whitespace)
@@ -104,29 +110,37 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 _stringEnding = false;
                 _readString = false;
                 _noEscape = false;
+                _escaping = false;
+                _readNoEscDeclr = false;
+                _justEscaped = false;
                 return false; //return false allows parameter control flow to takeover
+            }
+            if (_escaping)
+            {
+                _escaping = false;
+                _justEscaped = true;
             }
             if (!_noEscape && _value == EscSeq)
             {
-                i++;
-                _value = invocation[i];
-                if (_value == '"')
-                    _sb.Append(_value); //i actually have a rule against doing direct appends but
-                i++;                             //im feeling lazy right now and it works really smooth here (usually doing direct appends is a bad idea)
-                _value = invocation[i];             //(youre usually just supposed to return true or false which may jump to append in the main loop)
+                if (!_justEscaped)
+                    _escaping = true;
+                else
+                    _justEscaped = false;
             }
             if (_value == StringDeclr)
             {
-                _stringEnding = true;
+                if (!_readNoEscDeclr)
+                {
+                    if (!_justEscaped)
+                        _stringEnding = true;
+                    else
+                        _justEscaped = false;
+                }
+                else
+                    _readNoEscDeclr = false;
             }
             return true; //skips parameter control flow, appends
         }
-        // static bool IsCommunicator(char val) => val switch
-        // {
-        //     MethodStart or MethodTerminate or ParamTerminate or MemberAccess or StringDeclr or EscSeq or CharDeclr => true,
-        //     _=>false
-        // };
-
 
     }
 }

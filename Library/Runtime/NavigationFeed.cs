@@ -6,6 +6,7 @@ using System.Reflection;
 using XQuinn.Reflection;
 using System.Linq;
 using System.Collections;
+using XQuinn.Runtime.NavigatorEngine;
 
 namespace XQuinn.Runtime
 {
@@ -25,15 +26,13 @@ namespace XQuinn.Runtime
         public NavigationFeed()
         {
         }
-        public string SafeInterface(string input, out object? interpretereReturned, out bool exception)
+        public string SafeInterface(string input)
         {
             _feed.Length = 0;
-            exception = false;
-            interpretereReturned = null;
             string output;
             try
             {
-                output = Interface(input, out interpretereReturned, out exception);
+                output = Interface(input);
             }
             catch (Exception ex)
             {
@@ -41,18 +40,14 @@ namespace XQuinn.Runtime
                 _feed.CatchException(ex);
                 output = _feed.ToString();
                 _feed.Length = 0;
-                exception = true;
             }
             return output;
         }
-        internal string Interface(string input, out object? navigReturnValue, out bool chainexception)
+        internal string Interface(string input)
         {
-            chainexception = false;
-            navigReturnValue = null;
             _feed.AppendLine($"{Environment.NewLine}{DateTime.Now}");
-            _feed.AppendLine($"Invoking : {input}");
-            navigReturnValue = _core.Interface(input, out chainexception);
-            ProcessReturn(navigReturnValue);
+            _feed.AppendLine($"Instruction : {input}");
+            ProcessReturn(_core.Interface(input));
             AppendNavigData();
             string output = _feed.ToString();
             _feed.Length = 0;
@@ -61,6 +56,13 @@ namespace XQuinn.Runtime
 
         void ProcessReturn(object? ret)
         {
+
+            if (ret is VariableBinding variable)
+            {
+                _feed.AppendLine($"Variable: {variable}");
+                ret = variable.Object;
+            }
+            _feed.AppendLine("Returned: ");
             if (ret is IEnumerable enumerable and not string)
             {
                 bool empty = true;
@@ -73,16 +75,14 @@ namespace XQuinn.Runtime
                         break;
                     }
                 if (empty)
-                    _feed.AppendLine($"Returned: Enumerable is empty.");
+                    _feed.AppendLine("Enumerable is empty.");
                 else
-                    _feed.AppendLine($"Returned: \n{_collectionWriter.AppendMany(enumerable, Environment.NewLine, true, x => x is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : x?.ToString())}");
+                    _feed.AppendLine($"{_collectionWriter.AppendMany(enumerable, Environment.NewLine, true, x => x is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : x?.ToString())}");
                 _collectionWriter.Length = 0;
             }
             else
-            {
-                string returnString = ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString() ?? "null";
-                _feed.AppendLine($"Returned: {returnString}");
-            }
+                _feed.AppendLine(ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString() ?? "null");
+
         }
 
 
@@ -95,7 +95,7 @@ namespace XQuinn.Runtime
                     _lastLoadedType = _core._loadedType;
                     _lastloadedString = ReflectionPrinter.Print(_core._loadedType, false);
                 }
-                _feed.AppendLine($"Type: {_lastloadedString}");
+                _feed.AppendLine($"Loaded Type: {_lastloadedString}");
                 if (_core._instanceType != null)
                 {
                     if (_lastinstanceType != _core._instanceType)
@@ -103,7 +103,7 @@ namespace XQuinn.Runtime
                         _lastinstanceType = _core._instanceType;
                         _lastInstanceString = ReflectionPrinter.Print(_core._instanceType, false);
                     }
-                    _feed.AppendLine($"Instance Type: {_lastInstanceString}");
+                    _feed.AppendLine($"Loaded Instance Type: {_lastInstanceString}");
                 }
                 else
                 {
@@ -112,7 +112,7 @@ namespace XQuinn.Runtime
                 }
                 // sb.AppendLine($"Loaded Instance Object: {_navigator._instance}");
                 if (_core._variable != null)
-                    _feed.AppendLine($"Variable: {_core._variable}");
+                    _feed.AppendLine($"Loaded Variable: {_core._variable}");
             }
             else
             {

@@ -88,6 +88,9 @@ namespace XQuinn.CodeAnalysis
         internal bool _readCharValue;
         internal bool _stringEnding;         //the trailing whitespace after "hello" willbe skipped, and the trailing s after 33 will cause an exception
         internal bool _noEscape;
+        internal bool _readNoEscDeclr;
+        internal bool _escaping;
+        internal bool _justEscaped;
 
         internal bool _beganReadingMainMethodName; //This is a very specific flag that allows you to have leading whitespace for the main method name. Pretned | is string start. you can do |   call("hello")vb kjmhnnnnnnnnnnmm
                                                    // You need this flag to help differentiate if the whitespace is leading, or inside the method name itself, which is of course
@@ -170,7 +173,7 @@ namespace XQuinn.CodeAnalysis
                 else if (_value == Whitespace)
                     goto Increment;
                 else if (_terminated || _methodParamsBegan)
-                    GetContext(invocation, ref i);
+                    GetContext();
                 if (_lastReadingCount > _readingSubparams)
                 {
                     _currentMethod = _currentMethod!._subParamOf; _lastReadingCount--;
@@ -198,19 +201,16 @@ namespace XQuinn.CodeAnalysis
                 i++;
             }
         }
-        void GetContext(string invocation, ref int i) //helps us figure out whats about to be read 
+        void GetContext() //helps us figure out whats about to be read 
         {
             if (_value == CharDeclr)
                 _readChar = true;
             else if (_value == StringDeclr || _value == '@')
             {
-                if (_value == '@')
+                if (_value == '@') //there can be an invalid sequence here but it wont throw until we get to ValueString
                 {
                     _noEscape = true;
-                    if (invocation[i + 1] != '"')
-                        throw new LexicalException("Invalid string format", invocation, _sb);
-                    i++; //very brute forced, we check if the next key is a quote, then we jump forward, assign the quote to Value, and continue the read as we normally would for strings
-                    _value = '"'; //as if we just detected a quotation mark and not an @ symbol
+                    _readNoEscDeclr = true;
                 }
                 _readString = true;
             }
@@ -246,20 +246,6 @@ namespace XQuinn.CodeAnalysis
                 throw new LexicalException("Method name was unable to be read due to missing ( leading parenthesis.", invocation, _sb);
         }
 
-        internal void SkipWhitespaceTrail(ref int i, string invocation)
-        {
-            while (i < invocation.Length)
-            {
-                i++;
-                _value = invocation[i];
-                if (Termination(_value) || ((_readQualifiedMember || _beganReadingMainMethodName) && _value == MethodStart))
-                    return;
-                if (_value != Whitespace)
-                    throw new LexicalException("Detected trailing input after whitespace.", invocation, _value, _sb, i);
-            } //if we dont do this, then values like 22 2 will parse to 222 because we otherwise skip whitespace
-        }
-
-
         internal void ValidIdentifier(char value, string invocation, int? i)
         {
             const string error = "Detected illegal character in identifier.";//&&value!='('
@@ -284,6 +270,9 @@ namespace XQuinn.CodeAnalysis
             _readFloat = false;
             _readString = false;
             _noEscape = false;
+            _escaping=false;
+            _justEscaped = false;
+            _readNoEscDeclr = false;
             _readGeneric = false;
             _stringEnding = false;
             _readFirstCharOfName = false;
@@ -343,6 +332,19 @@ namespace XQuinn.CodeAnalysis
         //it happens on the next loop thereafter
         //so essentially you break out of the loop and the stringread method doesnt get a chance to invoke and that causes the bug
 
+
+    ///more private notes
+    /// if you have extra empty parameters ie Method(22,32,,,)
+    /// the system generally ignores it
+    /// we ignore it to prevent a different bug
+    /// Method(22, 23, OtherMethod(), 15)
+    /// ) is considered a valid parameter terminator, but so is ,
+    /// so the system would, normally, try to append the 'text' between ) and ,
+    /// this would not only append an empty string but it will also lead to a parameter count mismatch
+    /// since , and ) both need to be able to terminate parameters, i have no way to prevent empty parameters
+    /// without also recreating that original bug
+    /// (we solve the bug by checking if our StringBuilder is empty before appending, which would also be the logical
+    /// point to throw an 'empty parameter' exception, so doesnt really work)
 
 
     }
