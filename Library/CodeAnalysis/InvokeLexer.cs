@@ -60,7 +60,7 @@ namespace XQuinn.CodeAnalysis
 
         readonly ValueReader _valueReader;
 
-       internal readonly ArbitraryReader _arbitraryReader;
+        internal readonly ArbitraryReader _arbitraryReader;
 
         internal MethodString? _main;
 
@@ -75,18 +75,18 @@ namespace XQuinn.CodeAnalysis
 
         //Primary reading rulesets - determine how to lex incoming data based on context
         internal bool _readChar;
-
-        internal bool _readArbitraryLegalValue;
-        internal bool _readQualifiedMember;
+        internal bool _readArbitraryLegalValue; //anything that isnt a digit, string or char but also hasnt yet been determined as a method field or enumOR
+        internal bool _readQualifiedMember; //something that has a member access operator and is not a digit
         internal bool _readDigit;
         internal bool _readString;
-        internal bool _readEnumOR;
-
-        // internal bool _readEnum; Not yet
-
+        internal bool _readEnumOR; //OR-less enums are read as arbitrary values. | activates EnumOR read
+        internal bool _readGeneric;
 
         //These are supporting flags for rulesets, some rulesets have specific rules for specific characters, or need to be read around declaration characters
-        internal bool _readGeneric;
+
+        internal bool _skipping;
+        internal bool _genericParamTerminate;
+        internal bool _readFirstGeneric;
         internal bool _readFirstCharOfName; //Because it cannot be a digit
         internal bool _readFloat;
         internal bool _finishedReadChar;  //Finishers/Enders are primarily for catching trailing garbage data or skipping whtiespace - ex Method("hello"  , 22, 33 s)
@@ -96,11 +96,8 @@ namespace XQuinn.CodeAnalysis
         internal bool _readNoEscDeclr;
         internal bool _escaping;
         internal bool _justEscaped;
-        internal bool _readOR;
+        internal bool _readORDelimit;
         internal bool _readORVal;
-
-        internal bool _readFirstOR;
-
         internal bool _beganReadingMainMethodName; //This is a very specific flag that allows you to have leading whitespace for the main method name. Pretned | is string start. you can do |   call("hello")vb kjmhnnnnnnnnnnmm
                                                    // You need this flag to help differentiate if the whitespace is leading, or inside the method name itself, which is of course
                                                    //illegal.
@@ -150,9 +147,15 @@ namespace XQuinn.CodeAnalysis
                         goto Append;
                     goto Increment;
                 }
+                else if (_readGeneric)
+                {
+                    if (_arbitraryReader.ReadGeneric(ref i, invocation))
+                        goto Append;
+                    goto Increment;
+                }
                 else if (_readEnumOR)
                 {
-                    if (_valueReader.ReadEnumOR(ref i, invocation))
+                    if (_valueReader.ReadEnumOR(invocation))
                         goto Append;
                 }
                 else if (_readDigit)
@@ -209,7 +212,7 @@ namespace XQuinn.CodeAnalysis
                 }
             Append:
                 if (!_readArbitraryLegalValue && !_readChar && !_readDigit && !_readString && !_readQualifiedMember && !_start && !_readEnumOR)
-                    ValidIdentifier(_value, invocation, i);
+                    ValidIdentifier(_value, invocation);
                 _sb.Append(_value);
             Increment:
                 i++;
@@ -244,7 +247,7 @@ namespace XQuinn.CodeAnalysis
         {
             if (_lastReadingCount > 0)
                 throw new LexicalException("Nested method parameters not properly terminated. You can usually throw another ending parenthesis at the end of your invocation to fix this. ", invocation, _sb);
-            if (_readGeneric) //if you dont terminate a generic with . or ( then this will throw. genericlex checks to make sure theyre propelry closed with >
+            if (_readGeneric) //if you dont terminate a generic with . or ( then this will throw. genericlex checks later to make sure theyre propelry closed with >
                 throw new LexicalException("Invalid generic arguments.", invocation, _sb);
             if (_readChar)
                 throw new LexicalException("Chars require a closing apostrophe character.", invocation, _sb);
@@ -260,11 +263,11 @@ namespace XQuinn.CodeAnalysis
                 throw new LexicalException("Method name was unable to be read due to missing ( leading parenthesis.", invocation, _sb);
         }
 
-        internal void ValidIdentifier(char value, string invocation, int? i)
+        internal void ValidIdentifier(char value, string invocation)
         {
             const string error = "Detected illegal character in identifier.";//&&value!='('
-            if (value != '<' && value != '>' && value != ':' && Illegal(value))
-                throw i == null ? new LexicalException(error, invocation, value, _sb) : throw new LexicalException(error, invocation, value, _sb, i.Value);
+            if (value != ':' && Illegal(value))
+                throw new LexicalException(error, invocation, value, _sb);
 
         }
         public static bool Illegal(char val) => val != VaidNonAlphaNumeric && !val.IsDigit() && !val.IsLetter();
@@ -288,6 +291,8 @@ namespace XQuinn.CodeAnalysis
             _justEscaped = false;
             _readNoEscDeclr = false;
             _readGeneric = false;
+            _genericParamTerminate = false;
+            _skipping = false;
             _stringEnding = false;
             _readFirstCharOfName = false;
             _readQualifiedMember = false;
@@ -295,8 +300,7 @@ namespace XQuinn.CodeAnalysis
             _readCharValue = false;
             _readChar = false;
             _readEnumOR = false;
-            _readOR = false;
-            _readFirstOR = false;
+            _readORDelimit = false;
             _readORVal = false;
             _readArbitraryLegalValue = false;
             _methodParamsBegan = false;
@@ -305,16 +309,14 @@ namespace XQuinn.CodeAnalysis
             _lastReadingCount = 0;
             _sb.Length = 0;
         }
-
-
-        int? Breakpoint(string invocation) // a more refined version of what you see above that doesnt suffer from that invalid method breaking thing
-        {                               //and is actually able to help enforce more lexical rules as to how a method is allowed to end
-            bool breaking = false;      //tho atp mostly a redundancy, but this will make the exceptions more informative
+        int? Breakpoint(string invocation)
+        {
+            bool breaking = false;
             int? breakpoint = null;
             for (int i = invocation.Length - 1; i >= 0; i--)
             {
                 char val = invocation[i];
-                if (val == ' ')
+                if (val == Whitespace)
                     continue;
                 if (val == ';')
                     breaking = true;

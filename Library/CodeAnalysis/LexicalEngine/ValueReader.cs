@@ -30,13 +30,12 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         bool _justEscaped { get => _lexer._justEscaped; set => _lexer._justEscaped = value; }
 
-        bool _readEnumOR { get => _lexer._readEnumOR; set => _lexer._readEnumOR = value; }
+        bool _readEnumOR { set => _lexer._readEnumOR = value; }
 
-        bool _readOR { get => _lexer._readOR; set => _lexer._readOR = value; }
+        bool _readORDelimit { get => _lexer._readORDelimit; set => _lexer._readORDelimit = value; }
 
         bool _readORVal { get => _lexer._readORVal; set => _lexer._readORVal = value; }
 
-        bool _readFirstOR { get => _lexer._readFirstOR; set => _lexer._readFirstOR = value; }
 
         public ValueReader(InvokeLexer lexer) : base(lexer)
         {
@@ -50,37 +49,33 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             _lexer._currentMethod!.AddParameter(param);
         }
 
-        internal bool ReadEnumOR(ref int i, string invocation)
+        internal bool ReadEnumOR(string invocation)
         {
             if (Termination(_value))
             {
-                if (_readOR)
+                if (_readORDelimit)
                     throw new LexicalException("Invalid enum OR args.", invocation, _value, _sb);
                 _readEnumOR = false;
                 _readORVal = false;
                 return false;
 
             }
-            if (_value != Whitespace)
-                if (_value == EnumOR)
-                {
-                    if (_readOR)
+            if (_value != Whitespace) //nonsmart whitespace skip. doesnt throw early, but also doesnt concatenate Pu blic into Public, so its fine
+                if (_value == EnumOR)   //this is the one ruleset that actually *does* append all whitespace, this is the only ruleset
+                {                           //that allows whitespace inbetween values because it wont mess up parsing later. all other reads expect trailing whitespace to end in a termination.
+                    if (_readORDelimit)
                         throw new LexicalException("Invalid enum OR args.", invocation, _value, _sb);
-                    _readOR = true;
+                    _readORDelimit = true;
                     _readORVal = false;
                 }
-                else if (_readOR)
+                else if (_readORDelimit)
                 {
-                    _lexer._arbitraryReader.ValidIdentifierFirstCharOrThrow(_value, invocation, i);
-                    _readOR = false;
+                    _lexer._arbitraryReader.ValidIdentifierFirstCharOrThrow(_value, invocation);
+                    _readORDelimit = false;
                     _readORVal = true;
                 }
                 else if (_readORVal)
-                {
-                    if (!_readFirstOR)
-                        _lexer.ValidIdentifier(_value, invocation, _value);
-                    _readFirstOR = false;
-                }
+                    _lexer.ValidIdentifier(_value, invocation);
             return true;
 
 

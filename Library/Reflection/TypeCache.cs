@@ -215,7 +215,7 @@ namespace XQuinn.Reflection
             for (int i = 0; i < key.Length; i++)
             {
                 char value = key[i];
-                if (!value.IsDigit() && !value.IsLetter() && value != '_')
+                if (InvokeLexer.Illegal(value))
                 {
                     if (!accessor && value == '.')
                         accessor = true;

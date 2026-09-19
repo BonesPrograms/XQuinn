@@ -54,13 +54,10 @@ Indexers are not supported. You must invoke the backing get_item() method.
 
 You cannot pass methodgroups as parameters for delegate arguments.
 
-Whitespace - Avoid whitespace as part of type names, variable names, member names, and in type argument parameters. Otherwise, it is safe to have them in method parameters.
-They are also allowed right after the method's name.
-Ex.
-class<int>.method  (22  , "hello world"   , fieldname  ) GOOD
+Whitespace - Avoid whitespace as part of actual values or names - type names, member names variable names, enums, bools, so forth.
+Otherwise, it is safe to have them in method parameters and generic arguments.
+They are also allowed right after the method's name and before the () parenthesis.
 
-cl ass  <int, string>.met hod  (22  , "hello world", fiel dname  ) 
-  ^BAD ^BAD  ^BAD        ^BAD                            ^BAD       These things will cause exceptions. I will fix generics type args later. maybe.
 
 Additional Tips:
 
