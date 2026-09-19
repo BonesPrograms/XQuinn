@@ -302,6 +302,17 @@ namespace XQuinn.Runtime
             }
 
             assigningTo.SetValue(_invoker.TargetInstance(lefthandtype, lefthandInstance), assignedValue);
+
+            //TargetInstance fixes a bug here where casting to base type explicitly in an assignment (does not cause an issue if you ^cast first and use implicit access)
+            // ex. base.field = 22 
+            // causes the system to search for the BaseType, but it does not return the baseType with the instance, the instance is returned null
+            //TargetInstance checks if type is assignable to the currently loaded instance, and if it is, it returns the currently loaded instance
+            //Unless the object that TargetInstance receives for it's "variable" parameter is not null, then it just returns that
+            
+
+            //See TargetInstance for more info
+
+
             // if (assignedValue != null && lefthandInstance != null && (lefthandInstance == _instance || var != null ))
             // {
             //     if (var != null)

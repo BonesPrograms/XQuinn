@@ -3,13 +3,9 @@ Explicit Invocation for Explicit Implementations
 Publci API Doc
 
 Runtime Navigator: Reify generic types and methods, load static types, load instances, invoke methods, fields and properties at runtime. Create variables,
-pass fields, properties, the loaded instance, and variables as arguments to method parameters, or assignment. Access members of fields, properties
-and variables for invocation.
+pass fields, properties, the loaded instance, and variables as arguments to method parameters, or in assignment. Access members of fields, properties
+and variables for invocation or assignment.
 All inputs are case insensitive, including values (except strings/chars), member names, and type names. 
-If your code has types and members with the same name but in different cases, you will encounter
-ambiguity errors when trying to locate members (the system will overwrite members that have the same caseless name and some will appear to be missing)
-as well as throwing duplicate type key exceptions when caching your types.
-
 
 
 
@@ -22,16 +18,17 @@ When a type or instance is loaded, you have implicit access to it's methods, fie
 When you enter the name of a field, property, or variable, the value is returned, IE. "PropertyName" returns the propertys value. You can return
 values directly from fields, properties and variables by simply typing the name, or pass them by name as parameters to methods/assignment.
 
-Member access is the primary restriction. Member access must be a TypeName.MemberName pair. For fields and properties that you have implicit access to,
-you can acess their members as if they were a type. IE. PropertyName.Method(). This also works for variables.
-namespaces in type names ex. Namespace.Type.Member will not interfere with this feature.
+Member access is the primary restriction. Member access must be a TypeName.MemberName pair. You cannot nest/chain member access.
+For fields and properties that you have implicit access to, you can acess their members as if they were a type. IE. PropertyName.Method(). This also works for variables.
+Namespaces in type names ex. Namespace.Type.Member are safe, they will not interfere with the TypeName.MemberName pair rule.
 
 You do not need to reload the current type or instance to invoke members from outside the current type or instance.
 You can lead with a typename, member name, or variable name, IE. StaticType.Method() or VariableName.Field or FieldName.Method() or FieldName = StaticType.Method() etc
 You can also use leading with a typename to cast the current instance without changing the loaded type, gaining explicit access to members of the casted type for that
 invocation - IE. BaseType.BasePrivateField or BaseType.BasePrivateMethod(BaseType.Field) its not only for
 private members but that's what it's most useful for. You can also use the typename 'base' to access the instance type's immediate base type.
-Casting still follows standard C# polymorphism, even if you cast to a base type, invocations will use the instance type's overrides.
+Casting still follows standard C# polymorphism, even if you cast to a base type, invocations will use the instance type's overrides. Currently I do not
+support explicitly invoking the base version of an overriden method.
 
 You can return the current tostring value of this by simply typing 'this', and you can pass 'this' as a parameter to methods to return the loaded instance
 by value.
@@ -50,13 +47,12 @@ Methods with in/out/ref parameters and ref returntype are not supported. You can
 
 Expressions are not supported. You cannot do math, you cannot create lambda expressions, the only available expression is assignment.
 
-Indexers are not supported. You must invoke the backing get_item() method.
+Indexers are not supported. You must invoke the backing getter method.
 
-You cannot pass methodgroups as parameters for delegate arguments.
-
-Whitespace - Avoid whitespace as part of actual values or names - type names, member names variable names, enums, bools, so forth.
-Otherwise, it is safe to have them in method parameters and generic arguments.
-They are also allowed right after the method's name and before the () parenthesis.
+Whitespace - Avoid whitespace as part of actual values or names - type names, member names, variable names, enum names, bools, digits, so forth.
+Otherwise, it is safe to have them in method parameters and generic arguments. ex. Method<int>   ( 22,  "hello world"  , true );
+Definitely avoid whitespace in member access. TypeName.MemberName not TypeName . MemberName.
+They are also allowed right after the method's name and before the () parenthesis. They are not allowed after a name and before the first < angle bracket of its generic args Ex. Method <int>(22) will throw. (May fix this later)
 
 
 Additional Tips:
@@ -70,8 +66,8 @@ you will lose the ability to use them in typename-membername pairs for invocatio
 
 Enum OR is supported.
 Strings and chars should be declared just like C#.
-Again, nothing is case sensitive. Type names, field names, variable names, method names, all case insensitive.
-Variables can be used in assignment. They cannot be assigned null.
+
+
 
 Explicit Invocation For Explicit Implementations:
 You will occasionally encounter explicit interface implementations, such as the backing methods for IList's indexer property in arrays.
@@ -88,6 +84,10 @@ Putting @ infront of a string will prevent escape.
 The apostrophe literal ' does not need an escape sequence when used as part of a char. Ex. ''' is valid. '\'' will cause
 an exception.
 
+Case Insensitvity Tip -
+If your code has types and members with the same name but in different cases, you will encounter
+ambiguity errors when trying to locate members (the system will overwrite members that have the same caseless name and some will appear to be missing)
+as well as throwing duplicate type key exceptions when caching your types.
 
 
 Using the Navigator: Controllers
