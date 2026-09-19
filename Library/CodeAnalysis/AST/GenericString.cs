@@ -80,7 +80,7 @@ namespace XQuinn.CodeAnalysis.AST
             }
             throw new ArgumentException($"No generic parameters were provided to {GetType().Name} with name value {Name} ");
         } //generally speaking the way the logic works you usally wont encounter this exception, but it is technically possible
-            //so ive yet to remove (our new key system matches by the user's input for generic args so it wont even find the generic method/type if you dont provide args)
+            //so ive yet to remove (our new key system matches by the user's input for generic args so the typical caller (the Reflector) wont even find the generic method/type if you dont provide args)
 
         void LexGenerics(StringBuilder sb)
         {

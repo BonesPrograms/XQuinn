@@ -1,0 +1,57 @@
+Beginning read of fields in XQuinn.Private.Program+Class`1[System.Int32]
+
+
+Beginning read for fields of type XQuinn.Private.Program+Class`1[System.Int32].
+Reading FIELD "_obj" from type Class<System.Int32>:
+Type: Int32
+Value: 0
+Declared in: XQuinn.Private.Program+Class<System.Int32>
+Attributes Private
+
+Reading FIELD "_s_obj" from type Class<System.Int32>:
+Type: Int32
+Value: 0
+Declared in: XQuinn.Private.Program+Class<System.Int32>
+Attributes Private, Static
+
+Reading FIELD "list" from type Class<System.Int32>:
+Type: List<System.Int32>
+Value: System.Collections.Generic.List`1[System.Int32]
+Declared in: XQuinn.Private.Program+Class<System.Int32>
+Attributes Private, Static
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Beginning read of fields in System.Collections.Generic.List`1[System.Int32]
+
+
+Beginning read for fields of type System.Collections.Generic.List`1[System.Int32].
+Reading FIELD "_size" from type List<System.Int32>:
+Type: Int32
+Value: 4
+Declared in: System.Collections.Generic.List<System.Int32>
+Attributes Assembly
+
+Reading FIELD "_version" from type List<System.Int32>:
+Type: Int32
+Value: 4
+Declared in: System.Collections.Generic.List<System.Int32>
+Attributes Assembly
+
+Reading FIELD "_items" from type List<System.Int32>:
+Type: Int32[]
+Value: System.Int32[]
+Declared in: System.Collections.Generic.List<System.Int32>
+Attributes Assembly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Reading FIELD "s_emptyArray" from type List<System.Int32>:
+Type: Int32[]
+Value: System.Int32[]
+Declared in: System.Collections.Generic.List<System.Int32>
+Attributes Private, Static, InitOnly
+
+Detected custom type as a field in a custom type. Skipping for readability.
+Beginning read of fields in System.Int32[]
+
+
+Beginning read for fields of type System.Int32[].

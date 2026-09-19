@@ -27,8 +27,8 @@ namespace XQuinn.CodeAnalysis.AST
         internal Type ToType(TypeBook? dic = null)
         {
             GenericKey key = new(this);
-            if (key.Args > 0)
-            {
+            if (key.Args > 0) //this is what i was talking about, keys have generic arg data, so, unless someone intentionally inserts a nongeneric type with a key that has positive arguments
+            {                   //then you wont have a problem accidentally trying to reify types that are nongeneric
                 if (RuntimeCache.s_reified_generic_types.TryGetValue(StringID, out Type? type))
                     return type;
                 type = ConvertToGeneric(FindType(dic, key), dic);

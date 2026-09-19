@@ -56,7 +56,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
             if (fieldOrProp is PropertyInfo prop)
             {
-               RuntimeCache.CacheMember(typeCached, memberCached, fromType, fieldOrProp, fieldstring.Name);
+                RuntimeCache.CacheMember(typeCached, memberCached, fromType, fieldOrProp, fieldstring.Name);
                 ret = prop.GetValue(TargetInstance(fromType, variable), NavigatorCore.Flag, null, null, null);
                 return true;
             }
@@ -75,7 +75,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 fieldOrProp = fromType.GetField(fname, NavigatorCore.Flag);
             if (fieldOrProp is FieldInfo field)
             {
-                 RuntimeCache.CacheMember(typeCached, memberCached, fromType, fieldOrProp, fieldstring.Name);
+                RuntimeCache.CacheMember(typeCached, memberCached, fromType, fieldOrProp, fieldstring.Name);
                 ret = field.GetValue(TargetInstance(fromType, variable));
                 return true;
             }
@@ -91,7 +91,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             call ??= fromType == _loadedType ? _reflector.FindMethod(mthdString) : throw new MissingMethodException($"No method named {mthdString.Name} with generic arg count {mthdString.Generics.Count} found in {fromType}'s methods or overload resolutions.");
             ConvertGeneric(ref call, ref args, mthdString);
             args ??= call.GetParameters(); //generics get params first, nongenerics get after
-             RuntimeCache.CacheMember(typeCached, methodCached, fromType, call, mthdString.StringID);
+            RuntimeCache.CacheMember(typeCached, methodCached, fromType, call, mthdString.StringID);
             return FinalizeInvoke(call, args, mthdString, fromType, variable);
         }
         void ExternalMethod(ref MethodBase? call, ref ParameterInfo[]? args, Type fromType, MethodString mthdString)

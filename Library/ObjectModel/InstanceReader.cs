@@ -15,48 +15,46 @@ namespace XQuinn.ObjectModel
     public sealed class InstanceReader : IOStream
     {
         void Write(string txt) => Writer.WriteLine(txt); //rewrote the code to use a streamwriter and im lazy, method was already called "Write"
-        public Type LoopLimit = null!;
+        public Type? LoopLimit;
         const BindingFlags Flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance | BindingFlags.DeclaredOnly | BindingFlags.Static;
         //loops through all base types so its declared only, but "source type" is tracked (the inheritor at the very end) if its a Field
 
         InstanceReader()
         {
-            
+
         }
         public static InstanceReader New(string outputFilePath, bool makeFileIfNotFound, Type? loopLimit = null)
         {
             InstanceReader reader = New<InstanceReader>(new(), outputFilePath, makeFileIfNotFound);
-            reader.LoopLimit ??= typeof(object);
+            reader.LoopLimit = loopLimit;
             return reader;
         }
 
-        public static void Read(string outputFilePath, bool makeFileIfNotFound, object instance, Type? loopLimit = null)
-        {
-            using InstanceReader reader = New(outputFilePath, makeFileIfNotFound, loopLimit);
-            reader.Read(instance);
-        }
         public void Read(object instance, int skip = 0)
         {
             Skip(skip);
             Type instanceType = instance.GetType();
             string msg = $"Beginning read of fields in {instanceType}";
-            if (LoopLimit == typeof(object))
-                LoopLimit = LoopLimiter(instanceType);
+            LoopLimit ??= LoopLimiter(instanceType);
             Write(msg);
             Skip(2);
-            ReadClass(LoopLimit, instance);
+            ReadClass(instance, false, true);
             Flush();
         }
-
+        public static void Read(string outputFilePath, bool makeFileIfNotFound, object instance, Type? loopLimit = null)
+        {
+            using InstanceReader reader = New(outputFilePath, makeFileIfNotFound, loopLimit);
+            reader.Read(instance);
+        }
         //For overriding in inheritors incase you want to give a specific type a custom read (for example, a qud gameobject, since a normal read would be uninformative)
-        void ReadClass(Type? limit, object classObj, bool cameFromCollection = false, bool cameFromReferenceType = false)
+        void ReadClass(object classObj, bool cameFromCollection = false, bool cameFromReferenceType = false)
         {
             // if (!ReadClassCustom(classObj, cameFromCollection, cameFromReferenceType))
             //        return;
             Type objectType = classObj.GetType();
             Write($"Beginning read for fields of type {objectType}.");
             Skip(1);
-            LoopInheritance(limit ?? LoopLimiter(objectType), classObj, objectType, cameFromCollection, cameFromReferenceType);
+            LoopInheritance(classObj, objectType, cameFromCollection, cameFromReferenceType);
         }
 
         static Type LoopLimiter(Type t)
@@ -78,10 +76,10 @@ namespace XQuinn.ObjectModel
         //     return true;
         // }
 
-        void LoopInheritance(Type? loopLimit, object classObj, Type sourceType, bool cameFromCollection, bool cameFromReferenceType)
+        void LoopInheritance(object classObj, Type sourceType, bool cameFromCollection, bool cameFromReferenceType)
         {
             Type? varyingType = sourceType;
-            while (varyingType != loopLimit && varyingType != null && varyingType != typeof(object) && varyingType != typeof(ValueType))
+            while (varyingType != null && varyingType != LoopLimit)
             {
                 FieldInfo[] fields = varyingType!.GetFields(Flags);
                 List<FieldObject> sortedFields = SortFields(classObj, fields, sourceType);
@@ -131,7 +129,7 @@ namespace XQuinn.ObjectModel
                         else if (!cameFromCollection)
                         {
                             Write($"{(isInCollection ? "element" : $"\"{field!.Name}\"")} is a custom type, reading fields.");
-                            ReadClass(null, obj!, isInCollection, true);
+                            ReadClass(obj!, isInCollection, true);
                         }
                         else if (!isInCollection)
                             Write($"{$"\"{field!.Name}\""} is a custom type, but is a field for a custom type that is an element in a collection. Skipping for readability.");

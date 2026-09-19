@@ -82,7 +82,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 throw new MissingMethodException($"No method named {method.Name}  with generic arg count {method.Generics.Count} found in {_loadedType}'s method dictionary. It may have been removed due to having a ref return type or in/out/ref parameters.");
             if (methodbase.IsGenericMethodDefinition && methodbase is MethodInfo actualmethod)
                 methodbase = method.ConvertToGeneric(actualmethod, LocalCache);
-            return methodbase;
+            return methodbase; //your dictionary will always hold generic definitions - after reification, methods are added to a static cache so it wont be reified a second time
         }
         internal readonly struct Assignment
         {

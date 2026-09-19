@@ -18,5 +18,10 @@ namespace XQuinn.CodeAnalysis.AST
             _type = declaredIn;
         }
 
+        public override string ToString()
+        {
+        return $"{DeclaringType.StringID}.{Name}";
+        }
+
     }
 }

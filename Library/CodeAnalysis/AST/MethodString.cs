@@ -67,12 +67,7 @@ namespace XQuinn.CodeAnalysis.AST
             sb.AppendMany(Params, ", ", false, x =>
             {
                 if (x is MethodString ms)
-                {
-                    ms.ParamStringShort(sb2);
-                    string s = sb2.ToString();
-                    sb2.Length = 0;
-                    return s;
-                }
+                    return $"{ms.DeclaringType.StringID}.{ms.StringID}()";
                 else return x!.ToString();
             });
         }
@@ -80,13 +75,14 @@ namespace XQuinn.CodeAnalysis.AST
         public override string ToString()
         {
             StringBuilder sb = new();
-            sb.Append(StringID);
-            sb.Append($" :: Nested in ");
-            _subParamOf?.ParamStringShort(sb);
-            sb.Append(" :: ");
-            sb.Append($"TypeName {DeclaringType.StringID} :: ");
-            sb.Append("Params: ");
-            if (Params.Count > 0) AppendParams(sb);
+            sb.Append($"{DeclaringType.StringID}.{StringID}()");
+            if (_subParamOf != null)
+                sb.Append($" :: Nested in {_subParamOf.DeclaringType.StringID}.{_subParamOf.StringID}()");
+            if (Params.Count > 0)
+            {
+                sb.Append(" :: Params: ");
+                AppendParams(sb);
+            }
             return sb.ToString();
 
         }
