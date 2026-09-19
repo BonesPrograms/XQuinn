@@ -99,6 +99,8 @@ namespace XQuinn.CodeAnalysis
         internal bool _readOR;
         internal bool _readORVal;
 
+        internal bool _readFirstOR;
+
         internal bool _beganReadingMainMethodName; //This is a very specific flag that allows you to have leading whitespace for the main method name. Pretned | is string start. you can do |   call("hello")vb kjmhnnnnnnnnnnmm
                                                    // You need this flag to help differentiate if the whitespace is leading, or inside the method name itself, which is of course
                                                    //illegal.
@@ -294,6 +296,7 @@ namespace XQuinn.CodeAnalysis
             _readChar = false;
             _readEnumOR = false;
             _readOR = false;
+            _readFirstOR = false;
             _readORVal = false;
             _readArbitraryLegalValue = false;
             _methodParamsBegan = false;

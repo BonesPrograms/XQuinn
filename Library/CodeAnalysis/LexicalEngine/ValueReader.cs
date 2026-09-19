@@ -36,6 +36,8 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         bool _readORVal { get => _lexer._readORVal; set => _lexer._readORVal = value; }
 
+        bool _readFirstOR { get => _lexer._readFirstOR; set => _lexer._readFirstOR = value; }
+
         public ValueReader(InvokeLexer lexer) : base(lexer)
         {
             _lexer = lexer;
@@ -55,28 +57,30 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 if (_readOR)
                     throw new LexicalException("Invalid enum OR args.", invocation, _value, _sb);
                 _readEnumOR = false;
+                _readORVal = false;
                 return false;
 
             }
-            if (_value == Whitespace)
-            {
-                _readORVal = false;
-            }
-            else if (_value == EnumOR)
-            {
-                if (_readOR)
-                    throw new LexicalException("Invalid enum OR args.", invocation, _value, _sb);
-                _readOR = true;
-                _readORVal = false;
-            }
-            else if (_readOR)
-            {
-                _lexer._arbitraryReader.ValidIdentifierFirstCharOrThrow(_value, invocation, i);
-                _readOR = false;
-                _readORVal = true;
-            }
-            else if (_readORVal)
-                _lexer.ValidIdentifier(_value, invocation, _value);
+            if (_value != Whitespace)
+                if (_value == EnumOR)
+                {
+                    if (_readOR)
+                        throw new LexicalException("Invalid enum OR args.", invocation, _value, _sb);
+                    _readOR = true;
+                    _readORVal = false;
+                }
+                else if (_readOR)
+                {
+                    _lexer._arbitraryReader.ValidIdentifierFirstCharOrThrow(_value, invocation, i);
+                    _readOR = false;
+                    _readORVal = true;
+                }
+                else if (_readORVal)
+                {
+                    if (!_readFirstOR)
+                        _lexer.ValidIdentifier(_value, invocation, _value);
+                    _readFirstOR = false;
+                }
             return true;
 
 

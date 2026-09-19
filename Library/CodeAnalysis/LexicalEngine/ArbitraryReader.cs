@@ -29,6 +29,8 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         bool _readORVal {get=> _lexer._readORVal; set=> _lexer._readORVal = value;}
 
+        bool _readFirstOR {get=> _lexer._readFirstOR; set=>_lexer._readFirstOR = value;}
+
         TypeString? _declaringType => _lexer._declaringType;
 
         TypeString? _implicit_this => _lexer._implicit_this;
@@ -105,6 +107,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             _readArbitraryLegalValue = false;
             _readEnumOR = true;
             _readORVal = true;
+            _readFirstOR = true;
         }
         internal bool ReadIdentifier(ref int i, string invocation) //once an arbitrary is determined to be an identifier, it is read with stricter rules
         {
