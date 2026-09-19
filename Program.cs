@@ -36,6 +36,7 @@ namespace XQuinn.Private
             XQuinn.NetConsole.Apps.IApp.RunApp(args);
 #else
             Cache();
+            ConsoleTools.WriteMany(TypeCache.s_registry, "\n");
             RunNavigator();
         }
         //  static void method()
@@ -49,7 +50,7 @@ namespace XQuinn.Private
             NavigationFeed monitor = new();
             string flag = NavigatorCore.Flag.ToString().Replace(',', '|');
             string path = Path.Combine(XQuinn.IO.Finders.CodeLabFinder.s_path, @"XQuinnLib\dump\instance.log");
-            string ret = monitor.SafeInterface($"~ *types.enum<bindingFlags>({flag}); +flag; *InstanceReader.new(@\"{path}\", true); +reader; @program");
+            string ret = monitor.SafeInterface($"~ *types.enum<bindingFlags>({flag}); +flag; *InstanceReader.new(@\"{path}\", true); +reader; *class<bindingflags>.new()");
             Console.WriteLine(ret);
             while (true)
             {
@@ -66,35 +67,35 @@ namespace XQuinn.Private
             TypeCache.CacheType(typeof(AccessTools), false);
             TypeCache.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
         }
-        class Class<T>
-        {
-
-            static List<T?> list = new() { default, default, default, default };
-            static T? S_Obj
-            {
-                get => _s_obj;
-                set => _s_obj = value;
-            }
-            static T? _s_obj;
-            T? Obj { get => _obj; set => _obj = value; }
-            T? _obj;
-
-            public static string Void()
-            {
-                return "Void";
-            }
-            public (T, T) Func(T obj, T obj2) => (obj, obj2);
-            public static T Method(T obj) => obj;
-            public static X Generic<X>(X obj) => obj;
-            public static (X, Z) GenFunc<X, Z>(X obj, Z obj2) => (obj, obj2);
-            public static T[] Array(params T[] arr)
-            {
-                return arr;
-            }
-        }
-
 
     }
+    class Class<T>
+    {
+
+        static List<T?> list = new() { default, default, default, default };
+        static T? S_Obj
+        {
+            get => _s_obj;
+            set => _s_obj = value;
+        }
+        static T? _s_obj;
+        T? Obj { get => _obj; set => _obj = value; }
+        T? _obj;
+
+        public static string Void()
+        {
+            return "Void";
+        }
+        public (T, T) Func(T obj, T obj2) => (obj, obj2);
+        public static T Method(T obj) => obj;
+        public static X Generic<X>(X obj) => obj;
+        public static (X, Z) GenFunc<X, Z>(X obj, Z obj2) => (obj, obj2);
+        public static T[] Array(params T[] arr)
+        {
+            return arr;
+        }
+    }
+
 }
 
 #endif

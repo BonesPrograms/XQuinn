@@ -15,8 +15,8 @@ namespace XQuinn.Runtime.NavigatorEngine
             for (int i = 0; i < invocation.Length; i++)
             {
                 char value = invocation[i];
-                // if (CharOrString(value)) //it wont be one of these on the left side
-                //     return false;
+                if (CharOrString(value)) 
+                     return false;
                 if (value == '(')
                     return false;
                 if (value == '=')

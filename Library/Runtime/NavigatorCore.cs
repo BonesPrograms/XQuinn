@@ -43,9 +43,6 @@ namespace XQuinn.Runtime
 
         public object? Interface(string invocation) ///This is the primary and sole method for interfacing with the Navigator via strings.
         {
-
-            //  if (invocation.Length == 0 || string.IsNullOrWhiteSpace(invocation))
-            //     return "No command detected.";
             char controller = default;
             int substring = -1;
             for (int i = 0; i < invocation.Length; i++) //skips leading whitespace
@@ -138,7 +135,7 @@ namespace XQuinn.Runtime
                     string? retstring = ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString();
                     invocations.Add($"[Instruction: {cmd} :: Returned: {retstring ?? "null"}]");
                 }
-                catch (Exception ex)
+                catch (Exception ex) 
                 {
                     _chaining = false;
                     StringBuilder sb = new();

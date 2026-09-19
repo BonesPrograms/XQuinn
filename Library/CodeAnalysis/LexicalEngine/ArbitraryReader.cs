@@ -42,12 +42,14 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         MethodString? _currentMethod { get => _lexer._currentMethod; set => _lexer._currentMethod = value; }
 
         bool _start { set => _lexer._start = value; }
-
+     bool _readORDelimit { set => _lexer._readORDelimit = value; }
         bool _beganReadingMainMethodName { get => _lexer._beganReadingMainMethodName; set => _lexer._beganReadingMainMethodName = value; }
 
         int _readingSubparams { get => _lexer._readingSubparams; set => _lexer._readingSubparams = value; }
 
         int _lastReadingCount { get => _lexer._lastReadingCount; set => _lexer._lastReadingCount = value; }
+
+
 
 
 
@@ -74,10 +76,13 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                         throw new LexicalException("Detected trailing input after whitespace.", invocation, _value, _sb, i);
                 }
             else if (_value == EnumOR)
+            {
                 ReadingEnumOR(invocation);
+                return 1;
+            }
             else if (_value == '<')
             {
-                _readGeneric = true;
+                CheckGenericBeforeReadGeneric(invocation);
                 _readFirstGeneric = true;
                 return 1;
             }
@@ -110,13 +115,15 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             _readArbitraryLegalValue = false;
             _readEnumOR = true;
             _readORVal = true;
+            _readORDelimit = true;
         }
         internal bool ReadIdentifier(ref int i, string invocation) //once an arbitrary is determined to be an identifier, it is read with stricter rules
         {
             if (_value == '<')
             {
-                _readGeneric = true;
+                CheckGenericBeforeReadGeneric(invocation);
                 _readFirstGeneric = true;
+                return true;
             }
             if (_value == Whitespace)
                 SkipWhitespaceTrail(ref i, invocation);
@@ -144,7 +151,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 _readFirstCharOfName = false;
                 ValidIdentifierFirstCharOrThrow(_value, invocation);
             }
-            else if (NonGenericOrGenericChar())
+            else
                 _lexer.ValidIdentifier(_value, invocation);
             return true;
         }
@@ -160,26 +167,31 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             }
             else if (_value == Whitespace)
             {
-                _skipping = true;
-                return false;
+                _skipping = true; //unlike most other reads, this one allows whitespace, so instead of skipping to Termination and ending the read
+                return false; //we must instead increment one by one and keep the read active until we reach a proper termination
             }
-            else if (_value == MemberAccess || _value == MethodStart)
+            else if (_value == MemberAccess || _value == MethodStart) //generics can only be terminated by these, so if its not, the lex will throw at the end
             {
-                i--;
-                _readGeneric = false;
-                return false;
+                _skipping = false;
+                i--; //kinda lazy but i did NOT feel like copying a bunch of code
+                _readGeneric = false;  //readGeneric can be active during ReadIdentifier ReadArbitrary and ReadMainMethod (its the only read that can be active while another read is active)
+                return false; //when its over, it needs to back up, so that way the char is the same when it returns to those methods, because those methods have branches to handle these chars
             }
             else if (_value != '>' && _value != '<')
             {
-                if (_skipping && !_readFirstGeneric && !_genericParamTerminate)
-                    throw new LexicalException("Invalid generic arguments.", invocation, _value, _sb);
+                if (_skipping && !_readFirstGeneric && !_genericParamTerminate) //this specifically checks if the last value was a char
+                    throw new LexicalException("Invalid generic arguments.", invocation, _value, _sb); //in essence this means youre putting something like "Stri ng"
                 ValidIdentifierFirstCharOrThrow(_value, invocation);
                 _genericParamTerminate = false;
                 _readFirstGeneric = false;
                 _skipping = false;
             }
             else if (_value == '<')
+            {
+                if (_readFirstGeneric)
+                    throw new LexicalException("Invalid generic arguments.", invocation, _value, _sb);
                 _readFirstGeneric = true;
+            }
             else if (_value == '>' && _readFirstGeneric)
                 throw new LexicalException("Invalid generic arguments.", invocation, _value, _sb);
             return true;
@@ -192,7 +204,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             if (_beganReadingMainMethodName)
             {
                 if (_readGeneric)
-                    ReadGeneric(ref i, invocation);
+                    ReadGeneric(ref i, invocation); //readgeneric is so special isnt it, this is the only read called by another read, but it works
                 else if (_value == Whitespace)
                     SkipWhitespaceTrail(ref i, invocation);
                 else if (_value == MethodStart)
@@ -206,10 +218,10 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 }
                 else if (_value == '<')
                 {
-                    _readGeneric = true;
+                    CheckGenericBeforeReadGeneric(invocation);
                     _readFirstGeneric = true;
                 }
-                else if (NonGenericOrGenericChar())
+                else
                     _lexer.ValidIdentifier(_value, invocation);
                 return true;
             }
@@ -219,8 +231,6 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 _beganReadingMainMethodName = true;
             return true;
         }
-
-        bool NonGenericOrGenericChar() => !_readGeneric || _value != ParamTerminate;
 
         void ReadMain()
         {
@@ -280,8 +290,18 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 member = lexOutput.Substring(lastAccessorIndex.Value + 1);
                 return lexOutput.Remove(lastAccessorIndex.Value);
             }
-            member = lexOutput;
-            return null;
+            else
+            {
+                member = lexOutput;
+                return null;
+            }
+        }
+
+        void CheckGenericBeforeReadGeneric(string invocation)
+        {
+            if (_readGeneric)
+                throw new LexicalException("Invalid generic arguments.", invocation, _sb);
+            _readGeneric = true;
         }
 
         internal bool ValidIdentifierFirstCharOrThrow(char next, string invocation)

@@ -281,6 +281,7 @@ namespace XQuinn.CodeAnalysis
             _implicit_this = null;
             _value = default;
             _start = true;
+            _skipping = false;
             _beganReadingMainMethodName = false;
             _currentMethod = null;
             _readDigit = false;
@@ -291,6 +292,7 @@ namespace XQuinn.CodeAnalysis
             _justEscaped = false;
             _readNoEscDeclr = false;
             _readGeneric = false;
+            _readFirstGeneric = false;
             _genericParamTerminate = false;
             _skipping = false;
             _stringEnding = false;
