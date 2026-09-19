@@ -132,16 +132,18 @@ namespace XQuinn.Runtime.NavigatorEngine
         }
 
         //TargetInstance is an old method back from before the navigator was able to treat fields, variables and properties as if they were types that can be accessed
-        //and their members invoked. Typically, when you use a varaible, field or property as a "type", the system returns the actual object instance as well as the type very
-        //early - the moment you search for the Type, which happens before we actually search for the method within the type.
+        //and their members invoked. Typically, when you use a varaible, field or property as a "type", the system returns the actual object instance alongside the type, and it does so
+        //early - the moment you search for the member, which happens before we actually search for the method within the member's type.
 
         //TargetInstance works the opposite. If youre invoking something that requires the currently loaded instance, the system does not retrieve the instance early
         //Instead, it retrieves the type, be it the instance type, or a base type, depending on whether or not youre casting, and then later on,
         //it passes that type to TargetInstance. TargetInstance quickly checks if the current instancetype polymorphs into the accessed type,
-        //and if it does, it returns the currently loaded instance.
+        //and if it does, it returns the currently loaded instance. This was again designed back when there was no member access, so it made sense to wrap things up
+        //and get the target instance right before invocation.
 
         //As you can see, we had to modify the system a bit once we introduced using members and variables as "types". Because we retrieve those early, if TargetInstance's
         //variable value is not null, it means, "hey, we already found the reference this method is from, dont worry about it ,just return the object we passed to you"
+        //To prevent issues where if a member or variable is the same type as the loaded type and the system returns the loaded instance instead of the accessed member or variable.
 
         object? FinalizeInvoke(MethodBase call, ParameterInfo[] parameters, MethodString mthdString, Type fromType, object? variable)
         {
