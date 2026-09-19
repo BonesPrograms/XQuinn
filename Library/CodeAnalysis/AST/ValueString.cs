@@ -56,9 +56,9 @@ namespace XQuinn.CodeAnalysis.AST
         bool StringFormat(bool formatException, out string? extract)
         {
             extract = null;
-            if (_arg.Length >= 2)
+            if (Argument.Length >= 2)
             {
-                string arg = _arg;
+                string arg = Argument;
                 bool noescape = false;
                 int lastIndex = arg.Length - 1;
                 if (arg[0] == '@')

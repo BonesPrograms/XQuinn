@@ -90,7 +90,7 @@ namespace XQuinn.Private
             //@ TypeCache.CacheType(typeof(BytesLittleEndian), "bytes");
         }
 
-
+    class Class {}
     class Class<T> //where T : new()
     {
         static T? S_Obj

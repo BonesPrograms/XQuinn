@@ -10,9 +10,9 @@ namespace XQuinn.CodeAnalysis.AST
     internal abstract class GenericString : MetadataString
     {
         public string StringID => _id; ///Cache ID for methods and types. Includes raw name, generic arguments, and overload index.
-        string _id;                     ///Used for comparison between concrete GenericString objects to see if they represent the same MemberInfo object.
+        string _id;                     ///Used for comparison between concrete GenericString objects to see if they represent the same MemberInfo object. For caching primarily.
                                         ///For methods, this comparison also includes comparing the StringID of their declaring type
-                                        ///      (though in practice we do not typically compare that way, usually we get the actual type first)
+                                        ///      (though in practice we do not typically compare that way, usually we get the actual type first from their declaringtypes StringID)
         public IReadOnlyList<TypeString> Generics
         {
             get
@@ -29,7 +29,6 @@ namespace XQuinn.CodeAnalysis.AST
         {
             if (HasTypeArgs(genericString.Name))
                 genericString.UpdateGenericArgs();
-
             return genericString;
         }
 

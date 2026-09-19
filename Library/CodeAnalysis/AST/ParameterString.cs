@@ -2,8 +2,8 @@ namespace XQuinn.CodeAnalysis.AST
 {
     internal abstract class ParameterString
     {
-        protected string _arg;
-        internal ParameterString(string String)
+        protected string _arg; //This is, generally speaking, init-only, but GenericString needs it to be *not* readonly for it's factory method so it isnt.
+        internal ParameterString(string String) //Regardless, the values of any ParameterString inheritor are intended to be immutable after initialization.
         {
             _arg = String;
         }

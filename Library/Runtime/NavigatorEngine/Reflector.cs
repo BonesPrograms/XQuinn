@@ -104,33 +104,29 @@ namespace XQuinn.Runtime.NavigatorEngine
         }
         internal readonly struct Assignment
         {
-            public readonly object Member;
+            public readonly MemberInfo Member;
             public readonly Type ObjectType;
-            public Assignment(object member)
+            public Assignment(MemberInfo member)
             {
-                // if (member is VariableBinding)
-                //    throw new NotImplementedException();//  ObjectType = variable.ObjectType;
                 if (member is PropertyInfo prop)
                     ObjectType = prop.PropertyType;
                 else if (member is FieldInfo f)
                     ObjectType = f.FieldType;
                 else
-                    throw new NotSupportedException();
+                    throw new NotSupportedException($"non-assignable member {member.GetType()}.");
                 Member = member;
             }
             public void SetValue(object? instance, object? value)
             {
-                if (value == null)
-                {
+                if (value == null) //valuestring handles direct parsing from 'null' for structs (it throws), but methods and fields can return null and are not valuestrings, so we need to manually check on assignmnet
+                {                   //otherwise reflection will assign the default value if the target is a struct, rather than throwing like it should
                     if (!(ObjectType.IsClass || (ObjectType.IsGenericType && ObjectType.GetGenericTypeDefinition() == typeof(Nullable<>))))
-                        throw new ArgumentException($"Cannot assign null to type {ObjectType}");
+                        throw new ArgumentException($"Cannot assign null to type {ObjectType}.");
                 }
                 if (Member is PropertyInfo prop)
                     prop.SetValue(instance, value, NavigatorCore.Flag, null, null, null);
                 else if (Member is FieldInfo field)
                     field.SetValue(instance, value, NavigatorCore.Flag, null, null);
-                //  else if (Member is VariableBinding variable)
-                //     variable.Object = value!; //Object cant be null, but object handles throwing over this internally
             }
         }
     }
