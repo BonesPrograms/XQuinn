@@ -71,25 +71,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                     throw new InvalidOperationException("Cannot get instance base, instance is null.");
                 return _instanceType.BaseType ?? throw new ArgumentException("Base type of instance is null.");
             }
-            GenericKey key = new(typename);
-            Type? type = null;
-            if (key.Args > 0)
-            {
-                if (RuntimeCache.s_reified_generic_types.TryGetValue(typename.StringID, out Type? generic))
-                    return generic;
-                LocalCache?.TryGetValue(key, out type);
-                type ??= TypeCache.GetTypeOrThrow(key);
-                type = typename.ConvertToGeneric(type, LocalCache);
-                RuntimeCache.s_reified_generic_types[typename.StringID] = type;
-            }
-            else
-            {
-                LocalCache?.TryGetValue(key, out type);
-                type ??= TypeCache.GetTypeOrThrow(key);
-            }
-            // else if (!t.IsGenericType && typename.Generics.Count > 0) //not necessary, our new key system would never allow you to accidentally find a nongeneric type when you are providing generic args
-            //     throw new ArgumentException($"type {t} does not accept type arguments.");
-            return type;
+            return typename.ToType(LocalCache);
 
         }
 

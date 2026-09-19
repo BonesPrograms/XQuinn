@@ -69,36 +69,19 @@ namespace XQuinn.CodeAnalysis.AST
             }
             return genericEnd || (genericStart ? throw new FormatException($"Invalid generic argument format. {NameOrValue}") : false);
         }
-        public Type[] ConvertGenericArguments(TypeBook? dic)
+        protected Type[] ConvertGenericArguments(TypeBook? dic)
         {
             if (Generics.Count > 0)
             {
                 Type[] genericArgs = new Type[Generics.Count];
                 for (int i = 0; i < genericArgs.Length; i++)
-                {
-                    TypeString tstring = Generics[i];
-                    Type? realtype = null;
-                    GenericKey key = new(tstring);
-                    dic?.TryGetValue(key, out realtype);
-                    realtype ??= TypeCache.GetTypeOrThrow(key);
-                    if (realtype.IsGenericTypeDefinition)
-                    {
-                        if (RuntimeCache.s_reified_generic_types.TryGetValue(tstring.StringID, out Type? generic))
-                            realtype = generic;
-                        else
-                        {
-                            Type[] args = tstring.ConvertGenericArguments(dic);
-                            realtype = realtype.MakeGenericType(args);
-                            RuntimeCache.s_reified_generic_types[tstring.StringID] = realtype;
-                        }
-                    }
-                    genericArgs[i] = realtype;
-
-                }
+                    genericArgs[i] = Generics[i].ToType(dic);
                 return genericArgs;
             }
             throw new ArgumentException($"No generic parameters were provided to {GetType().Name} with name value {Name} ");
-        }
+        } //generally speaking the way the logic works you usally wont encounter this exception, but it is technically possible
+            //so ive yet to remove (our new key system matches by the user's input for generic args so it wont even find the generic method/type if you dont provide args)
+
         void LexGenerics(StringBuilder sb)
         {
             GenericString currentGeneric = this;

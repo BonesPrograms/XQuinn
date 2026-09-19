@@ -10,7 +10,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         static class RuntimeCache
         {
             internal static readonly Dictionary<Type, HashSet<string>> s_ambiguous_matches = new();
-            internal static readonly Dictionary<Type, Dictionary<string, MemberInfo>> s_known_members = new(); //all members ever accessed by callinterp 
+            internal static readonly Dictionary<Type, Dictionary<string, MemberInfo>> s_global_metadata = new(); //all members ever accessed by navig
             internal static readonly Dictionary<string, Type> s_reified_generic_types = new(StringComparer.OrdinalIgnoreCase); //reified generics
 
             internal static bool CheckAmbiguousMatch(Type fromType, MethodString mthdString, out Type cachedType, out HashSet<string>? cachedMatches)
@@ -26,7 +26,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 if (ambiguousMatches)
                     s_ambiguous_matches.Clear(); //technically not part of 'caching' system, doesnt care if caching is false, will always store ambiguous matches
                 if (typeMembers)                    //may be a thing later, for now you can clear at least
-                    s_known_members.Clear();
+                    s_global_metadata.Clear();
                 if (reifiedGenerics)
                     s_reified_generic_types.Clear();
             }
@@ -34,7 +34,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             internal static T? FromCache<T>(string key, Type fromType, out bool typeCached, out bool memberCached) where T : MemberInfo
             {
                 memberCached = false;
-                typeCached = s_known_members.TryGetValue(fromType, out Dictionary<string,MemberInfo>? cachedMembers);
+                typeCached = s_global_metadata.TryGetValue(fromType, out Dictionary<string,MemberInfo>? cachedMembers);
                 if (typeCached)
                 {
                     memberCached = cachedMembers!.TryGetValue(key, out MemberInfo? member);
@@ -61,11 +61,11 @@ namespace XQuinn.Runtime.NavigatorEngine
                     return;
                 Dictionary<string, MemberInfo> cachedMembers;
                 if (typeCached)
-                    cachedMembers = s_known_members[fromType];
+                    cachedMembers = s_global_metadata[fromType];
                 else
                 {
                     cachedMembers = new(StringComparer.OrdinalIgnoreCase);
-                    s_known_members[fromType] = cachedMembers;
+                    s_global_metadata[fromType] = cachedMembers;
                 }
                 cachedMembers[key] = member;
                 // if (fromType == LoadedType)

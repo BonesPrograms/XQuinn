@@ -1,5 +1,6 @@
 using System;
 using XQuinn.Reflection;
+using XQuinn.Runtime.NavigatorEngine;
 
 namespace XQuinn.CodeAnalysis.AST
 {
@@ -12,63 +13,42 @@ namespace XQuinn.CodeAnalysis.AST
         {
             _typeArgOf = typeArgOf;
         }
-        public Type ConvertToGeneric(Type genericTypeDef, TypeBook? types = null)
-        {
-            return genericTypeDef.MakeGenericType(ConvertGenericArguments(types));
-        }
-
-
         internal static TypeString New(string name, GenericString? typeArgOf = null)
         {
             return New<TypeString>(new(name, typeArgOf));
         }
 
-        internal static TypeString NewGeneric(string name) //This is for a string that has been confirmed as generic by GenericString.HasTypeArgs()
+        internal static TypeString NewGeneric(string name) //This is for a string that has been externally confirmed as generic by GenericString.HasTypeArgs()
         {
             TypeString tstring = new(name);
             tstring.UpdateGenericArgs();
             return tstring;
         }
+        internal Type ToType(TypeBook? dic = null)
+        {
+            GenericKey key = new(this);
+            if (key.Args > 0)
+            {
+                if (RuntimeCache.s_reified_generic_types.TryGetValue(StringID, out Type? type))
+                    return type;
+                type = ConvertToGeneric(FindType(dic, key), dic);
+                RuntimeCache.s_reified_generic_types[StringID] = type;
+                return type;
+            }
+            return FindType(dic, key);
 
-        // bool IEquatable<TypeString>.Equals(TypeString? other)
-        // {
-        //     return Equals(other);
-        // }
+        }
+        Type ConvertToGeneric(Type genericTypeDef, TypeBook? types = null)
+        {
+            return genericTypeDef.MakeGenericType(ConvertGenericArguments(types));
+        }
 
-        // public override bool Equals(object? obj)
-        // {
-        //     return obj is TypeString t && Equals(t);
-        // }
-
-        // public bool Equals(TypeString? compareTo)
-        // {
-        //     if (compareTo == null)
-        //         return false;
-        //     if (compareTo.Generics.Count != Generics.Count)
-        //         return false;
-        //     if (!compareTo.NameOrValue.EqualsCaseless(NameOrValue))
-        //         return false;
-        //     for (int i = 0; i < Generics.Count; i++)
-        //     {
-        //         TypeString myArg = Generics[i];
-        //         TypeString theirArg = compareTo.Generics[i];
-        //         if (!myArg.Equals(theirArg))
-        //             return false;
-        //     }
-        //     return true;
-        // }
-
-        // public override int GetHashCode()
-        // {
-        //     int hash = 17;
-        //     unchecked
-        //     {
-        //         hash = hash * 31 + StringComparer.OrdinalIgnoreCase.GetHashCode(NameOrValue);
-        //         hash = hash * 31 + Generics.Count.GetHashCode();
-        //         foreach (TypeString arg in Generics)
-        //             hash = hash * 31 + arg.GetHashCode();
-        //     }
-        //     return hash;
-        // }
+        static Type FindType(TypeBook? dic, GenericKey key)
+        {
+            Type? type = null;
+            dic?.TryGetValue(key, out type);
+            type ??= TypeCache.GetTypeOrThrow(key);
+            return type;
+        }
     }
 }
