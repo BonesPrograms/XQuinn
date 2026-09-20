@@ -208,7 +208,8 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                     throw new LexicalException("Invalid generic arguments.", invocation, _value, _sb); //in essence this means youre putting something like "Stri ng"
                 _readFirstGeneric = false;
                 _skipping = false;
-                i--; //kinda lazy but i did NOT feel like copying a bunch of code
+                if (!_lexer._start)
+                    i--; //kinda lazy but i did NOT feel like copying a bunch of code
                 _readGeneric = false;  //readGeneric can be active during ReadIdentifier ReadArbitrary and ReadMainMethod (its the only read that can be active while another read is active)
                 return false; //when its over, it needs to back up, so that way the char is the same when it returns to those methods, because those methods have branches to handle these chars
             }
@@ -248,9 +249,8 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                         if (ValidIdentifierFirstChar(_value) || WhitespaceEnd() || _value == GenericTerminate)
                         {
                             if (_value == MethodDeclr)  //this allows Method ( ) for the first/main method
-                                return ReadMainJump();                     //^whitespace
-                            break;                              //kinda funky other ones usually just break, but havent come up with a fix rn
-                        }                                       //cannot modify this controlflow otherwise itll cause issues if the first method is generic
+                                break;
+                        }
                         else if (_value == GenericDeclr)
                         {
                             return IdentifierGeneric(invocation);
@@ -258,16 +258,21 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                         else if (_value != CallLexer.Whitespace)
                             throw new LexicalException("Detected trailing input after whitespace.", invocation, _value, _sb, i);
                     }
-                else if (_value == MethodDeclr)
+                if (_value == MethodDeclr)
                 {
-                    return ReadMainJump();
+                    ReadMain();
+                    _readGeneric = false;
+                    _start = false;
+                    _methodParamsBegan = true;
+                    _beganReadingMainMethodName = false;
+                    return false;
                 }
                 else if (_value == GenericDeclr)
                 {
                     CheckGenericBeforeReadGeneric(invocation);
                     _readFirstGeneric = true;
                 }
-                else
+                else if (!_readGeneric)
                     _lexer.ValidIdentifier(_value, invocation);
                 return true;
             }
@@ -278,15 +283,6 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             return true;
         }
 
-        bool ReadMainJump()
-        {
-            ReadMain();
-            _readGeneric = false;
-            _start = false;
-            _methodParamsBegan = true;
-            _beganReadingMainMethodName = false;
-            return false;
-        }
 
         void ReadMain()
         {
