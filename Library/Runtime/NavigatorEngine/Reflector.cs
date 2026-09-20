@@ -84,6 +84,15 @@ namespace XQuinn.Runtime.NavigatorEngine
                 methodbase = method.ConvertToGeneric(actualmethod, LocalCache);
             return methodbase; //your dictionary will always hold generic definitions - after reification, methods are added to a static cache so it wont be reified a second time
         }
+
+        internal static void NotNullable(Type type, object? value)
+        {
+            if (value == null) //valuestring handles direct parsing from 'null' for structs (it throws), but methods and fields can return null and are not valuestrings, so we need to manually check on assignmnet
+            {                   //otherwise reflection will assign the default value if the target is a struct, rather than throwing like it should
+                if (!(type.IsClass || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))))
+                    throw new ArgumentException($"Cannot assign null to type {type}.");
+            }
+        }
         internal readonly struct Assignment
         {
             public readonly MemberInfo Member;
@@ -100,11 +109,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
             public void SetValue(object? instance, object? value)
             {
-                if (value == null) //valuestring handles direct parsing from 'null' for structs (it throws), but methods and fields can return null and are not valuestrings, so we need to manually check on assignmnet
-                {                   //otherwise reflection will assign the default value if the target is a struct, rather than throwing like it should
-                    if (!(ObjectType.IsClass || (ObjectType.IsGenericType && ObjectType.GetGenericTypeDefinition() == typeof(Nullable<>))))
-                        throw new ArgumentException($"Cannot assign null to type {ObjectType}.");
-                }
+                NotNullable(ObjectType, value);
                 if (Member is PropertyInfo prop)
                     prop.SetValue(instance, value, NavigatorCore.Flag, null, null, null);
                 else if (Member is FieldInfo field)
@@ -112,6 +117,8 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
         }
     }
+
+
 
     internal sealed class VariableBinding
     {

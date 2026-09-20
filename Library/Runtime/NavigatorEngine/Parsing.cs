@@ -3,6 +3,7 @@ using XQuinn.Extensions;
 using XQuinn.CodeAnalysis.AST;
 using System;
 using System.Collections;
+using System.Diagnostics.CodeAnalysis;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
@@ -54,7 +55,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 for (int i = 0; i < inputAmount; i++)
                     args[i] = ParameterToObject(invocation.Params[i], parameters[i].ParameterType);
             }
-            else if (inputAmount > reqAmount && lastparam >= 0 && parameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
+            else if (lastparam >= 0 && parameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
             {
                 ParamsArray(lastparam, parameters, args, invocation);
             }
@@ -65,8 +66,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         //Notes about
         void ParamsArray(int lastparam, ParameterInfo[] parameters, object?[] args, MethodString invocation)
         {
-            int lastBeforeThat = lastparam - 1;
-            for (int i = 0; i <= lastBeforeThat; i++)
+            for (int i = 0; i < lastparam; i++)
                 args[i] = ParameterToObject(invocation.Params[i], parameters[i].ParameterType);
             Type elementType = parameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentNullException();
             if (invocation.Params.Count == parameters.Length)
@@ -79,14 +79,10 @@ namespace XQuinn.Runtime.NavigatorEngine
                     object? arg = ParameterToObject(parameter, elementType);
                     if (!arg?.GetType().IsArray ?? true) //list && list.GetType() == actualParameters[lastparam].ParameterType) //i dont bother checking conversions most of the time runtime does it for me
                     {
-                        if (arg != null)
-                        {
-                            Array singleArgArray = Array.CreateInstance(elementType, 1);
-                            singleArgArray.SetValue(arg, 0);
-                            arg = singleArgArray;
-                        }
-                        else
-                            arg = Array.CreateInstance(elementType, 1);
+                        Reflector.NotNullable(elementType, arg);
+                        Array singleArgArray = Array.CreateInstance(elementType, 1);
+                        singleArgArray.SetValue(arg, 0);
+                        arg = singleArgArray;
                     }
                     args[lastparam] = arg;
                 }
@@ -95,7 +91,11 @@ namespace XQuinn.Runtime.NavigatorEngine
             {
                 Array paramsArray = Array.CreateInstance(elementType, invocation.Params.Count - lastparam); //assign array type via reflection becuase object[] wont work for params keyword
                 for (int i = lastparam; i < invocation.Params.Count; i++)
-                    paramsArray.SetValue(ParameterToObject(invocation.Params[i], elementType), i - lastparam);
+                {
+                    object? arg = ParameterToObject(invocation.Params[i], elementType);
+                    Reflector.NotNullable(elementType, arg);
+                    paramsArray.SetValue(arg, i - lastparam);
+                }
                 args[lastparam] = paramsArray;
             }
         }

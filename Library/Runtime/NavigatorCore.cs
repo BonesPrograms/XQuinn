@@ -32,6 +32,7 @@ namespace XQuinn.Runtime
         internal readonly Dictionary<string, VariableBinding> _variables = new(StringComparer.OrdinalIgnoreCase);
         // public bool Caching = true;
         bool _chaining = false;
+        public bool StackTrace;
         internal const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
         public NavigatorCore()
@@ -135,11 +136,11 @@ namespace XQuinn.Runtime
                     string? retstring = ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString();
                     invocations.Add($"[Instruction: {cmd} :: Returned: {retstring ?? "null"}]");
                 }
-                catch (Exception ex) 
+                catch (Exception ex)
                 {
                     _chaining = false;
                     StringBuilder sb = new();
-                    sb.CatchException(ex);
+                    sb.CatchException(ex, StackTrace);
                     invocations.Insert(0, sb.ToString());
                     invocations.Add($"!!! EXCEPTION on [Invocation: {cmd}]");
                     return invocations;
@@ -243,12 +244,12 @@ namespace XQuinn.Runtime
             string righthand = right!;
             string? lefthandTypeName = MiniLexer.ResolveMemberAccess(lefthand, out lefthand, out bool lefthandfield);
             if (!lefthandfield)
-                throw new ArgumentException($"Can only assign to fields or properties.. Bad input: {lefthand}");
+                throw new ArgumentException($"Can only assign to fields or properties. Bad input: {lefthand}");
             Type? lefthandtype;
             object? lefthandInstance;
             Reflector.Assignment assigningTo;
             // if (_variables.TryGetValue(lefthand, out VariableBinding? var))
-            //     assigningTo = new(var);
+            //     assigningTo = new(var); //there are many reasons why i wont add variable assignment (none of which are explained here so dont bother looking just ask if youre curious)
             if (lefthandTypeName == null)
             {
                 lefthandtype = _loadedType ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {invocation}");
@@ -302,29 +303,27 @@ namespace XQuinn.Runtime
             }
 
             assigningTo.SetValue(_invoker.TargetInstance(lefthandtype, lefthandInstance), assignedValue);
-
-            //TargetInstance fixes a bug here where casting to base type explicitly in an assignment (does not cause an issue if you ^cast first and use implicit access)
-            // ex. base.field = 22 
-            // causes the system to search for the BaseType, but it does not return the baseType with the instance, the instance is returned null
-            //TargetInstance checks if type is assignable to the currently loaded instance, and if it is, it returns the currently loaded instance
-            //Unless the object that TargetInstance receives for it's "variable" parameter is not null, then it just returns that
-            
-
-            //See TargetInstance for more info
-
-
-            // if (assignedValue != null && lefthandInstance != null && (lefthandInstance == _instance || var != null ))
-            // {
-            //     if (var != null)
-            //     {
-            //         LoadInstance(var.Object, var.ObjectType);
-            //     }
-            //     else
-            //         LoadInstance(assignedValue, assignedValue.GetType());
-            // }
-
             return true;
         }
+        //TargetInstance fixes a bug here where casting to base type explicitly in an assignment (does not cause an issue if you ^cast first and use implicit access)
+        // ex. base.field = 22 
+        // causes the system to search for the BaseType, but it does not return the baseType with the instance, the instance is returned null
+        //TargetInstance checks if type is assignable to the currently loaded instance, and if it is, it returns the currently loaded instance
+        //Unless the object that TargetInstance receives for it's "variable" parameter is not null, then it just returns that
+        //See TargetInstance for more info
+
+
+        // if (assignedValue != null && lefthandInstance != null && (lefthandInstance == _instance || var != null ))
+        // {
+        //     if (var != null)
+        //     {
+        //         LoadInstance(var.Object, var.ObjectType);
+        //     }
+        //     else
+        //         LoadInstance(assignedValue, assignedValue.GetType());
+        // }
+
+
 
         bool RemoveVariable(string key)
         {

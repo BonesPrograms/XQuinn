@@ -48,9 +48,14 @@ namespace XQuinn.Private
         static void RunNavigator()
         {
             NavigationFeed monitor = new();
+            monitor.StackTrace = true;
             string flag = NavigatorCore.Flag.ToString().Replace(',', '|');
             string path = Path.Combine(XQuinn.IO.Finders.CodeLabFinder.s_path, @"XQuinnLib\dump\instance.log");
-            string ret = monitor.SafeInterface($"~ *types.enum<bindingFlags>({flag}); +flag; *InstanceReader.new(@\"{path}\", true); +reader; *class<bindingflags>.new()");
+            StringBuilder sb = new();
+            sb.Append($"~ *types.enum<bindingFlags>({flag}); +flag;");
+            sb.Append($"*InstanceReader.new(@\"{path}\", true); +reader;");
+            sb.Append("*Calculator.new(); +calc");
+            string ret = monitor.SafeInterface(sb.ToString());
             Console.WriteLine(ret);
             while (true)
             {
@@ -81,6 +86,8 @@ namespace XQuinn.Private
         static T? _s_obj;
         T? Obj { get => _obj; set => _obj = value; }
         T? _obj;
+
+        public static object? Nullobj => null;
 
         public static string Void()
         {

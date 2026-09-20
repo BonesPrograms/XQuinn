@@ -22,6 +22,16 @@ namespace XQuinn.Runtime
         string? _lastloadedString;
         Type? _lastinstanceType;
         string? _lastInstanceString;
+        public bool StackTrace
+        {
+            get => _stackTrace;
+            set
+            {
+                _stackTrace = value;
+                _core.StackTrace = value;
+            }
+        }
+        bool _stackTrace;
         public NavigationFeed()
         {
         }
@@ -36,7 +46,7 @@ namespace XQuinn.Runtime
             catch (Exception ex)
             {
                 _feed.Length = 0;
-                _feed.CatchException(ex);
+                _feed.CatchException(ex, StackTrace);
                 output = _feed.ToString();
                 _feed.Length = 0;
             }

@@ -27,7 +27,7 @@ namespace XQuinn.Extensions
     }
     public static class StringBuilderExtensions
     {
-        
+
         public static StringBuilder AppendMany(this StringBuilder sb, IEnumerable many, string? delimiter = null, bool appendIndex = false, Func<object?, string?>? toString = null)
         {
             int length;
@@ -66,15 +66,18 @@ namespace XQuinn.Extensions
                 sb.Append(delimiter);
             i++;
         }
-        public static void CatchException(this StringBuilder sb, Exception ex)
+        public static void CatchException(this StringBuilder sb, Exception ex, bool stacktrace)
         {
             sb.AppendLine($"Exception Type: {ex.GetType()}");
             sb.AppendLine($"Message: {ex.Message}");
-            sb.AppendLine($"Inner Exception: {ex.InnerException?.ToString() ?? "<none>"}");
-            sb.AppendLine($"Stack Trace: {ex.StackTrace}");
-            sb.AppendLine($"Data: {ex.Data}");
-            sb.AppendLine($"Target Site: {ex.TargetSite?.ToString() ?? "<none>"}");
-            sb.AppendLine($"Source: {ex.Source ?? "<none>"}");
+            if (stacktrace)
+            {
+                sb.AppendLine($"Inner Exception: {ex.InnerException?.ToString() ?? "<none>"}");
+                sb.AppendLine($"Stack Trace: {ex.StackTrace}");
+                sb.AppendLine($"Data: {ex.Data}");
+                sb.AppendLine($"Target Site: {ex.TargetSite?.ToString() ?? "<none>"}");
+                sb.AppendLine($"Source: {ex.Source ?? "<none>"}");
+            }
         }
     }
 
