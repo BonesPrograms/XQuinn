@@ -17,7 +17,7 @@ namespace XQuinn.Runtime
     {
         ///.This is for the DynamicNavigator.
         internal TypeBook? LocalCache;
-        internal readonly InvokeLexer _lexer = new();
+        internal readonly CallLexer _lexer = new();
         internal readonly Parser _parser;
         internal readonly Reflector _reflector;
         internal readonly Invoker _invoker;
@@ -198,7 +198,7 @@ namespace XQuinn.Runtime
         {
             if (Assignment(invocation, out object? assigned))
                 return assigned;
-            string typeName = MiniLexer.ResolveMemberAccess(invocation, out string member, out bool field) ?? _implicit_this?.StringID ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
+            string typeName = MiniLexer.ResolveMemberAccessOrFloat(invocation, out string member, out bool field) ?? _implicit_this?.StringID ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
             if (typeName != _implicit_this?.StringID)
                 typeName = typeName.Trim();
             if (!field)
@@ -242,7 +242,7 @@ namespace XQuinn.Runtime
                 return false;
             string lefthand = left!.Trim();
             string righthand = right!;
-            string? lefthandTypeName = MiniLexer.ResolveMemberAccess(lefthand, out lefthand, out bool lefthandfield);
+            string? lefthandTypeName = MiniLexer.ResolveMemberAccessOrFloat(lefthand, out lefthand, out bool lefthandfield);
             if (!lefthandfield)
                 throw new ArgumentException($"Can only assign to fields or properties. Bad input: {lefthand}");
             Type? lefthandtype;
@@ -274,7 +274,7 @@ namespace XQuinn.Runtime
                 assigningTo = new Reflector.Assignment(prop);
             }
 
-            string? righthandTypeName = MiniLexer.ResolveMemberAccess(righthand, out righthand, out bool righthandfield);// ?? _key ?? throw new ArgumentException("No type loaded for implicit access on righthand side.");
+            string? righthandTypeName = MiniLexer.ResolveMemberAccessOrFloat(righthand, out righthand, out bool righthandfield);// ?? _key ?? throw new ArgumentException("No type loaded for implicit access on righthand side.");
             if (righthandTypeName != null)
             {
                 TypeString typeStr = ThisOrNew(righthandTypeName.Trim());
@@ -338,8 +338,8 @@ namespace XQuinn.Runtime
             if (_instance == null)
                 throw new InvalidOperationException("No instance is loaded.");
             key = key.Trim();
-            TypeCache.ThrowIfBadKey(key);
-            if (TypeCache.s_registry.ContainsKey(new(key)))
+            TypeRegister.ThrowIfBadKey(key);
+            if (TypeRegister.s_registry.ContainsKey(new(key)))
                 throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
             if (_variables.TryGetValue(key, out VariableBinding? variable))
             {

@@ -47,7 +47,7 @@ namespace XQuinn.CodeAnalysis.AST
         {
             Type? type = null;
             dic?.TryGetValue(key, out type);
-            type ??= TypeCache.GetTypeOrThrow(key);
+            type ??= TypeRegister.GetTypeOrThrow(key);
             return type;
         }
     }

@@ -85,6 +85,11 @@ namespace XQuinn.Runtime.NavigatorEngine
             return methodbase; //your dictionary will always hold generic definitions - after reification, methods are added to a static cache so it wont be reified a second time
         }
 
+        // internal static void InvalidCast(Type paramType, object? obj)
+        // {
+        //     if (obj != null && !paramType.IsAssignableFrom(obj.GetType()))
+        //         throw new InvalidCastException($"Cannot convert {obj.GetType()} to {paramType}.");
+        // }
         internal static void NotNullable(Type type, object? value)
         {
             if (value == null) //valuestring handles direct parsing from 'null' for structs (it throws), but methods and fields can return null and are not valuestrings, so we need to manually check on assignmnet
@@ -109,6 +114,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
             public void SetValue(object? instance, object? value)
             {
+             //   InvalidCast(ObjectType, value);
                 NotNullable(ObjectType, value);
                 if (Member is PropertyInfo prop)
                     prop.SetValue(instance, value, NavigatorCore.Flag, null, null, null);

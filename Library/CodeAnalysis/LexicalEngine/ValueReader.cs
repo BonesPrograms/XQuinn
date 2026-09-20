@@ -1,5 +1,5 @@
 using XQuinn.CodeAnalysis;
-using static XQuinn.CodeAnalysis.InvokeLexer;
+using static XQuinn.CodeAnalysis.CallLexer;
 using XQuinn.Extensions;
 using XQuinn.CodeAnalysis.AST;
 
@@ -40,7 +40,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         bool _skipping { get => _lexer._skipping; set => _lexer._skipping = value; }
 
 
-        public ValueReader(InvokeLexer lexer) : base(lexer)
+        public ValueReader(CallLexer lexer) : base(lexer)
         {
             _lexer = lexer;
         }
@@ -94,7 +94,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         }
         internal bool ReadChar(ref int i, string invocation)
         {
-            const string error = "Characer declarations must be enclosed with character declaration communicators (apostrophes).";
+            const string error = "Characer declarations must be enclosed with apostrophes.";
             if (!_readCharValue)
             {
                 _readCharValue = true;
@@ -137,7 +137,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             {
                 if (_value == MemberAccess)
                 {
-                    if (_readFloat) throw new LexicalException("Floats cannot contain multiple periods.", invocation, _value, _sb, i);
+                    if (_readFloat) throw new LexicalException("Floats cannot contain multiple decimals.", invocation, _value, _sb, i);
                     _readFloat = true;
                     return true;
                 }
@@ -147,7 +147,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                     _readFloat = false;
                     return false;
                 }
-                throw new LexicalException("Numbers can only contain digits or one decimal.", invocation, _value, _sb, i);
+                throw new LexicalException("Numbers can only contain a sign, digits and one decimal.", invocation, _value, _sb, i);
             }
         }
 

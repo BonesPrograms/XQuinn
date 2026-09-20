@@ -35,7 +35,7 @@ namespace XQuinn.Runtime
         }
 
         readonly NavigationFeed _monitor = new();
-        public Func<Type, string?> BookDelegate = x => TypeCache.GetCompatibleName(x, false);
+        public Func<Type, string?> BookDelegate = x => TypeRegister.GetCompatibleName(x, false);
         public string? DefaultLoadedTypeName;
         /// <summary>
         /// If changing DLLPath, call Reload.

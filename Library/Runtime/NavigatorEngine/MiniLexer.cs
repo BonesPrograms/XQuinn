@@ -1,4 +1,6 @@
 using System;
+using XQuinn.CodeAnalysis;
+using XQuinn.Extensions;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
@@ -15,8 +17,8 @@ namespace XQuinn.Runtime.NavigatorEngine
             for (int i = 0; i < invocation.Length; i++)
             {
                 char value = invocation[i];
-                if (CharOrString(value)) 
-                     return false;
+                if (CharOrString(value))
+                    return false;
                 if (value == '(')
                     return false;
                 if (value == '=')
@@ -33,14 +35,28 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         }
 
-        internal static string? ResolveMemberAccess(string invocation, out string member, out bool field) //returns typename, outputs the accessed member
+        internal static string? ResolveMemberAccessOrFloat(string invocation, out string member, out bool field) //returns typename, outputs the accessed member
         {
             int? lastAccessorIndex = null;
             field = true;
             member = invocation;
-            for (int i = 0; i < invocation.Length; i++) //this resolves typenames vs member names, lexer does something similar but not exactly the same - this one is pretty much universal
+            char value;
+            int index = 0;
+            for (int x = 0; x < invocation.Length; x++)
+            {
+                value = invocation[x];
+                if (value != CallLexer.Whitespace)
+                {
+                    index = x;
+                    if (value.IsDigit() || value == '-') //because floats will resolve as member access. lol.
+                        return null;
+                    else
+                        break;
+                }
+            }
+            for (int i = index; i < invocation.Length; i++) //this resolves typenames vs member names, lexer does something similar but not exactly the same - this one is pretty much universal
             {                                        //works with anything like field or method() (no type name) or namespace.typename.method(22, "hello", othertype.method()) //methods are broken off from the typename with all their parameters included
-                char value = invocation[i];
+                value = invocation[i];
                 if (CharOrString(value))
                 {
                     return lastAccessorIndex == null ? null : throw new ArgumentException($"Invalid string format or member name. {invocation}.");

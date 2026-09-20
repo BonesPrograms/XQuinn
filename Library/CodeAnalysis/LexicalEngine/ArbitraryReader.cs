@@ -3,7 +3,7 @@ using XQuinn.CodeAnalysis.AST;
 using XQuinn.Extensions;
 using System;
 
-using static XQuinn.CodeAnalysis.InvokeLexer;
+using static XQuinn.CodeAnalysis.CallLexer;
 
 
 namespace XQuinn.CodeAnalysis.LexicalEngine
@@ -42,8 +42,10 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         MethodString? _currentMethod { get => _lexer._currentMethod; set => _lexer._currentMethod = value; }
 
         bool _start { set => _lexer._start = value; }
-     bool _readORDelimit { set => _lexer._readORDelimit = value; }
+        bool _readORDelimit { set => _lexer._readORDelimit = value; }
         bool _beganReadingMainMethodName { get => _lexer._beganReadingMainMethodName; set => _lexer._beganReadingMainMethodName = value; }
+
+        bool _memberAccessing { get => _lexer._memberAccessing; set => _lexer._memberAccessing = value; }
 
         int _readingSubparams { get => _lexer._readingSubparams; set => _lexer._readingSubparams = value; }
 
@@ -53,11 +55,17 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
 
 
-        public ArbitraryReader(InvokeLexer lexer) : base(lexer)
+        public ArbitraryReader(CallLexer lexer) : base(lexer)
         {
 
         }
 
+        int ArbitraryGeneric(string invocation)
+        {
+            CheckGenericBeforeReadGeneric(invocation);
+            _readFirstGeneric = true;
+            return 1;
+        }
         internal int ReadArbitrary(ref int i, string invocation)
         {
             if (_value == Whitespace)
@@ -65,36 +73,39 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 {
                     i++;
                     _value = invocation[i];
-                    if (WhitespaceEnd())
-                        return 0;
+                    if (_value == MemberAccess || WhitespaceEnd())
+                        break;
                     if (_value == EnumOR)
                     {
                         ReadingEnumOR(invocation);
                         return 1;
                     }
-                    if (_value != InvokeLexer.Whitespace)
+                    else if (_value == GenericDeclr)
+                    {
+                        return ArbitraryGeneric(invocation);
+                    }
+                    if (_value != CallLexer.Whitespace)
                         throw new LexicalException("Detected trailing input after whitespace.", invocation, _value, _sb, i);
                 }
-            else if (_value == EnumOR)
+            if (_value == EnumOR)
             {
                 ReadingEnumOR(invocation);
                 return 1;
             }
-            else if (_value == '<')
+            else if (_value == GenericDeclr)
             {
-                CheckGenericBeforeReadGeneric(invocation);
-                _readFirstGeneric = true;
-                return 1;
+                return ArbitraryGeneric(invocation);
             }
             else if (_value == MemberAccess)
             {
                 _readGeneric = false;
                 _readFirstCharOfName = true;
                 _readQualifiedMember = true;
+                _memberAccessing = true;
                 _readArbitraryLegalValue = false;
                 return 1;
             }
-            else if (_value == MethodStart)
+            else if (_value == MethodDeclr)
             {
                 _readArbitraryLegalValue = false;
                 _readGeneric = false;
@@ -117,37 +128,58 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             _readORVal = true;
             _readORDelimit = true;
         }
+
+        bool IdentifierGeneric(string invocation)
+        {
+            CheckGenericBeforeReadGeneric(invocation);
+            _readFirstGeneric = true;
+            return true;
+        }
         internal bool ReadIdentifier(ref int i, string invocation) //once an arbitrary is determined to be an identifier, it is read with stricter rules
         {
-            if (_value == '<')
-            {
-                CheckGenericBeforeReadGeneric(invocation);
-                _readFirstGeneric = true;
-                return true;
-            }
             if (_value == Whitespace)
-                SkipWhitespaceTrail(ref i, invocation);
+                while (i < invocation.Length)
+                {
+                    i++;
+                    _value = invocation[i];
+                    if ((_memberAccessing && ValidIdentifierFirstChar(_value)) || WhitespaceEnd())
+                        break;
+                    else if (_value == GenericDeclr)
+                    {
+                        return IdentifierGeneric(invocation);
+                    }
+                    else if (_value != CallLexer.Whitespace)
+                        throw new LexicalException("Detected trailing input after whitespace.", invocation, _value, _sb, i);
+                }
+            if (_value == GenericDeclr)
+            {
+                return IdentifierGeneric(invocation);
+            }
             if (_value == MemberAccess && !_readFirstCharOfName)
             {
                 _readFirstCharOfName = true;
                 _readGeneric = false;
+                _memberAccessing = true;
                 return true;
             }
             if (!_readGeneric && Termination(_value))
             {
                 _terminated = true;
-                ReadField();
+                _memberAccessing = false;
+                ReadField(invocation);
                 return false;
             }
-            if (_value == MethodStart)
+            if (_value == MethodDeclr)
             {
                 _readGeneric = false;
                 _methodParamsBegan = true;
+                _memberAccessing = false;
                 ReadMethod();
                 return false;
             }
             if (_readFirstCharOfName)
             {
+                _memberAccessing = false;
                 _readFirstCharOfName = false;
                 ValidIdentifierFirstCharOrThrow(_value, invocation);
             }
@@ -170,14 +202,17 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 _skipping = true; //unlike most other reads, this one allows whitespace, so instead of skipping to Termination and ending the read
                 return false; //we must instead increment one by one and keep the read active until we reach a proper termination
             }
-            else if (_value == MemberAccess || _value == MethodStart) //generics can only be terminated by these, so if its not, the lex will throw at the end
+            else if (_value == MemberAccess || _value == MethodDeclr) //generics can only be terminated by these, so if its not, the lex will throw at the end
             {
+                if (_readFirstGeneric) //ex. class<int.method()
+                    throw new LexicalException("Invalid generic arguments.", invocation, _value, _sb); //in essence this means youre putting something like "Stri ng"
+                _readFirstGeneric = false;
                 _skipping = false;
                 i--; //kinda lazy but i did NOT feel like copying a bunch of code
                 _readGeneric = false;  //readGeneric can be active during ReadIdentifier ReadArbitrary and ReadMainMethod (its the only read that can be active while another read is active)
                 return false; //when its over, it needs to back up, so that way the char is the same when it returns to those methods, because those methods have branches to handle these chars
             }
-            else if (_value != '>' && _value != '<')
+            else if (_value != GenericDeclr && _value != GenericTerminate)
             {
                 if (_skipping && !_readFirstGeneric && !_genericParamTerminate) //this specifically checks if the last value was a char
                     throw new LexicalException("Invalid generic arguments.", invocation, _value, _sb); //in essence this means youre putting something like "Stri ng"
@@ -186,13 +221,13 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 _readFirstGeneric = false;
                 _skipping = false;
             }
-            else if (_value == '<')
+            else if (_value == GenericDeclr)
             {
                 if (_readFirstGeneric)
                     throw new LexicalException("Invalid generic arguments.", invocation, _value, _sb);
                 _readFirstGeneric = true;
             }
-            else if (_value == '>' && _readFirstGeneric)
+            else if (_value == GenericTerminate && _readFirstGeneric)
                 throw new LexicalException("Invalid generic arguments.", invocation, _value, _sb);
             return true;
 
@@ -206,17 +241,28 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 if (_readGeneric)
                     ReadGeneric(ref i, invocation); //readgeneric is so special isnt it, this is the only read called by another read, but it works
                 else if (_value == Whitespace)
-                    SkipWhitespaceTrail(ref i, invocation);
-                else if (_value == MethodStart)
+                    while (i < invocation.Length)
+                    {
+                        i++;
+                        _value = invocation[i];
+                        if (ValidIdentifierFirstChar(_value) || WhitespaceEnd() || _value == GenericTerminate)
+                        {
+                            if (_value == MethodDeclr)  //this allows Method ( ) for the first/main method
+                                return ReadMainJump();                     //^whitespace
+                            break;                              //kinda funky other ones usually just break, but havent come up with a fix rn
+                        }                                       //cannot modify this controlflow otherwise itll cause issues if the first method is generic
+                        else if (_value == GenericDeclr)
+                        {
+                            return IdentifierGeneric(invocation);
+                        }
+                        else if (_value != CallLexer.Whitespace)
+                            throw new LexicalException("Detected trailing input after whitespace.", invocation, _value, _sb, i);
+                    }
+                else if (_value == MethodDeclr)
                 {
-                    ReadMain();
-                    _readGeneric = false;
-                    _start = false;
-                    _methodParamsBegan = true;
-                    _beganReadingMainMethodName = false;
-                    return false;
+                    return ReadMainJump();
                 }
-                else if (_value == '<')
+                else if (_value == GenericDeclr)
                 {
                     CheckGenericBeforeReadGeneric(invocation);
                     _readFirstGeneric = true;
@@ -232,6 +278,16 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             return true;
         }
 
+        bool ReadMainJump()
+        {
+            ReadMain();
+            _readGeneric = false;
+            _start = false;
+            _methodParamsBegan = true;
+            _beganReadingMainMethodName = false;
+            return false;
+        }
+
         void ReadMain()
         {
             //reads everything prior to (
@@ -243,8 +299,10 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         }
 
 
-        void ReadField()
+        void ReadField(string invocation)
         {
+            if (_readFirstCharOfName) //i expect ethod( class<int>. , ) readqualifiedmember to be true here but it is not -ah yes thats cause , causes it to be read as a field
+                throw new LexicalException("Invalid member access operator, no member was accesed.", invocation, _sb);
             string typename = ResolveMemberAccess(out string fieldname)!;
             TypeString type = ImplicitDeclaredOrNew(typename);
             FieldString field = new(fieldname, type);

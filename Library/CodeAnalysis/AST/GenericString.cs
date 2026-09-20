@@ -92,9 +92,9 @@ namespace XQuinn.CodeAnalysis.AST
             {                                           //whether or not its reading a proper identifier and not 83528474
                 char c = _id[i];                  //kinda busted it out quickly so it will allow things that the invocationlexer would throw for
 
-                if (c == InvokeLexer.Whitespace)
+                if (c == CallLexer.Whitespace)
                     continue;                 //like collecting < s t r i n g> into string or allowing impossible names to lex
-                if (c == '<')
+                if (c == CallLexer.GenericDeclr)
                 {
                     if (finishedReadingLeadName)
                     {
@@ -109,7 +109,7 @@ namespace XQuinn.CodeAnalysis.AST
                         finishedReadingLeadName = true;
                     }
                 }
-                else if (c == '>')
+                else if (c == CallLexer.GenericTerminate)
                 {
                     if (lastread > readingsubparams)
                         lastread--;
@@ -130,7 +130,7 @@ namespace XQuinn.CodeAnalysis.AST
                     }
                     break;
                 }
-                else if (c == InvokeLexer.ParamTerminate)
+                else if (c == CallLexer.ParamTerminate)
                 {
                     if (sb.Length > 0)
                         currentGeneric.NewArg(sb);

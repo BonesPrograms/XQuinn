@@ -6,7 +6,7 @@ using System.Collections.Generic;
 namespace XQuinn.Private
 {
 
-    enum Operator
+    enum MathOp
     {
         _invalid,
         Add,
@@ -45,6 +45,8 @@ namespace XQuinn.Private
         bool _skip;
         bool _readDigit;
         bool _readOp;
+        bool _firstDig; //This is specifically to allow the first digit to be negative. Subsequent digits can be negative witrhout a problem,
+        //this bool needs to exist to allow the first digit to be negative.
         readonly StringBuilder _digit = new();
         readonly List<MathExpr> _expression = new();
         void Clear()
@@ -54,32 +56,39 @@ namespace XQuinn.Private
             _value = default;
             _skip = false;
             _readDigit = false;
+            _firstDig = true;
             _readOp = false;
         }
 
-        bool ValidOp(out Operator op)
+        bool ValidOp(out MathOp op)
         {
             op = GetOp();
-            return op != Operator._invalid;
+            return op != MathOp._invalid;
         }
-        Operator GetOp() =>
+        MathOp GetOp() =>
         _value switch
         {
-            '+' => Operator.Add,
-            '-' => Operator.Sub,
-            '/' => Operator.Div,
-            '*' => Operator.Mult,
-            _ => Operator._invalid
+            '+' => MathOp.Add,
+            '-' => MathOp.Sub,
+            '/' => MathOp.Div,
+            '*' => MathOp.Mult,
+            _ => MathOp._invalid
         };
-        static int Execute(int lefthand, int righthand, Operator op) =>
-        op switch
+
+        static int Execute(int lefthand, int righthand, MathOp op)
         {
-            Operator.Add => lefthand + righthand,
-            Operator.Div => lefthand / righthand,
-            Operator.Mult => lefthand * righthand,
-            Operator.Sub => lefthand - righthand,
-            _ => throw new InvalidOperationException()
-        };
+            checked
+            {
+                return op switch
+                {
+                    MathOp.Add => lefthand + righthand,
+                    MathOp.Div => lefthand / righthand,
+                    MathOp.Mult => lefthand * righthand,
+                    MathOp.Sub => lefthand - righthand,
+                    _ => throw new InvalidOperationException()
+                };
+            }
+        }
         public int Calculate(string expr)
         {
             Clear();
@@ -90,7 +99,7 @@ namespace XQuinn.Private
             MathExpr<int> firstNum = (MathExpr<int>)_expression[0];
             int num = firstNum.Op;
             MathExpr<int>? lefthand = null;
-            MathExpr<Operator>? operation = null;
+            MathExpr<MathOp>? operation = null;
             for (int i = 1; i < length; i++)
             {
                 if (operation != null && lefthand != null)
@@ -102,12 +111,13 @@ namespace XQuinn.Private
                 MathExpr math = _expression[i];
                 if (math is MathExpr<int> value)
                     lefthand = value;
-                else if (math is MathExpr<Operator> op)
+                else if (math is MathExpr<MathOp> op)
                     operation = op;
             }
             MathExpr<int> lastnum = (MathExpr<int>)_expression[length - 1]; //loop exits before last num can execute
-            MathExpr<Operator> lastop = (MathExpr<Operator>)_expression[length - 2];
-            num = Execute(num, lastnum.Op, lastop.Op);
+            MathExpr<MathOp> lastop = (MathExpr<MathOp>)_expression[length - 2]; //i think these would actually be lefthand and operation and id
+            num = Execute(num, lastnum.Op, lastop.Op);                              //already have themw?
+            
             return num;
         }
         void Convert(string expr)
@@ -120,16 +130,17 @@ namespace XQuinn.Private
                     _skip = true;
                     continue;
                 }
-                if (_value.IsDigit())
+                if (_value.IsDigit() || (_value == '-' && (_readOp || _firstDig)))
                 {
                     if (_skip && _readDigit)
                         throw new CalculatorException("Invalid digit", expr);
                     _digit.Append(_value);
                     _readDigit = true;
+                    _firstDig = false;
                     _skip = false;
                     _readOp = false;
                 }
-                else if (ValidOp(out Operator op))
+                else if (ValidOp(out MathOp op))
                 {
                     if (!_readDigit)
                         throw new CalculatorException("Empty op", expr);
@@ -139,7 +150,7 @@ namespace XQuinn.Private
                     int num = int.Parse(_digit.ToString());
                     _digit.Length = 0;
                     _expression.Add(new MathExpr<int>(num));
-                    _expression.Add(new MathExpr<Operator>(op));
+                    _expression.Add(new MathExpr<MathOp>(op));
                 }
                 else
                     throw new CalculatorException("Invalid op or digit", expr);

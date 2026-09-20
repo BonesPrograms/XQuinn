@@ -17,7 +17,7 @@ using System.ComponentModel;
 
 namespace XQuinn.Reflection
 {
-    public static partial class TypeCache
+    public static partial class TypeRegister
     {
 
         public static IEnumerable<string> Keys()
@@ -33,11 +33,11 @@ namespace XQuinn.Reflection
         }
         internal static readonly ConcurrentDictionary<GenericKey, Type> s_registry = new()
         {
-            [new("object")] = typeof(object), ///Keyword types
+            [new("object")] = typeof(object), ///Keyword types, primitives, strings, object
             [new("string")] = typeof(string),
             [new("bool")] = typeof(bool),
             [new("byte")] = typeof(byte),
-            [new("sbyte")] = typeof(sbyte), ///Array versions of the keyword types you see here are pre-cached, generated at runtime automatically
+            [new("sbyte")] = typeof(sbyte), 
             [new("char")] = typeof(char),
             [new("int")] = typeof(int),
             [new("uint")] = typeof(uint),
@@ -53,21 +53,22 @@ namespace XQuinn.Reflection
 
             [new(nameof(Enum))] = typeof(Enum),
             [new("Tuple")] = typeof(ValueTuple),
-            [new(nameof(BindingFlags))] = typeof(BindingFlags),
+            [new(nameof(BindingFlags))] = typeof(BindingFlags), //Handy types
             [new(nameof(Nullable<_>), 1)] = typeof(Nullable<>),
             [new(nameof(IDisposable))] = typeof(IDisposable),
 
             [new(nameof(Types))] = typeof(Types),
-            [new(nameof(InstanceReader))] = typeof(InstanceReader),
+            [new(nameof(InstanceReader))] = typeof(InstanceReader), //XQuinn Types
             [new(nameof(ILReader))] = typeof(ILReader),
-            [new(nameof(TypeCache))] = typeof(TypeCache),
+            [new(nameof(TypeRegister))] = typeof(TypeRegister),
+
             [new(nameof(Assembly))] = typeof(Assembly),
-            [new(nameof(Activator))] = typeof(Activator),
+            [new(nameof(Activator))] = typeof(Activator), //reflection/conversion types
             [new(nameof(Convert))] = typeof(Convert),
             [new(nameof(TypeConverter))] = typeof(TypeConverter),
 
             [new(nameof(Environment))] = typeof(Environment),
-            [new(nameof(AppDomain))] = typeof(AppDomain),
+            [new(nameof(AppDomain))] = typeof(AppDomain),       //domain/runtime types
             [new(nameof(AppContext))] = typeof(AppContext),
             [new(nameof(RuntimeEnvironment))] = typeof(RuntimeEnvironment),
             [new(nameof(RuntimeInformation))] = typeof(RuntimeInformation),
@@ -76,7 +77,7 @@ namespace XQuinn.Reflection
             [new(nameof(List<_>), 1)] = typeof(List<>),
             [new(nameof(IList), 1)] = typeof(IList<>),
             [new(nameof(IList))] = typeof(IList),
-            [new(nameof(Enumerable))] = typeof(Enumerable),
+            [new(nameof(Enumerable))] = typeof(Enumerable),             //collections and their necessities
             [new(nameof(IEnumerable))] = typeof(IEnumerable),
             [new(nameof(IEnumerable), 1)] = typeof(IEnumerable<>),
             [new(nameof(Dictionary<_, _>), 2)] = typeof(Dictionary<,>),
@@ -92,12 +93,12 @@ namespace XQuinn.Reflection
 
         readonly static string[] _illegalKeys = new string[] { "null", "default", "base", "this" }; ///Reserved "language" keywords
 
-        static TypeCache()
+        static TypeRegister()
         {
             Assembly mscorlib = Assembly.Load("System.Private.CoreLib");
             Type runtimeType = mscorlib.GetType("System.RuntimeType", true)!;
-            s_registry[new(nameof(Type))] = runtimeType;
-        }
+            s_registry[new(nameof(Type))] = runtimeType; //There is a desync between Type's resolved method overloads and RuntimeType's resolved method overloads.
+        }                                               //Type becomes RuntimeType at runtime, so it is irrelevent to us, we cache RuntimeType instead.
 
         public static bool Contains(string name) => s_registry.ContainsKey(GenericKey.TypeQuery(name));
         public static bool TryGetType(string name, out Type? cachedtype) => s_registry.TryGetValue(GenericKey.TypeQuery(name), out cachedtype);
@@ -215,7 +216,7 @@ namespace XQuinn.Reflection
             for (int i = 0; i < key.Length; i++)
             {
                 char value = key[i];
-                if (InvokeLexer.Illegal(value))
+                if (CallLexer.Illegal(value))
                 {
                     if (!accessor && value == '.')
                         accessor = true;
@@ -224,7 +225,7 @@ namespace XQuinn.Reflection
                 }
                 else if (accessor)
                 {
-                    if (!InvokeLexer.ValidIdentifierFirstChar(value))
+                    if (!CallLexer.ValidIdentifierFirstChar(value))
                         throw new ArgumentException($"Member access must be followed by an underscore or a letter for namespaces. Bad Key: {key}");
                     accessor = false;
                 }

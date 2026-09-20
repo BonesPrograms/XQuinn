@@ -30,13 +30,13 @@ namespace XQuinn.CodeAnalysis
 
         }
     }
-    internal sealed class InvokeLexer
+    internal sealed class CallLexer
     {
 
 
         internal const char VaidNonAlphaNumeric = '_';
 
-        internal const char MethodStart = '(';
+        internal const char MethodDeclr = '(';
 
         internal const char MethodTerminate = ')';
 
@@ -55,6 +55,10 @@ namespace XQuinn.CodeAnalysis
         internal const char EnumOR = '|';
 
         internal const char NoEscDeclr = '@';
+
+        internal const char GenericDeclr = '<';
+
+        internal const char GenericTerminate = '>';
 
         internal readonly StringBuilder _sb = new();
 
@@ -85,6 +89,8 @@ namespace XQuinn.CodeAnalysis
         //These are supporting flags for rulesets, some rulesets have specific rules for specific characters, or need to be read around declaration characters
 
         internal bool _skipping;
+
+        internal bool _memberAccessing;
         internal bool _genericParamTerminate;
         internal bool _readFirstGeneric;
         internal bool _readFirstCharOfName; //Because it cannot be a digit
@@ -111,7 +117,7 @@ namespace XQuinn.CodeAnalysis
         internal int _readingSubparams;
         internal int _lastReadingCount;
 
-        public InvokeLexer()
+        public CallLexer()
         {
             _valueReader = new(this);
             _arbitraryReader = new(this);
@@ -191,15 +197,6 @@ namespace XQuinn.CodeAnalysis
                     goto Increment;
                 else if (_terminated || _methodParamsBegan)
                     GetContext();
-                if (_lastReadingCount > _readingSubparams)
-                {
-                    _currentMethod = _currentMethod!._subParamOf; _lastReadingCount--;
-                }
-                if (_value == MethodTerminate)
-                {
-                    if (_readingSubparams > 0)
-                        _readingSubparams--;
-                }
                 if (Termination(_value))
                 {
                     if (_sb.Length != 0)
@@ -207,6 +204,16 @@ namespace XQuinn.CodeAnalysis
                         _valueReader.ReadParam();
                         _readArbitraryLegalValue = false;
                         _terminated = true;
+                    }
+                    if (_value == MethodTerminate)
+                    {
+                        if (_readingSubparams > 0)
+                            _readingSubparams--;
+                        if (_lastReadingCount > _readingSubparams)
+                        {
+                            _currentMethod = _currentMethod!._subParamOf;
+                            _lastReadingCount--;
+                        }
                     }
                     goto Increment;
                 }
@@ -297,6 +304,7 @@ namespace XQuinn.CodeAnalysis
             _skipping = false;
             _stringEnding = false;
             _readFirstCharOfName = false;
+            _memberAccessing = false;
             _readQualifiedMember = false;
             _finishedReadChar = false;
             _readCharValue = false;

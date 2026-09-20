@@ -65,20 +65,22 @@ namespace XQuinn.Runtime
 
         void ProcessReturn(object? ret)
         {
-
-            if (ret is VariableBinding variable)
+            VariableBinding? variable = ret as VariableBinding;
+            if (variable != null)
             {
                 _feed.AppendLine($"Variable: {variable}");
                 ret = variable.Object;
             }
-            _feed.AppendLine("Returned: ");
-            if (ret is IEnumerable enumerable and not string)
+            IEnumerable? enumerator = ret as IEnumerable;
+            if (variable == null || enumerator != null)
+                _feed.AppendLine("Returned: ");
+            if (enumerator != null)
             {
                 bool empty = true;
-                if (enumerable is ICollection col)
+                if (enumerator is ICollection col)
                     empty = col.Count == 0;
                 else
-                    foreach (object? obj in enumerable) //Find this funny because im only counting one time but i cant use .Any so it is what it is
+                    foreach (object? obj in enumerator) //Find this funny because im only counting one time but i cant use .Any so it is what it is
                     {
                         empty = false;
                         break;
@@ -87,11 +89,11 @@ namespace XQuinn.Runtime
                     _feed.AppendLine("Enumerable is empty.");
                 else
                 {
-                    _feed.AppendMany(enumerable, Environment.NewLine, true, x => x is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : x?.ToString());
+                    _feed.AppendMany(enumerator, Environment.NewLine, true, x => x is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : x?.ToString());
                     _feed.AppendLine();
                 }
             }
-            else
+            else if (variable == null)
                 _feed.AppendLine(ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString() ?? "null");
 
         }

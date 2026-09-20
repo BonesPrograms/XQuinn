@@ -36,7 +36,7 @@ namespace XQuinn.Private
             XQuinn.NetConsole.Apps.IApp.RunApp(args);
 #else
             Cache();
-            ConsoleTools.WriteMany(TypeCache.s_registry, "\n");
+            ConsoleTools.WriteMany(TypeRegister.s_registry, "\n");
             RunNavigator();
         }
         //  static void method()
@@ -51,10 +51,12 @@ namespace XQuinn.Private
             monitor.StackTrace = true;
             string flag = NavigatorCore.Flag.ToString().Replace(',', '|');
             string path = Path.Combine(XQuinn.IO.Finders.CodeLabFinder.s_path, @"XQuinnLib\dump\instance.log");
+            string[] instructions = new string[]
+            {$"~ *types . enum < bindingFlags > ({flag}); +flag;",
+            $"*InstanceReader . new (  @\"{path}\"  , true,  types . of < object > () ); +reader;",
+            "*class<float>.new();"};
             StringBuilder sb = new();
-            sb.Append($"~ *types.enum<bindingFlags>({flag}); +flag;");
-            sb.Append($"*InstanceReader.new(@\"{path}\", true); +reader;");
-            sb.Append("*Calculator.new(); +calc");
+            instructions.ForEach(x => sb.Append(x));
             string ret = monitor.SafeInterface(sb.ToString());
             Console.WriteLine(ret);
             while (true)
@@ -67,10 +69,10 @@ namespace XQuinn.Private
         static void Cache()
         {
             Assembly xquinn = Assembly.Load("XQuinn");
-            TypeCache.CacheTypes(xquinn.GetTypes(), false);
-            TypeCache.CacheType<Harmony>(false);
-            TypeCache.CacheType(typeof(AccessTools), false);
-            TypeCache.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
+            TypeRegister.CacheTypes(xquinn.GetTypes(), false);
+            TypeRegister.CacheType<Harmony>(false);
+            TypeRegister.CacheType(typeof(AccessTools), false);
+            TypeRegister.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
         }
 
     }

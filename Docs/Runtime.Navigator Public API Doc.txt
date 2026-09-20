@@ -38,9 +38,6 @@ Note, if you have casted your instance into a base, accessing 'this' will return
 
 Furthermore, 
 
-Enumerable values are automatically enumerated and printed for your viewing upon return, either from a method, field, property, or this. Variables that store
-enumerable values are not read automatically when returned, they must be loaded as an instance first.
-
 Member access is restricted for method return values. IE. You cannot do Method().Field this is restricted.
 
 Methods with in/out/ref parameters and ref returntype are not supported. You cannot pass method groups as arguments for delegates.
@@ -49,11 +46,16 @@ Expressions are not supported. You cannot do math, you cannot create lambda expr
 
 Indexers are not supported. You must invoke the backing getter method.
 
-Whitespace - Avoid whitespace as part of actual values or names - type names, member names, variable names, enum names, bools, digits, so forth.
-Otherwise, it is safe to have them in method parameters and generic arguments. ex. Method<int>   ( 22,  "hello world"  , true );
-Definitely avoid whitespace in member access. TypeName.MemberName not TypeName . MemberName.
-They are also allowed right after the method's name and before the () parenthesis. They are not allowed after a name and before the first < angle bracket of its generic args Ex. Method <int>(22) will throw. (May fix this later)
+Digits dont support numeric literal suffixes. A numeric literal will be converted to the exact type of the field, property, or method parameter
+it is being assigned to.
 
+Whitespace - Avoid whitespace as part of actual values or names - type names, member names, variable names, enum names, bools, digits, so forth.
+Otherwise, it is safe to have them in method parameters and generic arguments.
+This is an example of the kind of freedom you are allowed with whitespace.
+class < object > . Generic < long > ( Class < int > . Method < int > ( 33 ) )
+Avoid it in numbers. Dont do things like "- 23 . 3"
+Do "-23.3"
+                              
 
 Additional Tips:
 
@@ -201,27 +203,28 @@ Struct<T>(T) - return an unmanaged struct == the parameter values
 Enum<T>(T) - return an enum value == the parameter values
 String(string) - return a string == the parameter values
 Array<T>(params T[]) and Array<T>(int) - create an array using params, or create a presized array
+Cast<T>(object) performs a runtime cast of the object to the generic parameter
 LateCache overloads - Cache a specific type from an assembly by type name.
 
-There are various other classes pre-cached which can be viewed in the TypeCache itself.
+There are various other classes pre-cached which can be viewed in the TypeRegister itself.
 
 
 
 
-Using the Navigator: TypeCache
+Using the Navigator: TypeRegister
 
-The navigator relies on the TypeCache to access any type. You can cache your types using the public CacheType and CacheTypes methods in TypeCache.
+The navigator relies on the TypeRegister to access any type. You can cache your types using the public CacheType and CacheTypes methods in TypeRegister.
 This is the simplest way to do it, here is an example of me caching only public types with a short name.
 
             Assembly xquinn = Assembly.Load("XQuinn");
-            TypeCache.CacheTypes(xquinn.GetTypes().Where(x => x.IsPublic), false);
+            TypeRegister.CacheTypes(xquinn.GetTypes().Where(x => x.IsPublic), false);
 
 CacheTypes(IEnumerable<Type>,bool) by default returns a cache-compatible name for your type, either fullname, or shortname. You can read more about
 how it gets type names below. There is an overload that takes an 'append' string. It will append this value to the beginning of every type name.
 There is another overload that uses a delegate to allow you to input custom logic for returning string names from types. 
 If you return a null key using this delegate, the paired type will be skipped and not cached.
 
-If you are using your own custom cache names, it is recommended that you first use TypeCache.GetCompatibleName(Type,bool) before appending any
+If you are using your own custom cache names, it is recommended that you first use TypeRegister.GetCompatibleName(Type,bool) before appending any
 extra data to your customized name.
 Reflection may mangle typenames - generics have extra data appended to their name, and nested types have a + instead of a member accessor operator.
 GetCompatibleName snips off the extra generic data and replaces + with a member accessor operator.
@@ -234,7 +237,7 @@ NameSpace.TopType.NestedType (see more below for why we dont include <T>)
 
 Type names have specific rules:
 You should follow the exact same naming rules for class names as you would in normal C#. 
-If you are curious on the specific rules, check out TypeCache.ThrowIfBadKey(string).
+If you are curious on the specific rules, check out TypeRegister.ThrowIfBadKey(string).
 
 Note: Do not attempt to create string keys such as "Class<T>" for generic definitions. These will be considered invalid and will throw.
 The system internally handles the inclusion of generic parameters in type keys.

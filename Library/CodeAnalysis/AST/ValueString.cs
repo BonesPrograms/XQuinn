@@ -60,9 +60,9 @@ namespace XQuinn.CodeAnalysis.AST
             {
                 string arg = Argument;
                 bool noescape = false;
-                if (arg[0] == InvokeLexer.NoEscDeclr)
+                if (arg[0] == CallLexer.NoEscDeclr)
                 {
-                    if (arg[1] != InvokeLexer.StringDeclr)
+                    if (arg[1] != CallLexer.StringDeclr)
                         throw new LexicalException("Invalid string format. A quote char must immediately follow the @ char.", arg);
                     noescape = true;
                     arg = arg.Substring(1);
@@ -81,16 +81,16 @@ namespace XQuinn.CodeAnalysis.AST
                             char val = arg[i];
                             if (escaping)
                             {
-                                if (val != InvokeLexer.EscSeq && val != InvokeLexer.StringDeclr)
+                                if (val != CallLexer.EscSeq && val != CallLexer.StringDeclr)
                                     throw new LexicalException("Can only escape the quote char \" or escape char \\. ", arg);
                                 escaping = false;
                             }
-                            else if (val == InvokeLexer.EscSeq && !noescape)
+                            else if (val == CallLexer.EscSeq && !noescape)
                             {
                                 escaping = true;
                                 continue;
                             }
-                            else if (val == InvokeLexer.StringDeclr)
+                            else if (val == CallLexer.StringDeclr)
                                 throw new LexicalException($"Invalid string format ", arg);
                             sb.Append(arg[i]);
                         }
