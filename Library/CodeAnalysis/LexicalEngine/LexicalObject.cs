@@ -15,12 +15,14 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             {
                 i++;
                 _value = invocation[i];
-                if (InvokeLexer.Termination(_value) || (!_lexer._readGeneric && (_lexer._readQualifiedMember || _lexer._beganReadingMainMethodName || _lexer._readArbitraryLegalValue) && _value == InvokeLexer.MethodStart))
+                if (WhitespaceEnd())
                     return;
                 if (_value != InvokeLexer.Whitespace)
                     throw new LexicalException("Detected trailing input after whitespace.", invocation, _value, _sb, i);
             } 
         }
+
+       protected bool WhitespaceEnd() => InvokeLexer.Termination(_value) || (!_lexer._readGeneric && (_lexer._readQualifiedMember || _lexer._beganReadingMainMethodName || _lexer._readArbitraryLegalValue) && _value == InvokeLexer.MethodStart);
         public LexicalObject(InvokeLexer lexer)
         {
             _lexer = lexer;

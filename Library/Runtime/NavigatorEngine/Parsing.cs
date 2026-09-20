@@ -79,7 +79,6 @@ namespace XQuinn.Runtime.NavigatorEngine
                     object? arg = ParameterToObject(parameter, elementType);
                     if (!arg?.GetType().IsArray ?? true) //list && list.GetType() == actualParameters[lastparam].ParameterType) //i dont bother checking conversions most of the time runtime does it for me
                     {
-                        Reflector.NotNullable(elementType, arg);
                         Array singleArgArray = Array.CreateInstance(elementType, 1);
                         singleArgArray.SetValue(arg, 0);
                         arg = singleArgArray;
@@ -93,7 +92,6 @@ namespace XQuinn.Runtime.NavigatorEngine
                 for (int i = lastparam; i < invocation.Params.Count; i++)
                 {
                     object? arg = ParameterToObject(invocation.Params[i], elementType);
-                    Reflector.NotNullable(elementType, arg);
                     paramsArray.SetValue(arg, i - lastparam);
                 }
                 args[lastparam] = paramsArray;
@@ -133,6 +131,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 //  if (obj == null && !(paramType.IsClass || (paramType.IsGenericType && paramType.GetGenericTypeDefinition() == typeof(Nullable<>))))
                 //    throw new ArgumentException($"Expected method syntax for type {paramType}, but received {value}");
             }
+            Reflector.NotNullable(paramType, obj);
             return obj;
 
         }

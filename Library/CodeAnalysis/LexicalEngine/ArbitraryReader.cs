@@ -65,7 +65,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 {
                     i++;
                     _value = invocation[i];
-                    if (InvokeLexer.Termination(_value) || ((_lexer._readQualifiedMember || _lexer._beganReadingMainMethodName || _lexer._readArbitraryLegalValue) && _value == InvokeLexer.MethodStart))
+                    if (WhitespaceEnd())
                         return 0;
                     if (_value == EnumOR)
                     {
