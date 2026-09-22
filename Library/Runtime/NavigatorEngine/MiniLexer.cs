@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using XQuinn.CodeAnalysis;
 using XQuinn.Extensions;
 
@@ -37,37 +38,69 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         internal static string? ResolveMemberAccessOrFloat(string invocation, out string member, out bool field) //returns typename, outputs the accessed member
         {
-            int? lastAccessorIndex = null;
-            field = true;
-            member = invocation;
-            char value;
+            int stop = invocation.IndexOf('(');
+            stop = stop < 0 ? invocation.Length : stop;
+            field = stop < 0;
             int index = 0;
-            for (int x = 0; x < invocation.Length; x++)
+            member = invocation;
+            if (!field)
             {
-                value = invocation[x];
-                if (value != CallLexer.Whitespace)
+                for (int x = 0; x < invocation.Length; x++)
                 {
-                    index = x;
-                    if (value.IsDigit() || value == '-') //because floats will resolve as member access. lol.
-                        return null;
-                    else
-                        break;
+                    char value = invocation[x];
+                    if (value != CallLexer.Whitespace)
+                    {
+                        index = x;
+                        if (value.IsDigit() || value == '-') //because floats will resolve as member access. lol.
+                            return null;
+                        else
+                            break;
+                    }
                 }
             }
-            for (int i = index; i < invocation.Length; i++) //this resolves typenames vs member names, lexer does something similar but not exactly the same - this one is pretty much universal
-            {                                        //works with anything like field or method() (no type name) or namespace.typename.method(22, "hello", othertype.method()) //methods are broken off from the typename with all their parameters included
-                value = invocation[i];
-                if (CharOrString(value))
+            char lastchar = default;
+            int? lastAccessorIndex = null;
+            bool isgeneric = false;
+            for (int i = index; i < stop; i++)
+            {
+                char c = invocation[i];
+                if (c == CallLexer.Whitespace)
+                    continue;
+                if (!isgeneric && c == CallLexer.GenericDeclr)
+                    isgeneric = true;
+                if (c == CallLexer.MemberAccess)
                 {
-                    return lastAccessorIndex == null ? null : throw new ArgumentException($"Invalid string format or member name. {invocation}.");
+                    bool skip = false;
+                    if (isgeneric)
+                    {
+                        for (int x = i; x >= 0; x--)
+                        {
+                            char z = invocation[x];
+                            if (z == CallLexer.GenericTerminate)
+                                break;
+                            if (z == CallLexer.GenericDeclr)
+                            {
+                                skip = true;
+                                break;
+                            }
+                        }
+                        if (!skip)
+                            for (int x = i; x < stop; x++)
+                            {
+                                char z = invocation[x];
+                                if (z == CallLexer.GenericDeclr)
+                                    break;
+                                if (z == CallLexer.GenericTerminate)
+                                {
+                                    skip = true;
+                                    break;
+                                }
+                            }
+                    }
+                    if (!skip)
+                        lastAccessorIndex = i;
                 }
-                if (value == '(')
-                {
-                    field = false;
-                    break;
-                }
-                if (value == '.')
-                    lastAccessorIndex = i;
+
             }
             if (lastAccessorIndex != null)
             {

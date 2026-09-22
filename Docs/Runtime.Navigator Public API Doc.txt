@@ -62,12 +62,8 @@ Additional Tips:
 Default parameters are supported. Params arrays are supported.
 the values 'default' and 'null' have been included.
 
-If a field or property name conflicts with our "keywords" - null, base, this and default (caseless) - you will have problems
-accessing that field or property. You can access it explicitly using typename, ex Class.this or this.this, obviously
-you will lose the ability to use them in typename-membername pairs for invocation.
 
-Enum OR is supported.
-Strings and chars should be declared just like C#.
+Enum OR is supported. Other bitwise operators are not.
 
 
 
@@ -184,7 +180,7 @@ You can choose to query like a method, or query parameterlessly by name, using t
 Ie.
 ?methods
 or
-?fields(null, static|public|instance);
+?fields(null, static | public | instance);
 
 You can also use query to view your variables by typing ?vars
 

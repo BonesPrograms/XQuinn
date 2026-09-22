@@ -180,7 +180,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             call = null;
             MethodKey query = MethodKey.MethodQuery(mthdString);
             IEnumerable<MethodBase> methodbases = TypeMap.GetUnfilteredMethods(fromType, query.GenericID.Name.EqualsCaseless("new"));
-            int i = 0;
+            int matches = 0;
             foreach (MethodBase method in methodbases)
             {
                 GenericKey key = TypeMap.MethodGenericKey(method);
@@ -189,13 +189,13 @@ namespace XQuinn.Runtime.NavigatorEngine
                     ParameterInfo[] parameters = method.GetParameters();
                     if (Reflector.SupportedMember(method, parameters))
                     {
-                        if (i == query.OverloadIndex)
+                        if (matches == query.MatchIndex)
                         {
                             args = parameters;
                             call = method;
                             break;
                         }
-                        i++;
+                        matches++;
                     }
                 }
             }

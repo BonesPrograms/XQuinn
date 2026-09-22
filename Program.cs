@@ -44,7 +44,18 @@ namespace XQuinn.Private
         //      int[] array = new int[] { 8, 16, 32 };
         // }
 
-
+        static void NamespaceTest()
+        {
+            var copy = TypeRegister.s_registry.ToArray();
+            foreach(var obj in copy)
+            {
+                GenericKey key = obj.Key;
+                Type value = obj.Value;
+                GenericKey newkey = new($"xq.{key.Name}", key.Args);
+                TypeRegister.s_registry[newkey] = value;
+                TypeRegister.s_registry.Remove(key);
+            }
+        }
         static void RunNavigator()
         {
             NavigationFeed monitor = new();
@@ -52,9 +63,11 @@ namespace XQuinn.Private
             string flag = NavigatorCore.Flag.ToString().Replace(',', '|');
             string path = Path.Combine(XQuinn.IO.Finders.CodeLabFinder.s_path, @"XQuinnLib\dump\instance.log");
             string[] instructions = new string[]
-            {$"~ *types . enum < bindingFlags > ({flag}); +flag;",
+            {$"~ *types . enum < bindingFlags > ( {flag} ); +flag;",
             $"*InstanceReader . new (  @\"{path}\"  , true,  types . of < object > () ); +reader;",
-            "*class<float>.new();"};
+            "*class<float>.new();",
+            "Program.NamespaceTest();",
+            "xq.Class< xq . kvp< xq . string , xq . int>>.new()"};
             StringBuilder sb = new();
             instructions.ForEach(x => sb.Append(x));
             string ret = monitor.SafeInterface(sb.ToString());
@@ -90,6 +103,8 @@ namespace XQuinn.Private
         T? _obj;
 
         public static object? Nullobj => null;
+
+        public static T Func2(T obj) => obj;
 
         public static string Void()
         {

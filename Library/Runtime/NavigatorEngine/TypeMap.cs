@@ -18,10 +18,10 @@ namespace XQuinn.Runtime.NavigatorEngine
             {
                 _methods.Clear();
                 List<MethodBase> methods = GetUnfilteredMethods(type, @new);
-                List<MethodBase> filteredMethods = FilterSupportedMethods(methods).ToList();
-                GenericKey[] distinctKeys = filteredMethods.Select(MethodGenericKey).Distinct().ToArray();
+                FilterSupportedMethods(methods);
+                GenericKey[] distinctKeys = methods.Select(MethodGenericKey).Distinct().ToArray();
                 foreach (GenericKey key in distinctKeys)
-                    SortMethods(filteredMethods, key, _methods);
+                    SortMethods(methods, key, _methods);
             }
             if (_fields != null)
             {
@@ -36,7 +36,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
         }
 
-        
+
 
         internal static List<MethodBase> GetUnfilteredMethods(Type type, bool @new)
         {
@@ -49,15 +49,13 @@ namespace XQuinn.Runtime.NavigatorEngine
             return methods;
         }
 
-        static IEnumerable<MethodBase> FilterSupportedMethods(IEnumerable<MethodBase> methods)
+        static void FilterSupportedMethods(List<MethodBase> methods)
         {
-            foreach (MethodBase method in methods)
+            for (int i = methods.Count - 1; i >= 0; i--)
             {
-                if (method.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
-                {
-                    if (Reflector.SupportedMember(method, method.GetParameters()))
-                        yield return method;
-                }
+                MethodBase method = methods[i];
+                if (method.GetCustomAttribute<CompilerGeneratedAttribute>() != null || !Reflector.SupportedMember(method, method.GetParameters()))
+                    methods.Remove(method);
             }
         }
         static void AddBackwards<T>(Dictionary<string, T> storage, T[] memberArray, Predicate<T>? pred = null) where T : MemberInfo
@@ -72,30 +70,26 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         static void SortMethods(List<MethodBase> methods, GenericKey key, Dictionary<MethodKey, MethodBase> _methods)
         {
-            int count = 0;
-            for (int i = 0; i < methods.Count; i++) 
+            int matches = 0;
+            for (int i = 0; i < methods.Count; i++)
             {
                 MethodBase method = methods[i];
                 GenericKey evaluatedKey = MethodGenericKey(method);
                 if (evaluatedKey == key)
                 {
-                    MethodKey methodKey = new(count, evaluatedKey);
+                    MethodKey methodKey = new(matches, evaluatedKey);
                     _methods[methodKey] = method;
                     methods.Remove(method);
                     i--;
-                    count++;
+                    matches++;
                 }
 
             }
 
         }
 
-        internal static GenericKey MethodGenericKey(MethodBase method)
-        {
-            string evaluatedName = method is ConstructorInfo ? "new" : method.Name;//method.Name == ".ctor" ? "new" : method.Name;
-            GenericKey evaluatedKey = new(evaluatedName, method);
-            return evaluatedKey;
-        }
+        internal static GenericKey MethodGenericKey(MethodBase method) => new(method is ConstructorInfo ? "new" : method.Name, method);
+
 
 
     }

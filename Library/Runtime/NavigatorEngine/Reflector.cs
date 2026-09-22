@@ -104,17 +104,17 @@ namespace XQuinn.Runtime.NavigatorEngine
             public readonly Type ObjectType;
             public Assignment(MemberInfo member)
             {
-                if (member is PropertyInfo prop)
-                    ObjectType = prop.PropertyType;
-                else if (member is FieldInfo f)
-                    ObjectType = f.FieldType;
-                else
-                    throw new NotSupportedException($"non-assignable member {member.GetType()}.");
+                ObjectType = member switch
+                {
+                    PropertyInfo prop => prop.PropertyType,
+                    FieldInfo field => field.FieldType,
+                    _ => throw new NotSupportedException()
+                };
                 Member = member;
             }
             public void SetValue(object? instance, object? value)
             {
-             //   InvalidCast(ObjectType, value);
+                //   InvalidCast(ObjectType, value);
                 NotNullable(ObjectType, value);
                 if (Member is PropertyInfo prop)
                     prop.SetValue(instance, value, NavigatorCore.Flag, null, null, null);
@@ -128,17 +128,16 @@ namespace XQuinn.Runtime.NavigatorEngine
 
     internal sealed class VariableBinding
     {
-        public object Object { get => _object; private init => _object = value ?? throw new ArgumentException("Variables cannot be assigned null."); }
-        public Type ObjectType => _object.GetType();
-        readonly object _object;
+        public Type ObjectType => Object.GetType();
+        public readonly object Object;
         internal VariableBinding(object instance)
         {
-            _object = instance;
+            Object = instance;
         }
 
         public override string ToString()
         {
-            return $"ObjectType: {ReflectionPrinter.Print(ObjectType, false)} :: ObjectToString: {_object}";
+            return $"ObjectType: {ReflectionPrinter.Print(ObjectType, false)} :: ObjectToString: {Object}";
         }
     }
 

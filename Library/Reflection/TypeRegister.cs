@@ -31,7 +31,7 @@ namespace XQuinn.Reflection
             foreach (KeyValuePair<GenericKey, Type> obj in s_registry)
                 yield return new(obj.Key.ToString(), obj.Value);
         }
-        internal static readonly ConcurrentDictionary<GenericKey, Type> s_registry = new()
+        internal static readonly Dictionary<GenericKey, Type> s_registry = new()
         {
             [new("object")] = typeof(object), ///Keyword types, primitives, strings, object
             [new("string")] = typeof(string),
@@ -132,7 +132,7 @@ namespace XQuinn.Reflection
             GenericKey trueKey = new(key, type);
             if (CheckDuplicateOrCached(type, trueKey))
                 return false;
-            s_registry.TryAdd(trueKey, type);
+            s_registry[trueKey] = type;
             return true;
         }
         public static bool CacheType<T>(string key)

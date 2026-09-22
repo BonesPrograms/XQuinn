@@ -18,10 +18,6 @@ namespace XQuinn.Runtime
     {
         readonly StringBuilder _feed = new();
         readonly internal NavigatorCore _core = new();
-        Type? _lastLoadedType;
-        string? _lastloadedString;
-        Type? _lastinstanceType;
-        string? _lastInstanceString;
         public bool StackTrace
         {
             get => _stackTrace;
@@ -71,7 +67,7 @@ namespace XQuinn.Runtime
                 _feed.AppendLine($"Variable: {variable}");
                 ret = variable.Object;
             }
-            IEnumerable? enumerator = ret as IEnumerable;
+            IEnumerable? enumerator = ret is string ? null : ret as IEnumerable;
             if (variable == null || enumerator != null)
                 _feed.AppendLine("Returned: ");
             if (enumerator != null)
@@ -103,39 +99,16 @@ namespace XQuinn.Runtime
         {
             if (_core._loadedType != null)
             {
-                if (_lastLoadedType != _core._loadedType)
-                {
-                    _lastLoadedType = _core._loadedType;
-                    _lastloadedString = ReflectionPrinter.Print(_core._loadedType, false);
-                }
-                _feed.AppendLine($"Loaded Type: {_lastloadedString}");
+                _feed.AppendLine($"Loaded Type: {_core._loadedType}");
                 if (_core._instanceType != null)
                 {
-                    if (_lastinstanceType != _core._instanceType)
-                    {
-                        _lastinstanceType = _core._instanceType;
-                        _lastInstanceString = ReflectionPrinter.Print(_core._instanceType, false);
-                    }
-                    _feed.AppendLine($"Loaded Instance Type: {_lastInstanceString}");
+                    _feed.AppendLine($"Loaded Instance Type: {_core._instanceType}");
+                    if (_core._variable != null)
+                        _feed.AppendLine($"Loaded Variable: {_core._variable}");
                 }
-                else
-                {
-                    _lastinstanceType = null;
-                    _lastInstanceString = null;
-                }
-                // sb.AppendLine($"Loaded Instance Object: {_navigator._instance}");
-                if (_core._variable != null)
-                    _feed.AppendLine($"Loaded Variable: {_core._variable}");
-            }
-            else
-            {
-                _lastLoadedType = null;
-                _lastloadedString = null;
-                _lastinstanceType = null;
-                _lastInstanceString = null;
+
             }
 
         }
-
     }
 }

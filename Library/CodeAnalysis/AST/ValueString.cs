@@ -102,7 +102,7 @@ namespace XQuinn.CodeAnalysis.AST
             return formatException ? throw new FormatException($"Strings values must have one beginning and ending quotation mark, and be at least 2 chars in size (including quotations). Value: {_arg}") : false;
         }
 
-        bool ParsePrimitive(Type asType, out object? primitive) //Almost looks like a switch!
+        bool ParsePrimitive(Type asType, out object? primitive) 
         {
             primitive = null;
             if (AsObjectOr<bool>(asType))

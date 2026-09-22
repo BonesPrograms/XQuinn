@@ -120,26 +120,20 @@ namespace XQuinn.Runtime.NavigatorEngine
         //and pass it instead rather than utilizing the 'params' feature.
         //Furthermore, if a method, property or field returns null, that value is turned into a single arg array in standard C#. So only explicit "null" or "default" will assign
         //null to the array parameter.
-        internal object? ParameterToObject(ParameterString value, Type paramType)
+        internal object? ParameterToObject(ParameterString arg, Type paramType)
         {
-            object? obj;
-            if (value is FieldString field)
-                obj = _invoker.InvokeFieldOrProperty(field);
-            else if (value is MethodString method)
-                obj = _invoker.InvokeMethod(method);
-            else
+            object? obj = arg switch
             {
-                obj = ParseValue((ValueString)value, paramType);
-                //  if (obj == null && !(paramType.IsClass || (paramType.IsGenericType && paramType.GetGenericTypeDefinition() == typeof(Nullable<>))))
-                //    throw new ArgumentException($"Expected method syntax for type {paramType}, but received {value}");
-            }
+                FieldString field => _invoker.InvokeFieldOrProperty(field),
+                MethodString method => _invoker.InvokeMethod(method),
+                ValueString value => ParseValue(value, paramType),
+                _ => throw new NotSupportedException()
+            };
             //   Reflector.InvalidCast(paramType, obj);
             Reflector.NotNullable(paramType, obj);
             return obj;
 
         }
-
-
         internal object? ParseValue(ValueString value, Type paramType) //need half and int128 support
         {
             string strng = value.Argument;
