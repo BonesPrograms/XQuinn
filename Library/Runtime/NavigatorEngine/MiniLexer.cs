@@ -39,11 +39,11 @@ namespace XQuinn.Runtime.NavigatorEngine
         internal static string? ResolveMemberAccessOrFloat(string invocation, out string member, out bool field) //returns typename, outputs the accessed member
         {
             int stop = invocation.IndexOf('(');
-            stop = stop < 0 ? invocation.Length : stop;
             field = stop < 0;
+            stop = field ? invocation.Length : stop;
             int index = 0;
             member = invocation;
-            if (!field)
+            if (field)
             {
                 for (int x = 0; x < invocation.Length; x++)
                 {
@@ -58,7 +58,6 @@ namespace XQuinn.Runtime.NavigatorEngine
                     }
                 }
             }
-            char lastchar = default;
             int? lastAccessorIndex = null;
             bool isgeneric = false;
             for (int i = index; i < stop; i++)

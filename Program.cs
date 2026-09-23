@@ -67,7 +67,10 @@ namespace XQuinn.Private
             $"*InstanceReader . new (  @\"{path}\"  , true,  types . of < object > () ); +reader;",
             "*class<float>.new();",
             "Program.NamespaceTest();",
-            "xq.Class< xq . kvp< xq . string , xq . int>>.new()"};
+            "* xq.class <xq.object> .new();",
+            "*xq . KVP<xq. int,xq .string> .  new(22, \"Hello World\"); +kv;",
+            "*xq.class<xq.object>.new();"};
+            //"xq.Class< xq . kvp< xq . string , xq . int>>.new()"};
             StringBuilder sb = new();
             instructions.ForEach(x => sb.Append(x));
             string ret = monitor.SafeInterface(sb.ToString());

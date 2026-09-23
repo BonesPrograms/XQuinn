@@ -4,6 +4,7 @@ using XQuinn.Extensions;
 using System;
 
 using static XQuinn.CodeAnalysis.CallLexer;
+using XQuinn.Runtime.NavigatorEngine;
 
 
 namespace XQuinn.CodeAnalysis.LexicalEngine
@@ -181,7 +182,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                     char c = invocation[x];
                     if (passedComma)
                     {
-                        if (c == GenericDeclr || c.IsLetter())
+                        if (c == GenericDeclr || c.IsLetter() || c.IsDigit() || c == ValidNonAlphaNumeric)
                             passedComma = false;
                     }
                     if (c == GenericTerminate)
@@ -209,12 +210,10 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 _genericEnd = 0;
                 _readFirstGeneric = false;
                 Lexer.Skipping = false;
-                i++;
-                Lexer.CurrentValue = invocation[i];
                 Lexer.Writer.Append(GenericTerminate);
                 Lexer.ReadingGeneric = false;
                 _memberAccessing = false;
-                return true;
+                return false;
             }
             else if (Lexer.CurrentValue == MemberAccess)
                 _memberAccessing = true;
@@ -261,8 +260,11 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             if (_beganReadingMainMethodName)
             {
                 if (Lexer.ReadingGeneric)
+                {
                     ReadGeneric(ref i, invocation); //readgeneric is so special isnt it, this is the only read called by another read, but it works
-                if (!Lexer.ReadingGeneric && Lexer.CurrentValue == Whitespace)
+                    return true;
+                }
+                if (Lexer.CurrentValue == Whitespace)
                     while (i < invocation.Length)
                     {
                         i++;
@@ -286,11 +288,10 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                     _beganReadingMainMethodName = false;
                     return false;
                 }
-                else if (!Lexer.ReadingGeneric) // generic ruleset takes over validation
-                    if (Lexer.CurrentValue == GenericDeclr)
-                        ReadGeneric<object>(invocation, null);
-                    else
-                        Lexer.ValidIdentifier(Lexer.CurrentValue, invocation);
+                if (Lexer.CurrentValue == GenericDeclr)
+                    ReadGeneric<object>(invocation, null);
+                else
+                    Lexer.ValidIdentifier(Lexer.CurrentValue, invocation);
                 return true;
             }
             else if (Lexer.CurrentValue == Whitespace)
@@ -351,22 +352,9 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         }
         string? ResolveMemberAccess(out string member) //returns typename, outputs the accessed member
         {
-            string lexOutput = Lexer.Writer.ToString();
+            string qualifiedMember = Lexer.Writer.ToString();
             Lexer.Writer.Length = 0;
-            int? lastAccessorIndex = null;
-            for (int i = 1; i < lexOutput.Length; i++)
-                if (lexOutput[i] == MemberAccess)
-                    lastAccessorIndex = i;
-            if (lastAccessorIndex != null)
-            {
-                member = lexOutput.Substring(lastAccessorIndex.Value + 1);
-                return lexOutput.Remove(lastAccessorIndex.Value);
-            }
-            else
-            {
-                member = lexOutput;
-                return null;
-            }
+            return MiniLexer.ResolveMemberAccessOrFloat(qualifiedMember, out member, out _);
         }
 
         void CheckGenericBeforeReadGeneric(string invocation)

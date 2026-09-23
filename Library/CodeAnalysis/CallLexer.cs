@@ -8,7 +8,7 @@ namespace XQuinn.CodeAnalysis
 {
 
 
-    internal class LexicalException : Exception
+    public class LexicalException : Exception
     {
         public LexicalException(string msg, string invocation, char next, StringBuilder sb, int i) : base(msg + $"Input: {invocation} Bad character: {next} Current string value: {sb} Index: {i + 1}")
         {
@@ -30,66 +30,66 @@ namespace XQuinn.CodeAnalysis
 
         }
     }
-    internal sealed class CallLexer
+    public sealed class CallLexer
     {
 
 
-        internal const char VaidNonAlphaNumeric = '_';
+        public const char ValidNonAlphaNumeric = '_';
 
-        internal const char MethodDeclr = '(';
+        public const char MethodDeclr = '(';
 
-        internal const char MethodTerminate = ')';
+        public const char MethodTerminate = ')';
 
-        internal const char ParamTerminate = ',';
+        public const char ParamTerminate = ',';
 
-        internal const char MemberAccess = '.';
+        public const char MemberAccess = '.';
 
-        internal const char StringDeclr = '"';
+        public const char StringDeclr = '"';
 
-        internal const char EscSeq = '\\';
+        public const char EscSeq = '\\';
 
-        internal const char Whitespace = ' ';
+        public const char Whitespace = ' ';
 
-        internal const char CharDeclr = '\'';
+        public const char CharDeclr = '\'';
 
-        internal const char EnumOR = '|';
+        public const char EnumOR = '|';
 
-        internal const char NoEscDeclr = '@';
+        public const char NoEscDeclr = '@';
 
-        internal const char GenericDeclr = '<';
+        public const char GenericDeclr = '<';
 
-        internal const char GenericTerminate = '>';
+        public const char GenericTerminate = '>';
 
         internal readonly StringBuilder Writer = new();
         internal readonly ValueReader ValueReader;
         internal readonly ArbitraryReader ArbitraryReader;
-        public MethodString? Main;
-        public MethodString? CurrentMethod;
-        public TypeString? DeclaringType;
-        public TypeString? ImplicitThis;
-        internal char CurrentValue;
-        internal bool Start = true;
+        internal MethodString? Main;
+        internal MethodString? CurrentMethod;
+        internal TypeString? DeclaringType;
+        internal TypeString? ImplicitThis;
+        public char CurrentValue;
+        public bool Start = true;
 
         //Primary reading rulesets - determine how to lex incoming data based on context
-        internal bool ReadingChar;
-        internal bool ReadArbitraryLegalValue; //anything that isnt a digit, string or char but also hasnt yet been determined as a method field or enumOR
-        internal bool ReadQualifiedMember; //something that has a member access operator and is not a digit
-        internal bool ReadDigit;
-        internal bool ReadingString;
-        internal bool ReadingEnumOR; //OR-less enums are read as arbitrary values. | activates EnumOR read
-        internal bool ReadingGeneric;
+        public bool ReadingChar;
+        public bool ReadArbitraryLegalValue; //anything that isnt a digit, string or char but also hasnt yet been determined as a method field or enumOR
+        public bool ReadQualifiedMember; //something that has a member access operator and is not a digit
+        public bool ReadDigit;
+        public bool ReadingString;
+        public bool ReadingEnumOR; //OR-less enums are read as arbitrary values. | activates EnumOR read
+        public bool ReadingGeneric;
 
         //These are supporting flags for rulesets, some rulesets have specific rules for specific characters, or need to be read around declaration characters
-        internal bool Skipping;
+        public bool Skipping;
 
         //These are for getting context on parameter values. Once a method begins or a parameter/method terminates, one of these is true, and we wait until we receive a character that gives us context on what will be read next.
         //Once we receive context, a Reading flag is set to true related to that specific context, and these flags are set to false, to prevent context getting reset in the middle of a read.
-        internal bool MethodParamsBegan;
-        internal bool Terminated;
+        public bool MethodParamsBegan;
+        public bool Terminated;
 
         //This is for additional awareness on how deeply nested a subparameter read is
-        internal int ReadingSubparams;
-        internal int LastReadCount;
+        public int ReadingSubparams;
+        public int LastReadCount;
 
         public CallLexer()
         {
@@ -97,7 +97,7 @@ namespace XQuinn.CodeAnalysis
             ArbitraryReader = new(this);
         }
 
-        public MethodString MethodTemplate(string invocation, TypeString declaringType, TypeString? implicitAccess)
+        internal MethodString MethodTemplate(string invocation, TypeString declaringType, TypeString? implicitAccess)
         {
 
             //   if (string.IsNullOrWhiteSpace(invocation))
@@ -118,9 +118,9 @@ namespace XQuinn.CodeAnalysis
             int i = 0;
             while (i < invocation.Length)
             {
-                if(!Start)
+                if (!Start)
                 {
-                    
+
                 }
                 if (i == breakpoint)
                     break;
@@ -196,7 +196,7 @@ namespace XQuinn.CodeAnalysis
                     goto Increment;
                 }
             Append:
-                if (!ReadArbitraryLegalValue && !ReadingChar && !ReadDigit && !ReadingString && !ReadQualifiedMember && !Start && !ReadingEnumOR)
+                if (!ReadArbitraryLegalValue && !ReadingChar && !ReadDigit && !ReadingString && !ReadQualifiedMember && !Start && !ReadingEnumOR && !ReadingGeneric)
                     ValidIdentifier(CurrentValue, invocation);
                 Writer.Append(CurrentValue);
             Increment:
@@ -248,16 +248,16 @@ namespace XQuinn.CodeAnalysis
                 throw new LexicalException("Method name was unable to be read due to missing ( leading parenthesis.", invocation, Writer);
         }
 
-        internal void ValidIdentifier(char value, string invocation)
+        public void ValidIdentifier(char value, string invocation)
         {
             const string error = "Detected illegal character in identifier.";//&&value!='('
             if (value != ':' && Illegal(value))
                 throw new LexicalException(error, invocation, value, Writer);
 
         }
-        public static bool Illegal(char val) => val != VaidNonAlphaNumeric && !val.IsDigit() && !val.IsLetter();
+        public static bool Illegal(char val) => val != ValidNonAlphaNumeric && !val.IsDigit() && !val.IsLetter();
         public static bool Termination(char value) => value == ParamTerminate || value == MethodTerminate;
-        public static bool ValidIdentifierFirstChar(char value) => value == VaidNonAlphaNumeric || value.IsLetter();
+        public static bool ValidIdentifierFirstChar(char value) => value == ValidNonAlphaNumeric || value.IsLetter();
 
         void Clear() //This allows the Lexer to recover if an exception is thrown during analysis
         {             //There can also be some leftover values after a lex so state must be reset
