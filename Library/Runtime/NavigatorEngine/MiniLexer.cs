@@ -51,7 +51,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                     if (value != CallLexer.Whitespace)
                     {
                         index = x;
-                        if (CharOrString(value) || value.IsDigit() || value == '-') //because floats will resolve as member access. lol.
+                        if (CharOrString(value) || value.IsDigit() || value == CallLexer.MemberAccess || value == '-') //because floats will resolve as member access. lol.
                             return null;
                         else
                             break;

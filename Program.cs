@@ -44,6 +44,8 @@ namespace XQuinn.Private
         //      int[] array = new int[] { 8, 16, 32 };
         // }
 
+        static string ResetInstr() =>
+        "xq.program.namespaceRevert(); types.FlushStaticCache();";
         static Dictionary<GenericKey, Type>? s_reg_copy;
 
         static void NamespaceRevert()
@@ -84,7 +86,10 @@ namespace XQuinn.Private
             "*class_T_def.MakeGenericType( xq.Types. Array<xq.Type>(xq .Types .Of<XQ. Object>())); + class_typeof_object;",
             "* GetMethod ( \"Func\" ); +method_func;",
             " * xq.class<xq.float>.new(); +float_class; *method_func; xq.class<xq.string> . s_obj = \"Hello World\";",
-            "Invoke:1 ( XQ.Class<XQ.Object>.new() , XQ.Types.Array <XQ.Object> ( XQ.Class <XQ.Int> . S_Obj, XQ . Class< XQ. String> . S_OBJ)))"};
+            "Invoke:1 ( XQ.Class<XQ.Object>.new() , XQ.Types.Array <XQ.Object> ( XQ.Class <XQ.Int> . S_Obj, XQ . Class< XQ. String> . S_OBJ)));",
+            "*xq.class<xq.object>.new();",
+            "func2:1( xq.class<xq.int>. s_obj  , xq . types. array <xq.object> (xq. class. ret( xq.class.s_obj ) ), xq.class<xq . object>  .  func(xq.class <xq.string> .new(), \"fingas\"));",
+            ResetInstr()};
             //"xq.Class< xq . kvp< xq . string , xq . int>>.new()"};
             StringBuilder sb = new();
             instructions.ForEach(x => sb.Append(x));
@@ -112,6 +117,12 @@ namespace XQuinn.Private
     {
         public static object? objer = "Helldasd";
     }
+
+    class Class
+    {
+        static object? s_obj;
+    static object? ret(object? obj) => obj;
+    }
     class Class<T>
     {
 
@@ -133,6 +144,8 @@ namespace XQuinn.Private
         {
             return "Void";
         }
+
+        public (T,T,T)Func2(T a, T b, T c) => (a,b,c);
         public (T, T) Func(T obj, T obj2) => (obj, obj2);
         public static T Method(T obj) => obj;
         public static X Generic<X>(X obj) => obj;

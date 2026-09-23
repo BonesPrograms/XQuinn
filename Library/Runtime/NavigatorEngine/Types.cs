@@ -38,7 +38,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         }
 
 
-        public static void FlushStaticCache(bool ambiguousMatches, bool accessedMembers, bool reifiedGenerics)
+        public static void FlushStaticCache(bool ambiguousMatches = true, bool accessedMembers = true, bool reifiedGenerics = true)
         {
             NavigatorCore.FlushStaticCache(ambiguousMatches, accessedMembers, reifiedGenerics);
         }
