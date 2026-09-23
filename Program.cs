@@ -82,7 +82,8 @@ namespace XQuinn.Private
             "*xq.class<xq.object>.new();",
             "*xq.types.of(\"XQ.Class<T>\"); +class_T_def;",
             "*class_T_def.MakeGenericType( xq.Types. Array<xq.Type>(xq .Types .Of<XQ. Object>())); + class_typeof_object;",
-            "* GetMethod ( \"Func\" ); +method_func"};
+            "* GetMethod ( \"Func\" ); +method_func;",
+            " * xq.class<xq.float>.new(); +float_class;"};
             //"xq.Class< xq . kvp< xq . string , xq . int>>.new()"};
             StringBuilder sb = new();
             instructions.ForEach(x => sb.Append(x));

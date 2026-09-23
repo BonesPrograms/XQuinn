@@ -118,10 +118,6 @@ namespace XQuinn.CodeAnalysis
             int i = 0;
             while (i < invocation.Length)
             {
-                if (!Start)
-                {
-
-                }
                 if (i == breakpoint)
                     break;
                 CurrentValue = invocation[i];
@@ -167,9 +163,11 @@ namespace XQuinn.CodeAnalysis
                 }
                 else if (ReadQualifiedMember)
                 {
-                    if (ArbitraryReader.ReadIdentifier(ref i, invocation))
+                    int result = ArbitraryReader.ReadIdentifier(ref i, invocation);
+                    if (result == 1)
                         goto Append;
-                    goto Increment;
+                    else if (result == 0)
+                        goto Increment;
                 }
                 else if (CurrentValue == Whitespace)
                     goto Increment;

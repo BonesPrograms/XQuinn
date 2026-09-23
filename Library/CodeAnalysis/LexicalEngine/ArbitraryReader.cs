@@ -118,7 +118,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             return obj;
         }
 
-        internal bool ReadIdentifier(ref int i, string invocation) //once an arbitrary is determined to be an identifier, it is read with stricter rules
+        internal int ReadIdentifier(ref int i, string invocation) //once an arbitrary is determined to be an identifier, it is read with stricter rules
         {
             if (Lexer.CurrentValue == Whitespace)
                 while (i < invocation.Length)
@@ -134,21 +134,21 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 }
             if (Lexer.CurrentValue == GenericDeclr)
             {
-                return ReadGeneric(invocation, true);
+                return ReadGeneric(invocation, 1);
             }
             if (Lexer.CurrentValue == MemberAccess && !_readFirstCharOfName)
             {
                 _readFirstCharOfName = true;
                 Lexer.ReadingGeneric = false;
                 _memberAccessing = true;
-                return true;
+                return 1;
             }
             if (!Lexer.ReadingGeneric && Termination(Lexer.CurrentValue))
             {
                 Lexer.Terminated = true;
                 _memberAccessing = false;
                 ReadField(invocation);
-                return false;
+                return 2;
             }
             if (Lexer.CurrentValue == MethodDeclr)
             {
@@ -156,7 +156,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 Lexer.MethodParamsBegan = true;
                 _memberAccessing = false;
                 ReadMethod(invocation);
-                return false;
+                return 0;
             }
             if (_readFirstCharOfName)
             {
@@ -166,7 +166,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             }
             else
                 Lexer.ValidIdentifier(Lexer.CurrentValue, invocation);
-            return true;
+            return 1;
         }
 
 
