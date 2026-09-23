@@ -44,10 +44,20 @@ namespace XQuinn.Private
         //      int[] array = new int[] { 8, 16, 32 };
         // }
 
+        static Dictionary<GenericKey, Type>? s_reg_copy;
+
+        static void NamespaceRevert()
+        {
+            if (s_reg_copy == null)
+                throw new InvalidOperationException();
+            TypeRegister.s_registry.Clear();
+            s_reg_copy.ForEach(x => TypeRegister.s_registry[x.Key] = x.Value);
+        }
+
         static void NamespaceTest()
         {
-            var copy = TypeRegister.s_registry.ToArray();
-            foreach(var obj in copy)
+            s_reg_copy = new(TypeRegister.s_registry);
+            foreach (var obj in s_reg_copy)
             {
                 GenericKey key = obj.Key;
                 Type value = obj.Value;
@@ -69,7 +79,10 @@ namespace XQuinn.Private
             "Program.NamespaceTest();",
             "* xq.class <xq.object> .new();",
             "*xq . KVP<xq. int,xq .string> .  new(22, \"Hello World\"); +kv;",
-            "*xq.class<xq.object>.new();"};
+            "*xq.class<xq.object>.new();",
+            "*xq.types.of(\"XQ.Class<T>\"); +class_T_def;",
+            "*class_T_def.MakeGenericType( xq.Types. Array<xq.Type>(xq .Types .Of<XQ. Object>())); + class_typeof_object;",
+            "* GetMethod ( \"Func\" ); +method_func"};
             //"xq.Class< xq . kvp< xq . string , xq . int>>.new()"};
             StringBuilder sb = new();
             instructions.ForEach(x => sb.Append(x));

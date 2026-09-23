@@ -240,9 +240,11 @@ namespace XQuinn.Runtime
             assignedValue = null;
             if (!MiniLexer.AssignmentSubstring(invocation, out string? left, out string? right))
                 return false;
-            string lefthand = left!.Trim();
+            string lefthand = left!;
             string righthand = right!;
             string? lefthandTypeName = MiniLexer.ResolveMemberAccessOrFloat(lefthand, out lefthand, out bool lefthandfield);
+            lefthand = lefthand.Trim();
+            righthand = righthand.Trim();
             if (!lefthandfield)
                 throw new ArgumentException($"Can only assign to fields or properties. Bad input: {lefthand}");
             Type? lefthandtype;
@@ -275,9 +277,11 @@ namespace XQuinn.Runtime
             }
 
             string? righthandTypeName = MiniLexer.ResolveMemberAccessOrFloat(righthand, out righthand, out bool righthandfield);// ?? _key ?? throw new ArgumentException("No type loaded for implicit access on righthand side.");
+            righthand = righthand.Trim();
             if (righthandTypeName != null)
             {
-                TypeString typeStr = ThisOrNew(righthandTypeName.Trim());
+                righthandTypeName = righthandTypeName.Trim();
+                TypeString typeStr = ThisOrNew(righthandTypeName);
                 if (righthandfield)
                 {
                     FieldString fieldStr = new(righthand, typeStr);
@@ -298,7 +302,7 @@ namespace XQuinn.Runtime
             }
             else
             {
-                ValueString valueStr = new(righthand.Trim());
+                ValueString valueStr = new(righthand);
                 assignedValue = _parser.ParseValue(valueStr, assigningTo.ObjectType);
             }
 

@@ -137,7 +137,8 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         public override string ToString()
         {
-            return $"ObjectType: {ReflectionPrinter.Print(ObjectType, false)} :: ObjectToString: {Object}";
+            string objToStr = Object is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : Object.ToString();
+            return $"ObjectType: {ReflectionPrinter.Print(ObjectType, false)} :: ToString: {objToStr}";
         }
     }
 

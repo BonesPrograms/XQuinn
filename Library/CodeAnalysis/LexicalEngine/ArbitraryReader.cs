@@ -127,7 +127,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                     Lexer.CurrentValue = invocation[i];
                     if ((_memberAccessing && ValidIdentifierFirstChar(Lexer.CurrentValue)) || WhitespaceEnd())
                         break;
-                    else if (Lexer.CurrentValue == GenericDeclr)
+                    else if (Lexer.CurrentValue == GenericDeclr || Lexer.CurrentValue == MemberAccess) 
                         break;
                     else if (Lexer.CurrentValue != CallLexer.Whitespace)
                         throw new LexicalException("Detected trailing input after whitespace.", invocation, Lexer.CurrentValue, Lexer.Writer, i);

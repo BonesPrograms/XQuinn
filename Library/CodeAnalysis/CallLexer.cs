@@ -175,6 +175,16 @@ namespace XQuinn.CodeAnalysis
                     goto Increment;
                 else if (Terminated || MethodParamsBegan)
                     GetContext();
+                if (LastReadCount > ReadingSubparams)
+                {
+                    CurrentMethod = CurrentMethod!._subParamOf;
+                    LastReadCount--;
+                }
+                if (CurrentValue == MethodTerminate)
+                {
+                    if (ReadingSubparams > 0)
+                        ReadingSubparams--;
+                }
                 if (Termination(CurrentValue))
                 {
                     if (Writer.Length != 0)
@@ -182,17 +192,9 @@ namespace XQuinn.CodeAnalysis
                         ValueReader.ReadParam();
                         ReadArbitraryLegalValue = false;
                         Terminated = true;
+
                     }
-                    if (CurrentValue == MethodTerminate)
-                    {
-                        if (ReadingSubparams > 0)
-                            ReadingSubparams--;
-                        if (LastReadCount > ReadingSubparams)
-                        {
-                            CurrentMethod = CurrentMethod!._subParamOf;
-                            LastReadCount--;
-                        }
-                    }
+
                     goto Increment;
                 }
             Append:
