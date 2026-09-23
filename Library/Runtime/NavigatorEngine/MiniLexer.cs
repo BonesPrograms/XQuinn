@@ -51,7 +51,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                     if (value != CallLexer.Whitespace)
                     {
                         index = x;
-                        if (value.IsDigit() || value == '-') //because floats will resolve as member access. lol.
+                        if (CharOrString(value) || value.IsDigit() || value == '-') //because floats will resolve as member access. lol.
                             return null;
                         else
                             break;
@@ -65,7 +65,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 char c = invocation[i];
                 if (c == CallLexer.Whitespace)
                     continue;
-                if (!isgeneric && c == CallLexer.GenericDeclr)
+                if (c == CallLexer.GenericDeclr)
                     isgeneric = true;
                 if (c == CallLexer.MemberAccess)
                 {

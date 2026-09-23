@@ -83,7 +83,8 @@ namespace XQuinn.Private
             "*xq.types.of(\"XQ.Class<T>\"); +class_T_def;",
             "*class_T_def.MakeGenericType( xq.Types. Array<xq.Type>(xq .Types .Of<XQ. Object>())); + class_typeof_object;",
             "* GetMethod ( \"Func\" ); +method_func;",
-            " * xq.class<xq.float>.new(); +float_class;"};
+            " * xq.class<xq.float>.new(); +float_class; *method_func; xq.class<xq.string> . s_obj = \"Hello World\";",
+            "Invoke:1 ( XQ.Class<XQ.Object>.new() , XQ.Types.Array <XQ.Object> ( XQ.Class <XQ.Int> . S_Obj, XQ . Class< XQ. String> . S_OBJ)))"};
             //"xq.Class< xq . kvp< xq . string , xq . int>>.new()"};
             StringBuilder sb = new();
             instructions.ForEach(x => sb.Append(x));
@@ -105,6 +106,11 @@ namespace XQuinn.Private
             TypeRegister.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
         }
 
+    }
+
+    class Objer
+    {
+        public static object? objer = "Helldasd";
     }
     class Class<T>
     {

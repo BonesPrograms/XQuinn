@@ -127,7 +127,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                     Lexer.CurrentValue = invocation[i];
                     if ((_memberAccessing && ValidIdentifierFirstChar(Lexer.CurrentValue)) || WhitespaceEnd())
                         break;
-                    else if (Lexer.CurrentValue == GenericDeclr || Lexer.CurrentValue == MemberAccess) 
+                    else if (Lexer.CurrentValue == GenericDeclr || Lexer.CurrentValue == MemberAccess)
                         break;
                     else if (Lexer.CurrentValue != CallLexer.Whitespace)
                         throw new LexicalException("Detected trailing input after whitespace.", invocation, Lexer.CurrentValue, Lexer.Writer, i);
@@ -193,11 +193,38 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                     }
                     else if (c == ParamTerminate)
                     {
+                        bool skip = false;
+                        for (int y = x; y >= 0; y--)
+                        {
+                            char z = invocation[y];
+                            if (z == CallLexer.GenericTerminate)
+                                break;
+                            if (z == CallLexer.GenericDeclr)
+                            {
+                                skip = true;
+                                break;
+                            }
+                        }
+                        if (!skip)
+                            for (int y = x; y < invocation.Length; y++)
+                            {
+                                char z = invocation[y];
+                                if (z == CallLexer.GenericDeclr)
+                                    break;
+                                if (z == CallLexer.GenericTerminate)
+                                {
+                                    skip = true;
+                                    break;
+                                }
+                            }
                         if (passedComma)
                             break;
                         passedComma = true;
+                        if (!skip)
+                            break;
                     }
-                    else if (c == MethodDeclr)
+
+                    else if (c == MethodDeclr || c == MethodTerminate)
                         break;
                 }
                 if (ending == -1)
