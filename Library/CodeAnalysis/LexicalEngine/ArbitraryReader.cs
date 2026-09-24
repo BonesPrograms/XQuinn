@@ -11,10 +11,15 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 {
     sealed class ArbitraryReader : LexicalObject
     {
+        internal bool _beganReadingMainMethodName;
 
+        bool _memberAccessing;
 
-        public bool BeganReadingMainMethodName => _beganReadingMainMethodName;
-
+        bool _genericParamTerminate;
+        bool _readFirstGeneric;
+        bool _readFirstCharOfName; //Because it cannot be a digit
+        bool _findGenericEnd;
+        int _genericEnd;
         public void Clear()
         {
             _memberAccessing = false;
@@ -25,18 +30,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             _findGenericEnd = false;
             _genericEnd = -1;
         }
-        bool _memberAccessing;
-        bool _beganReadingMainMethodName;
-        bool _genericParamTerminate;
-        bool _readFirstGeneric;
-        bool _readFirstCharOfName; //Because it cannot be a digit
-        bool _findGenericEnd;
-        int _genericEnd;
 
-
-        int ReadingSubparams { get => Lexer.ReadingSubparams; set => Lexer.ReadingSubparams = value; }
-
-        int LastReadingCount { get => Lexer.LastReadCount; set => Lexer.LastReadCount = value; }
 
 
 
@@ -49,65 +43,65 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         internal int ReadArbitrary(ref int i, string invocation)
         {
-            if (Lexer.CurrentValue == Whitespace)
+            if (_lexer._curr_char == Whitespace)
                 while (i < invocation.Length)
                 {
                     i++;
-                    Lexer.CurrentValue = invocation[i];
-                    if (Lexer.CurrentValue == MemberAccess || WhitespaceEnd())
+                    _lexer._curr_char = invocation[i];
+                    if (_lexer._curr_char == MemberAccess || WhitespaceEnd())
                         break;
-                    if (Lexer.CurrentValue == EnumOR)
+                    if (_lexer._curr_char == EnumOR)
                     {
                         ReadingEnumOR(invocation);
                         return 1;
                     }
-                    else if (Lexer.CurrentValue == GenericDeclr)
+                    else if (_lexer._curr_char == GenericDeclr)
                     {
                         return ReadGeneric(invocation, 1);
                     }
-                    if (Lexer.CurrentValue != CallLexer.Whitespace)
-                        throw new LexicalException("Detected trailing input after whitespace.", invocation, Lexer.CurrentValue, Lexer.Writer, i);
+                    if (_lexer._curr_char != CallLexer.Whitespace)
+                        throw new LexicalException("Detected trailing input after whitespace.", invocation, _lexer._curr_char, _lexer._writer, i);
                 }
-            if (Lexer.CurrentValue == EnumOR)
+            if (_lexer._curr_char == EnumOR)
             {
                 ReadingEnumOR(invocation);
                 return 1;
             }
-            else if (Lexer.CurrentValue == GenericDeclr)
+            else if (_lexer._curr_char == GenericDeclr)
             {
                 return ReadGeneric(invocation, 1);
             }
-            else if (Lexer.CurrentValue == MemberAccess)
+            else if (_lexer._curr_char == MemberAccess)
             {
-                Lexer.ReadingGeneric = false;
+                _lexer._read_generic_args = false;
                 _readFirstCharOfName = true;
-                Lexer.ReadQualifiedMember = true;
+                _lexer._read_qualified_member = true;
                 _memberAccessing = true;
-                Lexer.ReadArbitraryLegalValue = false;
+                _lexer._read_arbitrary_legal_value = false;
                 return 1;
             }
-            else if (Lexer.CurrentValue == MethodDeclr)
+            else if (_lexer._curr_char == MethodDeclr)
             {
-                Lexer.ReadArbitraryLegalValue = false;
-                Lexer.ReadingGeneric = false;
-                Lexer.MethodParamsBegan = true;
+                _lexer._read_arbitrary_legal_value = false;
+                _lexer._read_generic_args = false;
+                _lexer._method_params_began = true;
                 ReadMethod(invocation);
                 return 2; //special case where we need to skip to increment if a method is detected
             }           //otherwise it will throw
-            else if (!Termination(Lexer.CurrentValue))
-                Lexer.ValidIdentifier(Lexer.CurrentValue, invocation);
-            else if (Lexer.ReadingGeneric)
+            else if (!Termination(_lexer._curr_char))
+                _lexer.ValidIdentifier(_lexer._curr_char, invocation);
+            else if (_lexer._read_generic_args)
                 return 1; //true
             return 0; //false
         }
         void ReadingEnumOR(string invocation)
         {
-            if (Lexer.ReadingGeneric)
-                throw new LexicalException("Invalid EnumOR or generic", invocation, Lexer.CurrentValue, Lexer.Writer);
-            Lexer.ReadArbitraryLegalValue = false;
-            Lexer.ReadingEnumOR = true;
-            Lexer.ValueReader.ReadORVal = true;
-            Lexer.ValueReader.ReadORDelimit = true;
+            if (_lexer._read_generic_args)
+                throw new LexicalException("Invalid EnumOR or generic", invocation, _lexer._curr_char, _lexer._writer);
+            _lexer._read_arbitrary_legal_value = false;
+            _lexer._read_enumOR = true;
+            _lexer._value_reader._readORVal = true;
+            _lexer._value_reader._readORDelimit = true;
         }
 
         T? ReadGeneric<T>(string invocation, T? obj)
@@ -120,40 +114,40 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         internal int ReadIdentifier(ref int i, string invocation) //once an arbitrary is determined to be an identifier, it is read with stricter rules
         {
-            if (Lexer.CurrentValue == Whitespace)
+            if (_lexer._curr_char == Whitespace)
                 while (i < invocation.Length)
                 {
                     i++;
-                    Lexer.CurrentValue = invocation[i];
-                    if ((_memberAccessing && ValidIdentifierFirstChar(Lexer.CurrentValue)) || WhitespaceEnd())
+                    _lexer._curr_char = invocation[i];
+                    if ((_memberAccessing && ValidIdentifierFirstChar(_lexer._curr_char)) || WhitespaceEnd())
                         break;
-                    else if (Lexer.CurrentValue == GenericDeclr || Lexer.CurrentValue == MemberAccess)
+                    else if (_lexer._curr_char == GenericDeclr || _lexer._curr_char == MemberAccess)
                         break;
-                    else if (Lexer.CurrentValue != CallLexer.Whitespace)
-                        throw new LexicalException("Detected trailing input after whitespace.", invocation, Lexer.CurrentValue, Lexer.Writer, i);
+                    else if (_lexer._curr_char != CallLexer.Whitespace)
+                        throw new LexicalException("Detected trailing input after whitespace.", invocation, _lexer._curr_char, _lexer._writer, i);
                 }
-            if (Lexer.CurrentValue == GenericDeclr)
+            if (_lexer._curr_char == GenericDeclr)
             {
                 return ReadGeneric(invocation, 1);
             }
-            if (Lexer.CurrentValue == MemberAccess && !_readFirstCharOfName)
+            if (_lexer._curr_char == MemberAccess && !_readFirstCharOfName)
             {
                 _readFirstCharOfName = true;
-                Lexer.ReadingGeneric = false;
+                _lexer._read_generic_args = false;
                 _memberAccessing = true;
                 return 1;
             }
-            if (!Lexer.ReadingGeneric && Termination(Lexer.CurrentValue))
+            if (!_lexer._read_generic_args && Termination(_lexer._curr_char))
             {
-                Lexer.Terminated = true;
+                _lexer._terminated = true;
                 _memberAccessing = false;
                 ReadField(invocation);
                 return 2;
             }
-            if (Lexer.CurrentValue == MethodDeclr)
+            if (_lexer._curr_char == MethodDeclr)
             {
-                Lexer.ReadingGeneric = false;
-                Lexer.MethodParamsBegan = true;
+                _lexer._read_generic_args = false;
+                _lexer._method_params_began = true;
                 _memberAccessing = false;
                 ReadMethod(invocation);
                 return 0;
@@ -162,10 +156,10 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             {
                 _memberAccessing = false;
                 _readFirstCharOfName = false;
-                ValidIdentifierFirstCharOrThrow(Lexer.CurrentValue, invocation);
+                ValidIdentifierFirstCharOrThrow(_lexer._curr_char, invocation);
             }
             else
-                Lexer.ValidIdentifier(Lexer.CurrentValue, invocation);
+                _lexer.ValidIdentifier(_lexer._curr_char, invocation);
             return 1;
         }
 
@@ -228,7 +222,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                         break;
                 }
                 if (ending == -1)
-                    throw new LexicalException("Invalid generic arguments.", invocation, Lexer.Writer);
+                    throw new LexicalException("Invalid generic arguments.", invocation, _lexer._writer);
                 _genericEnd = ending;
                 _findGenericEnd = false;
             }
@@ -236,47 +230,47 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             {
                 _genericEnd = 0;
                 _readFirstGeneric = false;
-                Lexer.Skipping = false;
-                Lexer.Writer.Append(GenericTerminate);
-                Lexer.ReadingGeneric = false;
+                _lexer._skipping = false;
+                _lexer._writer.Append(GenericTerminate);
+                _lexer._read_generic_args = false;
                 _memberAccessing = false;
                 return false;
             }
-            else if (Lexer.CurrentValue == MemberAccess)
+            else if (_lexer._curr_char == MemberAccess)
                 _memberAccessing = true;
-            else if (Lexer.CurrentValue == ParamTerminate) //wnt to add member access checks 2 this
+            else if (_lexer._curr_char == ParamTerminate) //wnt to add member access checks 2 this
             {
                 if (_genericParamTerminate)
-                    throw new LexicalException("Invalid generic arguments.", invocation, Lexer.CurrentValue, Lexer.Writer);
+                    throw new LexicalException("Invalid generic arguments.", invocation, _lexer._curr_char, _lexer._writer);
                 _genericParamTerminate = true;
-                Lexer.Skipping = false;
+                _lexer._skipping = false;
             }
-            else if (Lexer.CurrentValue == Whitespace)
+            else if (_lexer._curr_char == Whitespace)
             {
-                Lexer.Skipping = true; //unlike most other reads, this one allows whitespace, so instead of Lexer.skipping to Termination and ending the read
+                _lexer._skipping = true; //unlike most other reads, this one allows whitespace, so instead of Lexer.skipping to Termination and ending the read
                 return false; //we must instead increment one by one and keep the read active until we reach a proper termination
             }
-            else if (Lexer.CurrentValue != GenericDeclr && Lexer.CurrentValue != GenericTerminate)
+            else if (_lexer._curr_char != GenericDeclr && _lexer._curr_char != GenericTerminate)
             {
-                if (Lexer.Skipping && !_readFirstGeneric && !_genericParamTerminate && !_memberAccessing) //this specifically checks if the last value was a char
-                    throw new LexicalException("Invalid generic arguments.", invocation, Lexer.CurrentValue, Lexer.Writer); //in essence this means youre putting something like "String"
+                if (_lexer._skipping && !_readFirstGeneric && !_genericParamTerminate && !_memberAccessing) //this specifically checks if the last value was a char
+                    throw new LexicalException("Invalid generic arguments.", invocation, _lexer._curr_char, _lexer._writer); //in essence this means youre putting something like "String"
                 if (_genericParamTerminate && !_readFirstGeneric)
-                    ValidIdentifierFirstCharOrThrow(Lexer.CurrentValue, invocation);
+                    ValidIdentifierFirstCharOrThrow(_lexer._curr_char, invocation);
                 else if (_memberAccessing)
-                    Lexer.ValidIdentifier(Lexer.CurrentValue, invocation);
+                    _lexer.ValidIdentifier(_lexer._curr_char, invocation);
                 _genericParamTerminate = false;
                 _readFirstGeneric = false;
-                Lexer.Skipping = false;
+                _lexer._skipping = false;
                 _memberAccessing = false;
             }
-            else if (Lexer.CurrentValue == GenericDeclr)
+            else if (_lexer._curr_char == GenericDeclr)
             {
                 if (_readFirstGeneric)
-                    throw new LexicalException("Invalid generic arguments.", invocation, Lexer.CurrentValue, Lexer.Writer);
+                    throw new LexicalException("Invalid generic arguments.", invocation, _lexer._curr_char, _lexer._writer);
                 _readFirstGeneric = true;
             }
-            else if (Lexer.CurrentValue == GenericTerminate && _readFirstGeneric)
-                throw new LexicalException("Invalid generic arguments.", invocation, Lexer.CurrentValue, Lexer.Writer);
+            else if (_lexer._curr_char == GenericTerminate && _readFirstGeneric)
+                throw new LexicalException("Invalid generic arguments.", invocation, _lexer._curr_char, _lexer._writer);
             return true;
 
         }
@@ -286,44 +280,44 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         {
             if (_beganReadingMainMethodName)
             {
-                if (Lexer.ReadingGeneric)
+                if (_lexer._read_generic_args)
                 {
                     ReadGeneric(ref i, invocation); //readgeneric is so special isnt it, this is the only read called by another read, but it works
                     return true;
                 }
-                if (Lexer.CurrentValue == Whitespace)
+                if (_lexer._curr_char == Whitespace)
                     while (i < invocation.Length)
                     {
                         i++;
-                        Lexer.CurrentValue = invocation[i];
-                        if (ValidIdentifierFirstChar(Lexer.CurrentValue) || WhitespaceEnd() || Lexer.CurrentValue == GenericTerminate)
+                        _lexer._curr_char = invocation[i];
+                        if (ValidIdentifierFirstChar(_lexer._curr_char) || WhitespaceEnd() || _lexer._curr_char == GenericTerminate)
                         {
-                            if (Lexer.CurrentValue == MethodDeclr)  //this allows Method ( ) for the first/main method
+                            if (_lexer._curr_char == MethodDeclr)  //this allows Method ( ) for the first/main method
                                 break; //generics handle it on their own, but i need a specail case
                         }
-                        else if (Lexer.CurrentValue == GenericDeclr)
+                        else if (_lexer._curr_char == GenericDeclr)
                             break;
-                        else if (Lexer.CurrentValue != CallLexer.Whitespace)
-                            throw new LexicalException("Detected trailing input after whitespace.", invocation, Lexer.CurrentValue, Lexer.Writer, i);
+                        else if (_lexer._curr_char != CallLexer.Whitespace)
+                            throw new LexicalException("Detected trailing input after whitespace.", invocation, _lexer._curr_char, _lexer._writer, i);
                     }
-                if (Lexer.CurrentValue == MethodDeclr)
+                if (_lexer._curr_char == MethodDeclr)
                 {
                     ReadMain();
-                    Lexer.ReadingGeneric = false;
-                    Lexer.Start = false;
-                    Lexer.MethodParamsBegan = true;
+                    _lexer._read_generic_args = false;
+                    _lexer._start = false;
+                    _lexer._method_params_began = true;
                     _beganReadingMainMethodName = false;
                     return false;
                 }
-                if (Lexer.CurrentValue == GenericDeclr)
+                if (_lexer._curr_char == GenericDeclr)
                     ReadGeneric<object>(invocation, null);
                 else
-                    Lexer.ValidIdentifier(Lexer.CurrentValue, invocation);
+                    _lexer.ValidIdentifier(_lexer._curr_char, invocation);
                 return true;
             }
-            else if (Lexer.CurrentValue == Whitespace)
+            else if (_lexer._curr_char == Whitespace)
                 return false;
-            if (ValidIdentifierFirstCharOrThrow(Lexer.CurrentValue, invocation))
+            if (ValidIdentifierFirstCharOrThrow(_lexer._curr_char, invocation))
                 _beganReadingMainMethodName = true;
             return true;
         }
@@ -331,10 +325,10 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         void ReadMain()
         {
-            MethodString method = MethodString.New(Lexer.Writer.ToString(), null, Lexer.DeclaringType!);// ?? throw new InvalidOperationException());
-            Lexer.Writer.Length = 0;
-            Lexer.CurrentMethod = method;
-            Lexer.Main = method;
+            MethodString method = MethodString.New(_lexer._writer.ToString(), null, _lexer._declr_type!);// ?? throw new InvalidOperationException());
+            _lexer._writer.Length = 0;
+            _lexer._curr_method = method;
+            _lexer._main = method;
 
         }
 
@@ -342,60 +336,60 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         void ReadField(string invocation)
         {
             if (_readFirstCharOfName) //i expect ethod( class<int>. , ) readqualifiedmember to be true here but it is not -ah yes thats cause , causes it to be read as a field
-                throw new LexicalException("Invalid member access operator, no member was accesed.", invocation, Lexer.Writer);
+                throw new LexicalException("Invalid member access operator, no member was accesed.", invocation, _lexer._writer);
             string typename = ResolveMemberAccess(out string fieldname)!;
             TypeString type = ImplicitDeclaredOrNew(typename);
             FieldString field = new(fieldname, type);
-            Lexer.Writer.Length = 0;
-            Lexer.CurrentMethod!.AddParameter(field);
-            Lexer.ReadQualifiedMember = false;
+            _lexer._writer.Length = 0;
+            _lexer._curr_method!.AddParameter(field);
+            _lexer._read_qualified_member = false;
         }
 
 
         void ReadMethod(string invocation)
         {
             if (_readFirstCharOfName) //i expect ethod( class<int>. , ) readqualifiedmember to be true here but it is not -ah yes thats cause , causes it to be read as a field
-                throw new LexicalException("Invalid member access operator, no member was accesed.", invocation, Lexer.Writer);
+                throw new LexicalException("Invalid member access operator, no member was accesed.", invocation, _lexer._writer);
             string? typename = ResolveMemberAccess(out string methodname);
             TypeString type = ImplicitDeclaredOrNew(typename);
-            MethodString method = MethodString.New(methodname, Lexer.CurrentMethod, type);
-            Lexer.Writer.Length = 0;
-            Lexer.CurrentMethod!.AddParameter(method);
-            Lexer.CurrentMethod = method;
-            Lexer.ReadQualifiedMember = false;
-            ReadingSubparams++;
-            LastReadingCount++;
+            MethodString method = MethodString.New(methodname, _lexer._curr_method, type);
+            _lexer._writer.Length = 0;
+            _lexer._curr_method!.AddParameter(method);
+            _lexer._curr_method = method;
+            _lexer._read_qualified_member = false;
+            _lexer._reading_sub_params++;
+            _lexer._last_nested_read_count++;
         }
 
         TypeString ImplicitDeclaredOrNew(string? name)
         {
             if (name == null)
-                return Lexer.ImplicitThis ?? throw new InvalidOperationException("Cannot use implicit this, no implicit this has been provided.");
-            if (name.EqualsCaseless(Lexer.ImplicitThis?.StringID)) // == this or == _key
-                return Lexer.ImplicitThis!;
-            if (name.EqualsCaseless(Lexer.DeclaringType!.StringID))
-                return Lexer.DeclaringType;
+                return _lexer._implicit_this ?? throw new InvalidOperationException("Cannot use implicit this, no implicit this has been provided.");
+            if (name.EqualsCaseless(_lexer._implicit_this?.StringID)) // == this or == _key
+                return _lexer._implicit_this!;
+            if (name.EqualsCaseless(_lexer._declr_type!.StringID))
+                return _lexer._declr_type;
             return TypeString.New(name);
         }
         string? ResolveMemberAccess(out string member) //returns typename, outputs the accessed member
         {
-            string qualifiedMember = Lexer.Writer.ToString();
-            Lexer.Writer.Length = 0;
+            string qualifiedMember = _lexer._writer.ToString();
+            _lexer._writer.Length = 0;
             return MiniLexer.ResolveMemberAccessOrFloat(qualifiedMember, out member, out _);
         }
 
         void CheckGenericBeforeReadGeneric(string invocation)
         {
-            if (Lexer.ReadingGeneric)
-                throw new LexicalException("Invalid generic arguments.", invocation, Lexer.Writer);
-            Lexer.ReadingGeneric = true;
+            if (_lexer._read_generic_args)
+                throw new LexicalException("Invalid generic arguments.", invocation, _lexer._writer);
+            _lexer._read_generic_args = true;
         }
 
         internal bool ValidIdentifierFirstCharOrThrow(char next, string invocation)
         {
             const string error = "Identifier names must Lexer.start with a letter or an underscore.";
             if (!ValidIdentifierFirstChar(next))
-                throw new LexicalException(error, invocation, next, Lexer.Writer);
+                throw new LexicalException(error, invocation, next, _lexer._writer);
             return true;
         }
 

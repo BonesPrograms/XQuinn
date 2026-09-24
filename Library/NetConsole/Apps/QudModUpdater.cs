@@ -146,7 +146,7 @@ namespace XQuinn.NetConsole.Apps
 
     static class ModDirectories
     {
-        readonly static string ModLab = Path.Combine(CodeLabFinder.Path, "QudModLab");
+        readonly static string ModLab = Path.Combine(CodeLabFinder.s_path, "QudModLab");
         readonly static string XmlPath = Path.Combine(ModLab, "mods.xml");
         static readonly XDocument XML = XDocument.Load(XmlPath); //will throw a filenotfoundexception of the modlab or mods.xml cannot be located
         public static List<string> GetModDirectories()

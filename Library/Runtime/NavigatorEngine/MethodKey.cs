@@ -8,11 +8,11 @@ namespace XQuinn.Runtime.NavigatorEngine
     internal readonly struct MethodKey : IEquatable<MethodKey>
     {
         public readonly int MatchIndex;
-        public readonly GenericKey GenericID;
+        public readonly GenericKey GKey;
         internal MethodKey(int index, GenericKey key)
         {
             MatchIndex = index;
-            GenericID = key;
+            GKey = key;
         }
 
         internal static MethodKey MethodQuery(MethodString mthdString)
@@ -40,21 +40,21 @@ namespace XQuinn.Runtime.NavigatorEngine
             unchecked
             {
                 hash = hash * 31 + MatchIndex.GetHashCode();
-                hash = hash * 31 + GenericID.GetHashCode();
+                hash = hash * 31 + GKey.GetHashCode();
             }
             return hash;
         }
 
         public override string ToString()
         {
-            StringBuilder sb = new(GenericID.Name);
+            StringBuilder sb = new(GKey.Name);
             if (MatchIndex > 0)
                 sb.Append($":{MatchIndex}");
-            return GenericID.Args == 0 ? sb.ToString() : GenericID.Args == 1 ? sb.Append("<T>").ToString() : GenericID.ArgsToString(sb);
+            return GKey.Args == 0 ? sb.ToString() : GKey.Args == 1 ? sb.Append("<T>").ToString() : GKey.ArgsToString(sb);
         }
         public bool Equals(MethodKey overload)
         {
-            return overload.MatchIndex == MatchIndex && overload.GenericID == GenericID;
+            return overload.MatchIndex == MatchIndex && overload.GKey == GKey;
         }
 
         public override bool Equals(object? obj)

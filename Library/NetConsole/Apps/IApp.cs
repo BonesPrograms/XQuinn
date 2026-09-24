@@ -18,13 +18,25 @@ namespace XQuinn.NetConsole.Apps
     /// </summary>
     internal interface IApp
     {
-        static readonly TypeBook Apps = TypeBook.New(typeof(IApp).Module.GetTypes().Where(x => !x.IsInterface && x.IsAssignableTo(typeof(IApp))), false, StringComparer.OrdinalIgnoreCase);
+
+        static Dictionary<string, Type> IApps()
+        {
+            Dictionary<string, Type> iapps = new(StringComparer.OrdinalIgnoreCase);
+            Assembly assembly = Assembly.Load("XQuinn");
+            Type[] types = assembly.GetTypes();
+            foreach (Type type in types)
+            {
+                if (!type.IsInterface && type.IsAssignableTo(typeof(IApp)))
+                    iapps[type.Name] = type;
+            }
+            return iapps;
+        }
 
         internal static void RunApp(string[] args)
         {
             if (args.Length == 1)
             {
-                if (!Apps.TryGetValue(args[0], out Type? apptype))
+                if (!IApps().TryGetValue(args[0], out Type? apptype))
                     return;
                 try
                 {
@@ -82,18 +94,18 @@ namespace XQuinn.NetConsole.Apps
 
     sealed class ResourcesReplacer : IApp
     {
-        static readonly string GameResourcesFolder = Path.Combine(VietnamWarSource.Path, "Vietnam War_Data");
-        static readonly string BackupResourcesFolder = Path.Combine(VietnamWarModLab.Path, @"ResourcesGetter\BackupResources");
-        static readonly string ModResourcesFolder = Path.Combine(VietnamWarModLab.Path, @"ResourcesGetter\ModResources");
+        static readonly string GameResourcesFolder = Path.Combine(VietnamWarSource.s_path, "Vietnam War_Data");
+        static readonly string BackupResourcesFolder = Path.Combine(VietnamWarModLab.s_path, @"ResourcesGetter\BackupResources");
+        static readonly string ModResourcesFolder = Path.Combine(VietnamWarModLab.s_path, @"ResourcesGetter\ModResources");
         static readonly Dictionary<string, string> ModResources = Directory.GetFiles(ModResourcesFolder).Select(file => (Name: Path.GetFileName(file), Path: file)).ToDictionary(key => key.Name, value => value.Path);
         static readonly Dictionary<string, string> GameResources = GetResources(GameResourcesFolder);
         static readonly string[] Options = { "BACKUP", "RESTORE FROM BACKUP", "INSTALL" };
 
         ResourcesReplacer()
         {
-            
+
         }
-        public  void Run()
+        public void Run()
         {
             string? option = ConsoleTools.Choices(Options, "This program is for backing up Vietnam War assets and installing mod assets in their place.");
             if (option == null)
@@ -170,7 +182,7 @@ namespace XQuinn.NetConsole.Apps
     {
         PluginMaker()
         {
-            
+
         }
         static readonly string[] Insertions =
         {
@@ -178,7 +190,7 @@ namespace XQuinn.NetConsole.Apps
       $"    <Reference Include=\"{Il2cppmscorlib}\"/>",
       $"    <Reference Include=\"{CoreModule}\"/>",
     };
-        static readonly string ModsRoot = VietnamWarModLab.Path;
+        static readonly string ModsRoot = VietnamWarModLab.s_path;
         const string CoreModule = @"../interop\UnityEngine.CoreModule.dll";
         const string Il2cppmscorlib = @"../interop\Il2Cppmscorlib.dll";
         const string InteropAssembly = @"../interop\Assembly-CSharp.dll";
@@ -292,13 +304,13 @@ namespace XQuinn.NetConsole.Apps
 
         InteropDLLGetter()
         {
-            
+
         }
-        static readonly string Source = Path.Combine(VietnamWarSource.Path, @"BepInEx\interop");
-        static readonly string CopyTo = Path.Combine(VietnamWarModLab.Path, "interop");
+        static readonly string Source = Path.Combine(VietnamWarSource.s_path, @"BepInEx\interop");
+        static readonly string CopyTo = Path.Combine(VietnamWarModLab.s_path, "interop");
         static readonly string[] Assemblies = { "UnityEngine.CoreModule.dll", "Il2Cppmscorlib.dll", "Assembly-CSharp.dll" };
 
-        public  void Run()
+        public void Run()
         {
             foreach (var assembly in Assemblies)
             {

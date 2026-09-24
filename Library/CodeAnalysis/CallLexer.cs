@@ -8,93 +8,93 @@ namespace XQuinn.CodeAnalysis
 {
 
 
-    public class LexicalException : Exception
+    internal class LexicalException : Exception
     {
-        public LexicalException(string msg, string invocation, char next, StringBuilder sb, int i) : base(msg + $"Input: {invocation} Bad character: {next} Current string value: {sb} Index: {i + 1}")
+        internal LexicalException(string msg, string invocation, char next, StringBuilder sb, int i) : base(msg + $"Input: {invocation} Bad character: {next} Current string value: {sb} Index: {i + 1}")
         {
 
         }
 
-        public LexicalException(string msg, string invocation, StringBuilder sb) : base(msg + $"Input: {invocation} Current string value: {sb}")
+        internal LexicalException(string msg, string invocation, StringBuilder sb) : base(msg + $"Input: {invocation} Current string value: {sb}")
         {
 
         }
 
-        public LexicalException(string msg, string invocation) : base(msg + $"Input: {invocation}")
+        internal LexicalException(string msg, string invocation) : base(msg + $"Input: {invocation}")
         {
 
         }
 
-        public LexicalException(string msg, string invocation, char val, StringBuilder sb) : base(msg + $"Input: {invocation} Bad Character:{val} Current String Value: {sb}")
+        internal LexicalException(string msg, string invocation, char val, StringBuilder sb) : base(msg + $"Input: {invocation} Bad Character:{val} Current String Value: {sb}")
         {
 
         }
     }
-    public sealed class CallLexer
+    internal sealed class CallLexer
     {
 
 
-        public const char ValidNonAlphaNumeric = '_';
+        internal const char ValidNonAlphaNumeric = '_';
 
-        public const char MethodDeclr = '(';
+        internal const char MethodDeclr = '(';
 
-        public const char MethodTerminate = ')';
+        internal const char MethodTerminate = ')';
 
-        public const char ParamTerminate = ',';
+        internal const char ParamTerminate = ',';
 
-        public const char MemberAccess = '.';
+        internal const char MemberAccess = '.';
 
-        public const char StringDeclr = '"';
+        internal const char StringDeclr = '"';
 
-        public const char EscSeq = '\\';
+        internal const char EscSeq = '\\';
 
-        public const char Whitespace = ' ';
+        internal const char Whitespace = ' ';
 
-        public const char CharDeclr = '\'';
+        internal const char CharDeclr = '\'';
 
-        public const char EnumOR = '|';
+        internal const char EnumOR = '|';
 
-        public const char NoEscDeclr = '@';
+        internal const char NoEscDeclr = '@';
 
-        public const char GenericDeclr = '<';
+        internal const char GenericDeclr = '<';
 
-        public const char GenericTerminate = '>';
+        internal const char GenericTerminate = '>';
 
-        internal readonly StringBuilder Writer = new();
-        internal readonly ValueReader ValueReader;
-        internal readonly ArbitraryReader ArbitraryReader;
-        internal MethodString? Main;
-        internal MethodString? CurrentMethod;
-        internal TypeString? DeclaringType;
-        internal TypeString? ImplicitThis;
-        public char CurrentValue;
-        public bool Start = true;
+        internal readonly StringBuilder _writer = new();
+        internal readonly ValueReader _value_reader;
+        internal readonly ArbitraryReader _arbitrary_reader;
+        internal MethodString? _main;
+        internal MethodString? _curr_method;
+        internal TypeString? _declr_type;
+        internal TypeString? _implicit_this;
+        internal char _curr_char;
+        internal bool _start = true;
 
         //Primary reading rulesets - determine how to lex incoming data based on context
-        public bool ReadingChar;
-        public bool ReadArbitraryLegalValue; //anything that isnt a digit, string or char but also hasnt yet been determined as a method field or enumOR
-        public bool ReadQualifiedMember; //something that has a member access operator and is not a digit
-        public bool ReadDigit;
-        public bool ReadingString;
-        public bool ReadingEnumOR; //OR-less enums are read as arbitrary values. | activates EnumOR read
-        public bool ReadingGeneric;
+        internal bool _reading_char;
+        internal bool _read_arbitrary_legal_value; //anything that isnt a digit, string or char but also hasnt yet been determined as a method field or enumOR
+        internal bool _read_qualified_member; //something that has a member access operator and is not a digit
+        internal bool _read_digit;
+        internal bool _read_string;
+        internal bool _read_enumOR; //OR-less enums are read as arbitrary values. | activates EnumOR read
+        internal bool _read_generic_args;
 
         //These are supporting flags for rulesets, some rulesets have specific rules for specific characters, or need to be read around declaration characters
-        public bool Skipping;
+        internal bool _skipping;
 
         //These are for getting context on parameter values. Once a method begins or a parameter/method terminates, one of these is true, and we wait until we receive a character that gives us context on what will be read next.
         //Once we receive context, a Reading flag is set to true related to that specific context, and these flags are set to false, to prevent context getting reset in the middle of a read.
-        public bool MethodParamsBegan;
-        public bool Terminated;
+        internal bool _method_params_began;
+        internal bool _terminated;
 
         //This is for additional awareness on how deeply nested a subparameter read is
-        public int ReadingSubparams;
-        public int LastReadCount;
+        internal int _reading_sub_params;
+        internal int _last_nested_read_count;
 
-        public CallLexer()
+        internal CallLexer()
         {
-            ValueReader = new(this);
-            ArbitraryReader = new(this);
+            _value_reader = new(this);
+            _arbitrary_reader = new(this);
         }
 
         internal MethodString MethodTemplate(string invocation, TypeString declaringType, TypeString? implicitAccess)
@@ -104,11 +104,11 @@ namespace XQuinn.CodeAnalysis
             //   throw new ArgumentException("Invocation cannot be null or whitespace.");
             Clear();
             int? breakpoint = Breakpoint(invocation);
-            DeclaringType = declaringType; //this is specifically to support trycatch, though otherwise not necessary because it always clears at the end to avoid holding onto stale data
-            ImplicitThis = implicitAccess;
+            _declr_type = declaringType; //this is specifically to support trycatch, though otherwise not necessary because it always clears at the end to avoid holding onto stale data
+            _implicit_this = implicitAccess;
             StringBuffer(invocation, breakpoint);
             FatalLexicalError(invocation);
-            MethodString method = Main!;
+            MethodString method = _main!;
             Clear();
             return method;
         }
@@ -120,169 +120,169 @@ namespace XQuinn.CodeAnalysis
             {
                 if (i == breakpoint)
                     break;
-                CurrentValue = invocation[i];
-                if (Start)
+                _curr_char = invocation[i];
+                if (_start)
                 {
-                    if (ArbitraryReader.ReadMainMethod(ref i, invocation))
+                    if (_arbitrary_reader.ReadMainMethod(ref i, invocation))
                         goto Append;
                     goto Increment;
                 }
-                else if (ReadingGeneric)
+                else if (_read_generic_args)
                 {
-                    if (ArbitraryReader.ReadGeneric(ref i, invocation))
+                    if (_arbitrary_reader.ReadGeneric(ref i, invocation))
                         goto Append;
                     goto Increment;
                 }
-                else if (ReadingEnumOR)
+                else if (_read_enumOR)
                 {
-                    if (ValueReader.ReadEnumOR(invocation))
+                    if (_value_reader.ReadEnumOR(invocation))
                         goto Append;
                 }
-                else if (ReadDigit)
+                else if (_read_digit)
                 {
-                    if (ValueReader.ReadNum(ref i, invocation))
+                    if (_value_reader.ReadNum(ref i, invocation))
                         goto Append;
                 }
-                else if (ReadingString)
+                else if (_read_string)
                 {
-                    if (ValueReader.ReadString(ref i, invocation))
+                    if (_value_reader.ReadString(ref i, invocation))
                         goto Append;
                 }
-                else if (ReadingChar)
+                else if (_reading_char)
                 {
-                    if (ValueReader.ReadChar(ref i, invocation))
+                    if (_value_reader.ReadChar(ref i, invocation))
                         goto Append;
                 }
-                else if (ReadArbitraryLegalValue)
+                else if (_read_arbitrary_legal_value)
                 {
-                    int result = ArbitraryReader.ReadArbitrary(ref i, invocation);
+                    int result = _arbitrary_reader.ReadArbitrary(ref i, invocation);
                     if (result == 1)
                         goto Append;
                     else if (result == 2)
                         goto Increment;
                 }
-                else if (ReadQualifiedMember)
+                else if (_read_qualified_member)
                 {
-                    int result = ArbitraryReader.ReadIdentifier(ref i, invocation);
+                    int result = _arbitrary_reader.ReadIdentifier(ref i, invocation);
                     if (result == 1)
                         goto Append;
                     else if (result == 0)
                         goto Increment;
                 }
-                else if (CurrentValue == Whitespace)
+                else if (_curr_char == Whitespace)
                     goto Increment;
-                else if (Terminated || MethodParamsBegan)
+                else if (_terminated || _method_params_began)
                     GetContext();
-                if (LastReadCount > ReadingSubparams)
+                if (_last_nested_read_count > _reading_sub_params)
                 {
-                    CurrentMethod = CurrentMethod!._subParamOf;
-                    LastReadCount--;
+                    _curr_method = _curr_method!._subParamOf;
+                    _last_nested_read_count--;
                 }
-                if (CurrentValue == MethodTerminate)
+                if (_curr_char == MethodTerminate)
                 {
-                    if (ReadingSubparams > 0)
-                        ReadingSubparams--;
+                    if (_reading_sub_params > 0)
+                        _reading_sub_params--;
                 }
-                if (Termination(CurrentValue))
+                if (Termination(_curr_char))
                 {
-                    if (Writer.Length != 0)
+                    if (_writer.Length != 0)
                     {
-                        ValueReader.ReadParam();
-                        ReadArbitraryLegalValue = false;
-                        Terminated = true;
+                        _value_reader.ReadParam();
+                        _read_arbitrary_legal_value = false;
+                        _terminated = true;
 
                     }
 
                     goto Increment;
                 }
             Append:
-                if (!ReadArbitraryLegalValue && !ReadingChar && !ReadDigit && !ReadingString && !ReadQualifiedMember && !Start && !ReadingEnumOR && !ReadingGeneric)
-                    ValidIdentifier(CurrentValue, invocation);
-                Writer.Append(CurrentValue);
+                if (!_read_arbitrary_legal_value && !_reading_char && !_read_digit && !_read_string && !_read_qualified_member && !_start && !_read_enumOR && !_read_generic_args)
+                    ValidIdentifier(_curr_char, invocation);
+                _writer.Append(_curr_char);
             Increment:
                 i++;
             }
         }
         void GetContext() //helps us figure out whats about to be read 
         {
-            if (CurrentValue == CharDeclr)
-                ReadingChar = true;
-            else if (CurrentValue == StringDeclr || CurrentValue == NoEscDeclr)
+            if (_curr_char == CharDeclr)
+                _reading_char = true;
+            else if (_curr_char == StringDeclr || _curr_char == NoEscDeclr)
             {
-                if (CurrentValue == NoEscDeclr) //there can be an invalid sequence here but it wont throw until we get to ValueString
+                if (_curr_char == NoEscDeclr) //there can be an invalid sequence here but it wont throw until we get to ValueString
                 {
-                    ValueReader.NoEscape = true;
-                    ValueReader.ReadNoEscDeclr = true;
+                    _value_reader._noEscape = true;
+                    _value_reader._readNoEscDeclr = true;
                 }
-                ReadingString = true;
+                _read_string = true;
             }
-            else if (CurrentValue == '-' || CurrentValue.IsDigit())
-                ReadDigit = true;
-            else if (ValidIdentifierFirstChar(CurrentValue))
-                ReadArbitraryLegalValue = true;
-            if (ReadDigit || ReadingString || ReadArbitraryLegalValue || ReadingChar)
+            else if (_curr_char == '-' || _curr_char.IsDigit())
+                _read_digit = true;
+            else if (ValidIdentifierFirstChar(_curr_char))
+                _read_arbitrary_legal_value = true;
+            if (_read_digit || _read_string || _read_arbitrary_legal_value || _reading_char)
             {
-                Terminated = false;
-                MethodParamsBegan = false;
+                _terminated = false;
+                _method_params_began = false;
             }
         }
 
 
         void FatalLexicalError(string invocation)
         {
-            if (LastReadCount > 0)
-                throw new LexicalException("Nested method parameters not properly terminated. You can usually throw another ending parenthesis at the end of your invocation to fix this. ", invocation, Writer);
-            if (ReadingGeneric) //if you dont terminate a generic with . or ( then this will throw. genericlex checks later to make sure theyre propelry closed with >
-                throw new LexicalException("Invalid generic arguments.", invocation, Writer);
-            if (ReadingChar)
-                throw new LexicalException("Chars require a closing apostrophe character.", invocation, Writer);
-            if (ReadDigit)
-                throw new LexicalException("Digit parameter not terminated.", invocation, Writer);
-            if (ReadingString)
-                throw new LexicalException("Strings require a closing quotation character.", invocation, Writer);
-            if (ReadArbitraryLegalValue)
-                throw new LexicalException("Parameter or method not terminated.", invocation, Writer);
-            if (ReadQualifiedMember)
-                throw new LexicalException("Member access requires a terminator after the member's name; either a ( leading parenthesis for method names, or a , comma for fields.", invocation, Writer);
-            if (Start)
-                throw new LexicalException("Method name was unable to be read due to missing ( leading parenthesis.", invocation, Writer);
+            if (_last_nested_read_count > 0)
+                throw new LexicalException("Nested method parameters not properly terminated. You can usually throw another ending parenthesis at the end of your invocation to fix this. ", invocation, _writer);
+            if (_read_generic_args) //if you dont terminate a generic with . or ( then this will throw. genericlex checks later to make sure theyre propelry closed with >
+                throw new LexicalException("Invalid generic arguments.", invocation, _writer);
+            if (_reading_char)
+                throw new LexicalException("Chars require a closing apostrophe character.", invocation, _writer);
+            if (_read_digit)
+                throw new LexicalException("Digit parameter not terminated.", invocation, _writer);
+            if (_read_string)
+                throw new LexicalException("Strings require a closing quotation character.", invocation, _writer);
+            if (_read_arbitrary_legal_value)
+                throw new LexicalException("Parameter or method not terminated.", invocation, _writer);
+            if (_read_qualified_member)
+                throw new LexicalException("Member access requires a terminator after the member's name; either a ( leading parenthesis for method names, or a , comma for fields.", invocation, _writer);
+            if (_start)
+                throw new LexicalException("Method name was unable to be read due to missing ( leading parenthesis.", invocation, _writer);
         }
 
-        public void ValidIdentifier(char value, string invocation)
+        internal void ValidIdentifier(char value, string invocation)
         {
             const string error = "Detected illegal character in identifier.";//&&value!='('
             if (value != ':' && Illegal(value))
-                throw new LexicalException(error, invocation, value, Writer);
+                throw new LexicalException(error, invocation, value, _writer);
 
         }
-        public static bool Illegal(char val) => val != ValidNonAlphaNumeric && !val.IsDigit() && !val.IsLetter();
-        public static bool Termination(char value) => value == ParamTerminate || value == MethodTerminate;
-        public static bool ValidIdentifierFirstChar(char value) => value == ValidNonAlphaNumeric || value.IsLetter();
+        internal static bool Illegal(char val) => val != ValidNonAlphaNumeric && !val.IsDigit() && !val.IsLetter();
+        internal static bool Termination(char value) => value == ParamTerminate || value == MethodTerminate;
+        internal static bool ValidIdentifierFirstChar(char value) => value == ValidNonAlphaNumeric || value.IsLetter();
 
         void Clear() //This allows the Lexer to recover if an exception is thrown during analysis
         {             //There can also be some leftover values after a lex so state must be reset
-            Main = null;
-            DeclaringType = null;
-            ImplicitThis = null;
-            CurrentValue = default;
-            Start = true;
-            Skipping = false;
-            CurrentMethod = null;
-            ReadDigit = false;
-            ReadingString = false;
-            ReadingGeneric = false;
-            Skipping = false;
-            ReadQualifiedMember = false;
-            ReadingChar = false;
-            ReadingEnumOR = false;
-            ReadArbitraryLegalValue = false;
-            MethodParamsBegan = false;
-            Terminated = false;
-            ReadingSubparams = 0;
-            LastReadCount = 0;
-            Writer.Length = 0;
-            ValueReader.Clear();
-            ArbitraryReader.Clear();
+            _main = null;
+            _declr_type = null;
+            _implicit_this = null;
+            _curr_char = default;
+            _start = true;
+            _skipping = false;
+            _curr_method = null;
+            _read_digit = false;
+            _read_string = false;
+            _read_generic_args = false;
+            _skipping = false;
+            _read_qualified_member = false;
+            _reading_char = false;
+            _read_enumOR = false;
+            _read_arbitrary_legal_value = false;
+            _method_params_began = false;
+            _terminated = false;
+            _reading_sub_params = 0;
+            _last_nested_read_count = 0;
+            _writer.Length = 0;
+            _value_reader.Clear();
+            _arbitrary_reader.Clear();
         }
         int? Breakpoint(string invocation)
         {
@@ -303,12 +303,12 @@ namespace XQuinn.CodeAnalysis
                         break;
                     }
                     else
-                        throw new LexicalException("Invalid method termination. ", invocation, val, Writer);
+                        throw new LexicalException("Invalid method termination. ", invocation, val, _writer);
                 }
                 else if (val == MethodTerminate)
                     break;
                 else
-                    throw new LexicalException("Detected trailing input after method termination or lack of method termination. ", invocation, val, Writer);
+                    throw new LexicalException("Detected trailing input after method termination or lack of method termination. ", invocation, val, _writer);
             }
             return breakpoint;
         }

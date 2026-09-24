@@ -23,8 +23,8 @@ namespace XQuinn.Runtime
         internal readonly Invoker _invoker;
         internal object? _instance;
         internal string? _variable;
-        internal Type? _instanceType; ///Raw type of the instance
-        internal Type? _loadedType; ///Loaded type; could vary from instance type via cast.
+        internal Type? _instance_type; ///Raw type of the instance
+        internal Type? _static_type; ///Loaded type; could vary from instance type via cast.
         internal TypeString? _implicit_this; ///Data referring back to the loaded type that works within the MethodLexer
         internal readonly Dictionary<MethodKey, MethodBase> _methods = new();
         internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
@@ -75,7 +75,7 @@ namespace XQuinn.Runtime
         {
             if (invocation.EqualsCaseless("vars"))
                 return _variables.Select(x => $"Key: {x.Key} :: {x.Value}");
-            if (_loadedType == null)
+            if (_static_type == null)
                 throw new InvalidOperationException("No loaded type to query. Use the static methods Fields/Methods/Props in class Types to query unloaded types.");
             if (MiniLexer.ImplicitThisMethodCall(invocation))
             {
@@ -159,7 +159,7 @@ namespace XQuinn.Runtime
             _implicit_this = tstring;
             LoadTypeMembers(t);
             _instance = null;
-            _instanceType = null;
+            _instance_type = null;
             _variable = null;
             return t;
         }
@@ -168,12 +168,12 @@ namespace XQuinn.Runtime
         {
             _instance = instance;
             LoadTypeMembers(instanceType);
-            _instanceType = instanceType;
+            _instance_type = instanceType;
             _implicit_this = TypeString.s_this;
         }
         void LoadTypeMembers(Type type)
         {
-            _loadedType = type;
+            _static_type = type;
             TypeMap.MapType(_methods, _fields, type, _props);
         }
         //Checks for method or field syntax. If it detects a method, it diverts to an isolated type load and method invocation.
@@ -228,8 +228,8 @@ namespace XQuinn.Runtime
             TypeString tstring = TypeString.New(invocation);
             Type t = _reflector.FindType(tstring, true);
             _implicit_this = tstring;
-            if (!t.IsAssignableFrom(_instanceType))
-                throw new InvalidCastException($"{_instanceType} cannot cast to {t}.");
+            if (!t.IsAssignableFrom(_instance_type))
+                throw new InvalidCastException($"{_instance_type} cannot cast to {t}.");
             LoadTypeMembers(t);
             return t;
         }
@@ -254,7 +254,7 @@ namespace XQuinn.Runtime
             //     assigningTo = new(var); //there are many reasons why i wont add variable assignment (none of which are explained here so dont bother looking just ask if youre curious)
             if (lefthandTypeName == null)
             {
-                lefthandtype = _loadedType ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {invocation}");
+                lefthandtype = _static_type ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {invocation}");
                 lefthandInstance = _instance;
             }
             else
@@ -264,7 +264,7 @@ namespace XQuinn.Runtime
                 lefthandtype = _reflector.FindReference(fieldStr, out object? variable);
                 lefthandInstance = variable;
             }
-            if (lefthandtype != _loadedType && (!lefthandtype?.IsClass ?? false))
+            if (lefthandtype != _static_type && (!lefthandtype?.IsClass ?? false))
                 throw new NotSupportedException($"Assigning to the members of struct fields is currently unsupported due to constraints related to boxing.See \"Assignment\" in public API doc for more info.");
 
             FieldInfo? field = lefthandtype!.GetField(lefthand, Flag);// ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
@@ -295,7 +295,7 @@ namespace XQuinn.Runtime
             }
             else if (!righthandfield && MiniLexer.ImplicitThisMethodCall(righthand))//this enables implicit this access, ie. field = method() for the lead method name
             {
-                if (_loadedType == null)
+                if (_static_type == null)
                     throw new ArgumentException("Cannot perform implicit this call, no type is loaded.");
                 MethodString methodStr = _lexer.MethodTemplate(righthand, _implicit_this!, _implicit_this);
                 assignedValue = _invoker.InvokeMethod(methodStr);
@@ -372,8 +372,8 @@ namespace XQuinn.Runtime
             _fields.Clear();
             LocalCache = null;
             _instance = null;
-            _instanceType = null;
-            _loadedType = null;
+            _instance_type = null;
+            _static_type = null;
         }
         // }
 

@@ -97,12 +97,12 @@ namespace XQuinn.Runtime
 
         void AppendNavigData()
         {
-            if (_core._loadedType != null)
+            if (_core._static_type != null)
             {
-                _feed.AppendLine($"Loaded Type: {ReflectionPrinter.Print(_core._loadedType, false)}");
-                if (_core._instanceType != null)
+                _feed.AppendLine($"Loaded Type: {ReflectionPrinter.Print(_core._static_type, false)}");
+                if (_core._instance_type != null)
                 {
-                    _feed.AppendLine($"Loaded Instance Type: {ReflectionPrinter.Print(_core._instanceType, false)}");
+                    _feed.AppendLine($"Loaded Instance Type: {ReflectionPrinter.Print(_core._instance_type, false)}");
                     if (_core._variable != null)
                         _feed.AppendLine($"Loaded Variable: {_core._variable}");
                 }

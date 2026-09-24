@@ -32,8 +32,8 @@ namespace XQuinn.Runtime.NavigatorEngine
     internal abstract class ExpandedCoreObject : CoreObject
     {
 
-        protected Type? _instanceType => _core._instanceType;
-        protected Type? _loadedType => _core._loadedType;
+        protected Type? _instanceType => _core._instance_type;
+        protected Type? _loadedType => _core._static_type;
         //protected bool Caching => _core.Caching;
         protected TypeBook? LocalCache => _core.LocalCache;
         public ExpandedCoreObject(NavigatorCore navig) : base(navig)

@@ -19,7 +19,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 _methods.Clear();
                 List<MethodBase> methods = GetUnfilteredMethods(type, @new);
                 FilterSupportedMethods(methods);
-                GenericKey[] distinctKeys = methods.Select(MethodGenericKey).Distinct().ToArray();
+                GenericKey[] distinctKeys = methods.Select(x=> new GenericKey(x)).Distinct().ToArray();
                 foreach (GenericKey key in distinctKeys)
                     SortMethods(methods, key, _methods);
             }
@@ -74,11 +74,11 @@ namespace XQuinn.Runtime.NavigatorEngine
             for (int i = 0; i < methods.Count; i++)
             {
                 MethodBase method = methods[i];
-                GenericKey evaluatedKey = MethodGenericKey(method);
-                if (evaluatedKey == key)
+                GenericKey gkey = new(method);
+                if (gkey == key)
                 {
-                    MethodKey methodKey = new(matches, evaluatedKey);
-                    _methods[methodKey] = method;
+                    MethodKey mkey = new(matches, gkey);
+                    _methods[mkey] = method;
                     methods.Remove(method);
                     i--;
                     matches++;
@@ -87,8 +87,6 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
 
         }
-
-        internal static GenericKey MethodGenericKey(MethodBase method) => new(method is ConstructorInfo ? "new" : method.Name, method);
 
 
 

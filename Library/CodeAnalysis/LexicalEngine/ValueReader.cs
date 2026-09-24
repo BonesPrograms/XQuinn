@@ -9,24 +9,19 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
     {
 
 
-        public bool NoEscape { set => _noEscape = value; }
-
-        public bool ReadNoEscDeclr { set => _readNoEscDeclr = value; }
-
-        public bool ReadORVal { set => _readORVal = value; }
-
-        public bool ReadORDelimit { set => _readORDelimit = value; }
+        internal bool _noEscape;
+        internal bool _readNoEscDeclr;
+        internal bool _readORDelimit;
+        internal bool _readORVal;
 
         bool _readFloat;
         bool _finishedReadChar;  //Finishers/Enders are primarily for catching trailing garbage data or Lexer.skipping whtiespace - ex Method("hello"  , 22, 33 s)
         bool _readCharValue;
         bool _stringEnding;         //the trailing whitespace after "hello" willbe skipped, and the trailing s after 33 will cause an exception
-        bool _noEscape;
-        bool _readNoEscDeclr;
+
         bool _escaping;
         bool _justEscaped;
-        bool _readORDelimit;
-        bool _readORVal;
+
 
         internal void Clear()
         {
@@ -46,50 +41,50 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         public ValueReader(CallLexer lexer) : base(lexer)
         {
-            Lexer = lexer;
+            _lexer = lexer;
         }
         internal void ReadParam()
         {
-            string prm = Lexer.Writer.ToString();
+            string prm = _lexer._writer.ToString();
             ValueString param = new(prm);
-            Lexer.Writer.Length = 0;
-            Lexer.CurrentMethod!.AddParameter(param);
+            _lexer._writer.Length = 0;
+            _lexer._curr_method!.AddParameter(param);
         }
 
         internal bool ReadEnumOR(string invocation)
         {
-            if (Termination(Lexer.CurrentValue))
+            if (Termination(_lexer._curr_char))
             {
                 if (_readORDelimit)
-                    throw new LexicalException("Invalid enum OR args.", invocation, Lexer.CurrentValue, Lexer.Writer);
-                Lexer.ReadingEnumOR = false;
+                    throw new LexicalException("Invalid enum OR args.", invocation, _lexer._curr_char, _lexer._writer);
+                _lexer._read_enumOR = false;
                 _readORVal = false;
                 return false;
 
             }
-            if (Lexer.CurrentValue == Whitespace)
+            if (_lexer._curr_char == Whitespace)
             {
-                Lexer.Skipping = true;
+                _lexer._skipping = true;
             }
-            else if (Lexer.CurrentValue == EnumOR)
+            else if (_lexer._curr_char == EnumOR)
             {
                 if (_readORDelimit)
-                    throw new LexicalException("Invalid enum OR args.", invocation, Lexer.CurrentValue, Lexer.Writer);
+                    throw new LexicalException("Invalid enum OR args.", invocation, _lexer._curr_char, _lexer._writer);
                 _readORDelimit = true;
                 _readORVal = false;
             }
             else if (_readORDelimit && !_readORVal)
             {
-                Lexer.ArbitraryReader.ValidIdentifierFirstCharOrThrow(Lexer.CurrentValue, invocation);
+                _lexer._arbitrary_reader.ValidIdentifierFirstCharOrThrow(_lexer._curr_char, invocation);
                 _readORVal = true;
             }
             else if (_readORVal)
             {
-                if (Lexer.Skipping && !_readORDelimit)
-                    throw new LexicalException("Invalid enum OR args.", invocation, Lexer.CurrentValue, Lexer.Writer);
-                Lexer.ValidIdentifier(Lexer.CurrentValue, invocation);
+                if (_lexer._skipping && !_readORDelimit)
+                    throw new LexicalException("Invalid enum OR args.", invocation, _lexer._curr_char, _lexer._writer);
+                _lexer.ValidIdentifier(_lexer._curr_char, invocation);
                 _readORDelimit = false;
-                Lexer.Skipping = false;
+                _lexer._skipping = false;
             }
             return true;
 
@@ -106,15 +101,15 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             }
             else if (!_finishedReadChar)
             {
-                if (Lexer.CurrentValue != CharDeclr)
-                    throw new LexicalException(error, invocation, Lexer.CurrentValue, Lexer.Writer, i);
+                if (_lexer._curr_char != CharDeclr)
+                    throw new LexicalException(error, invocation, _lexer._curr_char, _lexer._writer, i);
                 _finishedReadChar = true;
                 return true;
             }
-            else if (Lexer.CurrentValue == Whitespace)
+            else if (_lexer._curr_char == Whitespace)
             {
                 SkipWhitespaceTrail(ref i, invocation);
-                Lexer.ReadingChar = false;
+                _lexer._reading_char = false;
                 _finishedReadChar = false;
                 _readCharValue = false;
             }
@@ -122,36 +117,36 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             {
                 _finishedReadChar = false;
                 _readCharValue = false;
-                Lexer.ReadingChar = false;
+                _lexer._reading_char = false;
             }
             return false;
         }
         internal bool ReadNum(ref int i, string invocation) //readnum doesnt influence jumps because numeric values are strict and can only contain digits/decimal pointer
         {
-            if (Lexer.CurrentValue.IsDigit())
+            if (_lexer._curr_char.IsDigit())
                 return true;
-            if (Lexer.CurrentValue == Whitespace) //we skip leading and trailing whitespace
+            if (_lexer._curr_char == Whitespace) //we skip leading and trailing whitespace
             {
                 SkipWhitespaceTrail(ref i, invocation);
-                Lexer.ReadDigit = false;
+                _lexer._read_digit = false;
                 _readFloat = false;
                 return false;
             }
             else //nondigit value
             {
-                if (Lexer.CurrentValue == MemberAccess)
+                if (_lexer._curr_char == MemberAccess)
                 {
-                    if (_readFloat) throw new LexicalException("Floats cannot contain multiple decimals.", invocation, Lexer.CurrentValue, Lexer.Writer, i);
+                    if (_readFloat) throw new LexicalException("Floats cannot contain multiple decimals.", invocation, _lexer._curr_char, _lexer._writer, i);
                     _readFloat = true;
                     return true;
                 }
-                if (Termination(Lexer.CurrentValue))
+                if (Termination(_lexer._curr_char))
                 {
-                    Lexer.ReadDigit = false;
+                    _lexer._read_digit = false;
                     _readFloat = false;
                     return false;
                 }
-                throw new LexicalException("Numbers can only contain a sign, digits and one decimal.", invocation, Lexer.CurrentValue, Lexer.Writer, i);
+                throw new LexicalException("Numbers can only contain a sign, digits and one decimal.", invocation, _lexer._curr_char, _lexer._writer, i);
             }
         }
 
@@ -160,10 +155,10 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             //that will only throw once we reach ValueString (i didnt want to have duplicate checking code in 2 places)
             if (_stringEnding)
             {
-                if (Lexer.CurrentValue == Whitespace)
+                if (_lexer._curr_char == Whitespace)
                     SkipWhitespaceTrail(ref i, invocation);
                 _stringEnding = false;
-                Lexer.ReadingString = false;
+                _lexer._read_string = false;
                 _noEscape = false;
                 _escaping = false;
                 _readNoEscDeclr = false;
@@ -175,14 +170,14 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 _escaping = false;
                 _justEscaped = true;
             }
-            if (!_noEscape && Lexer.CurrentValue == EscSeq)
+            if (!_noEscape && _lexer._curr_char == EscSeq)
             {
                 if (!_justEscaped)
                     _escaping = true;
                 else
                     _justEscaped = false;
             }
-            if (Lexer.CurrentValue == StringDeclr)
+            if (_lexer._curr_char == StringDeclr)
             {
                 if (!_readNoEscDeclr)
                 {

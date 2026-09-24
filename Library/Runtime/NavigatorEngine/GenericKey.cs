@@ -22,7 +22,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         }
 
 
-        public GenericKey(string key, MethodBase m) : this(key, m.IsGenericMethodDefinition ? m.GetGenericArguments().Length : 0)
+        public GenericKey(MethodBase method) : this(method is ConstructorInfo ? "new" : method.Name, method.IsGenericMethodDefinition ? method.GetGenericArguments().Length : 0)
         {
         }
 

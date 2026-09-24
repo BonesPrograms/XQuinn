@@ -34,6 +34,9 @@ namespace XQuinn.Private
         {
 #if IAPP_BUILD
             XQuinn.NetConsole.Apps.IApp.RunApp(args);
+        }
+    }
+}
 #else
             Cache();
             ConsoleTools.WriteMany(TypeRegister.s_registry, "\n");
@@ -44,8 +47,7 @@ namespace XQuinn.Private
         //      int[] array = new int[] { 8, 16, 32 };
         // }
 
-        static string ResetInstr() =>
-        "xq.program.namespaceRevert(); types.FlushStaticCache();";
+
         static Dictionary<GenericKey, Type>? s_reg_copy;
 
         static void NamespaceRevert()
@@ -88,12 +90,24 @@ namespace XQuinn.Private
             " * xq.class<xq.float>.new(); +float_class; *method_func; xq.class<xq.string> . s_obj = \"Hello World\";",
             "Invoke:1 ( XQ.Class<XQ.Object>.new() , XQ.Types.Array <XQ.Object> ( XQ.Class <XQ.Int> . S_Obj, XQ . Class< XQ. String> . S_OBJ)));",
             "*xq.class<xq.object>.new();",
-            "func2:1( xq.class<xq.int>. s_obj  , xq . types. array <xq.object> (xq. class. ret( xq.class.s_obj ) ), xq.class<xq . object>  .  func(xq.class <xq.string> .new(), \"fingas\"));",
-            ResetInstr()};
+            "func2:1( xq.class<xq.int>. s_obj  , xq . types. array <xq.object> (xq. class. ret( xq.class.s_obj ) ), xq.class<xq . object>  .  func(xq.class <xq.string> .new(), \"fingas\"));"
+            ,"xq.program.namespaceRevert(); types.FlushStaticCache();",
+                      
+        //     "*xq.Types.Of<xq.Class<xq.Object>>(); *GetMethod(\"RefRet\"); +refret;",
+        //     "xq.class<xq.int>.s_obj = 14003214;",
+        //     "*xq.Types . Array <xq.object> ( xq.class<xq.int> . s_obj ); +args;",
+        //    "refret . invoke:1 ( null,xq. Types . Array <xq.object> (xq. class<xq.int> . s_obj )); xq.class<xq.int> . s_obj" };  
+            
+            "*Types.Of<Class<Object>>(); *GetMethod(\"RefRet\"); +refret;",
+            "class<int>.s_obj = 14003214;",
+            "*Types . Array <object> ( class<int> . s_obj ); +args;",
+           "refret . invoke:1 ( null, Types . Array <object> ( class<int> . s_obj )); class<int> . s_obj",
+           "types.FlushStaticCache(); @program" };
             //"xq.Class< xq . kvp< xq . string , xq . int>>.new()"};
             StringBuilder sb = new();
-            instructions.ForEach(x => sb.Append(x));
+            sb.AppendMany(instructions, ";");
             string ret = monitor.SafeInterface(sb.ToString());
+            monitor._core.Clear();
             Console.WriteLine(ret);
             while (true)
             {
@@ -121,7 +135,7 @@ namespace XQuinn.Private
     class Class
     {
         static object? s_obj;
-    static object? ret(object? obj) => obj;
+        static object? ret(object? obj) => obj;
     }
     class Class<T>
     {
@@ -138,6 +152,15 @@ namespace XQuinn.Private
 
         public static object? Nullobj => null;
 
+        public static ref T RefRet(ref T obj)
+        {
+            if (obj is int)
+            {
+                obj = (T)(object)45;
+            }
+            return ref obj;
+        }
+
         public static T Func2(T obj) => obj;
 
         public static string Void()
@@ -145,7 +168,7 @@ namespace XQuinn.Private
             return "Void";
         }
 
-        public (T,T,T)Func2(T a, T b, T c) => (a,b,c);
+        public (T, T, T) Func2(T a, T b, T c) => (a, b, c);
         public (T, T) Func(T obj, T obj2) => (obj, obj2);
         public static T Method(T obj) => obj;
         public static X Generic<X>(X obj) => obj;

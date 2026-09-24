@@ -49,7 +49,7 @@ namespace XQuinn.NetConsole.Apps
     {
 
 
-        static readonly string TransferDirectory = Path.Combine(VietnamWarSource.Path, @"BepInEx\plugins");
+        static readonly string TransferDirectory = Path.Combine(VietnamWarSource.s_path, @"BepInEx\plugins");
         public static void UpdatePlugins(Dictionary<string, string> roots, HashSet<Mod> needsUpdate)
         {
             string[] names = roots.Keys.ToArray();
@@ -180,7 +180,7 @@ namespace XQuinn.NetConsole.Apps
 
     class ModSerializer
     {
-        static readonly string SaveLocation = Path.Combine(VietnamWarModLab.Path, @"UpdatePlugins2\ModData\VietnamWar");
+        static readonly string SaveLocation = Path.Combine(VietnamWarModLab.s_path, @"UpdatePlugins2\ModData\VietnamWar");
         static readonly string[] SaveFolders = Directory.GetDirectories(SaveLocation);
         readonly HashSet<Mod> NeedUpdate = new();
         static readonly XmlSerializer Serializer = new(typeof(CSFile));
@@ -333,7 +333,7 @@ namespace XQuinn.NetConsole.Apps
 
     static class ProjectFinder //this requires folder names, assembly names, and csproj names to be the same!
     {
-        static readonly string Root = VietnamWarModLab.Path;
+        static readonly string Root = VietnamWarModLab.s_path;
         static readonly string[] _projectFiles = Directory.GetFiles(Root, "*.csproj", SearchOption.AllDirectories);
         static string RecombinePath(string[] array) //can do root + projName, string concat, or substring, or path combine
         {
