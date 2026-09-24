@@ -15,18 +15,15 @@ namespace XQuinn.Reflection
     internal static class MetadataPrinter
     {
 
-        public static StringBuilder BuildPrint(StringBuilder sb, MemberInfo Object, bool fullname)
+        public static StringBuilder BuildPrint(StringBuilder sb, MemberInfo Object, bool fullname) =>
+        Object switch
         {
-            if (Object is MethodInfo mthd)
-                MethodToString(sb, mthd, fullname);
-            else if (Object is ConstructorInfo ctor)
-                ConstructorToString(sb, ctor, fullname);
-            else if (Object is Type t)
-                TypeToString(sb, t, fullname);
-            else if (Object is not PropertyInfo)
-                MemberToString(sb, Object, fullname);
-            return sb;
-        }
+            MethodInfo mthd => MethodToString(sb, mthd, fullname),
+            ConstructorInfo ctor => ConstructorToString(sb, ctor, fullname),
+            Type t => TypeToString(sb, t, fullname),
+            PropertyInfo => sb,
+            _ => MemberToString(sb, Object, fullname),
+        };
 
 
 
@@ -45,19 +42,26 @@ namespace XQuinn.Reflection
         public static StringBuilder TypeToString(StringBuilder sb, Type type, bool fullname)
         {
             if (typeof(Delegate).IsAssignableFrom(type)) sb.Append("delegate");
-            else if (type.IsEnum) sb.Append("enum");
-            else if (type.IsArray) sb.Append("array");
-            else if (type.IsInterface) sb.Append("interface");
-            else if (type != typeof(string) && (typeof(System.Collections.IEnumerable).IsAssignableFrom(type) || typeof(System.Collections.ICollection).IsAssignableFrom(type))) sb.Append("collection");
-            else if (type.IsClass) sb.Append("class");
-            else sb.Append("struct");
+            else if (type.IsEnum)
+                sb.Append("enum");
+            else if (type.IsArray)
+                sb.Append("array");
+            else if (type.IsInterface)
+                sb.Append("interface");
+            else if (type != typeof(string) && (typeof(System.Collections.IEnumerable).IsAssignableFrom(type) || typeof(System.Collections.ICollection).IsAssignableFrom(type)))
+                sb.Append("collection");
+            else if (type.IsClass)
+                sb.Append("class");
+            else
+                sb.Append("struct");
             sb.Append(' ');
             GenericTypeToString(sb, type, fullname);
             return sb;
         }
         public static StringBuilder ConstructorToString(StringBuilder sb, ConstructorInfo ctor, bool fullname)
         {
-            if (ctor.DeclaringType != null) GenericTypeToString(sb, ctor.DeclaringType, fullname);
+            if (ctor.DeclaringType != null)
+                GenericTypeToString(sb, ctor.DeclaringType, fullname);
             sb.Append($"::.ctor{ParamsToString(ctor.GetParameters(), fullname)}");
             return sb;
         }
@@ -72,7 +76,6 @@ namespace XQuinn.Reflection
             sb.Append(mthd.Name);
             AddGenericArguments(sb, mthd.GetGenericArguments(), fullname);
             sb.Append(ParamsToString(mthd.GetParameters(), fullname));
-
             return sb;
         }
 
@@ -84,8 +87,10 @@ namespace XQuinn.Reflection
                 return;
             }
             string lowered = mthd.ReturnType.Name.ToLower();
-            if (lowered != "string" && lowered != "boolean" && lowered != "void") GenericTypeToString(sb, mthd.ReturnType, fullname);
-            else sb.Append(lowered);
+            if (lowered != "string" && lowered != "boolean" && lowered != "void")
+                GenericTypeToString(sb, mthd.ReturnType, fullname);
+            else
+                sb.Append(lowered);
 
         }
         static StringBuilder ParamsToString(ParameterInfo[] args, bool fullname)
@@ -106,10 +111,7 @@ namespace XQuinn.Reflection
                     txt.Append("ref ");
                 tname.Length = 0;
                 GenericTypeToString(tname, arg.ParameterType, fullname);
-                int index = tname.Length - 1;
-                if (tname[index] == '&') tname.Remove(index, 1);
                 txt.Append(tname);
-
                 txt.Append($" {arg.Name}");
                 if (For.NeedsDelimiter(args.Length, i))
                     txt.Append(", ");

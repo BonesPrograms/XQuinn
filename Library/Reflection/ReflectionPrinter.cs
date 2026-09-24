@@ -28,8 +28,7 @@ namespace XQuinn.Reflection
         /// <returns></returns>
         public static string Print(MemberInfo Info, bool fullname)
         {
-            StringBuilder sb = new();
-            MetadataTypeToString(sb, Info);
+            StringBuilder sb = MetadataTypeToString(new(), Info);
             MetadataPrinter.BuildPrint(sb, Info, fullname);
             if (Info is Type t && t.BaseType != typeof(object) && t.BaseType != null)
             {
@@ -59,18 +58,15 @@ namespace XQuinn.Reflection
             }
             return sb;
         }
-        static void MetadataTypeToString(StringBuilder sb, MemberInfo info)
+        static StringBuilder MetadataTypeToString(StringBuilder sb, MemberInfo info) =>
+        info switch
         {
-            if (info is Type t)
-                TypeToString(sb, t);
-            else if (info is MethodBase m)
-                MethodToString(sb, m);
-            else if (info is FieldInfo f)
-                FieldToString(sb, f);
-            else if (info is PropertyInfo p)
-                PropertyToString(sb, p);
-
-        }
+            Type t => TypeToString(sb, t),
+            MethodBase m => MethodToString(sb, m),
+            FieldInfo f => FieldToString(sb, f),
+            PropertyInfo p => PropertyToString(sb, p),
+            _ => sb
+        };
 
         //ive found this currently isnt necesary because the actual get and setter methods are already being read with their access modifiers shown
         //though it could use a bit more organization, prob will have it find the getters and setters by name get_ set_ and then shift them up to be below their
@@ -140,9 +136,12 @@ namespace XQuinn.Reflection
         //also maybe should add stuff that says if it is public, internal, nested private
         static StringBuilder TypeToString(StringBuilder sb, Type type) //need to add stuff for nested types i think
         {
-            if (type.IsAbstract && type.IsSealed) return sb.Append("static ");
-            else if (type.IsAbstract) return sb.Append("abstract ");
-            else if (type.IsSealed) return sb.Append("sealed ");
+            if (type.IsAbstract && type.IsSealed)
+                return sb.Append("static ");
+            else if (type.IsAbstract)
+                return sb.Append("abstract ");
+            else if (type.IsSealed)
+                return sb.Append("sealed ");
             return sb;
         }
         readonly struct AccessModifiers
