@@ -59,45 +59,48 @@ namespace XQuinn.Runtime.NavigatorEngine
                 }
             }
             int? lastAccessorIndex = null;
-            bool isgeneric = false;
             for (int i = index; i < stop; i++)
             {
                 char c = invocation[i];
                 if (c == CallLexer.Whitespace)
                     continue;
                 if (c == CallLexer.GenericDeclr)
-                    isgeneric = true;
-                if (c == CallLexer.MemberAccess)
                 {
-                    bool skip = false;
-                    if (isgeneric)
+                    int nest = 0;
+                    int lastcount = 0;
+                    bool beginNest = false;
+                    for (int x = i; x < stop; x++)
                     {
-                        for (int x = i; x >= 0; x--)
+                        c = invocation[x];
+                        if (c == CallLexer.GenericDeclr)
                         {
-                            char z = invocation[x];
-                            if (z == CallLexer.GenericTerminate)
-                                break;
-                            if (z == CallLexer.GenericDeclr)
+                            if (beginNest)
                             {
-                                skip = true;
-                                break;
+                                nest++;
+                                lastcount++;
                             }
+                            else
+                                beginNest = true;
                         }
-                        if (!skip)
-                            for (int x = i; x < stop; x++)
+                        else if (c == CallLexer.GenericTerminate)
+                        {
+                            if (lastcount > nest)
+                                lastcount--;
+                            if (lastcount == 0)
                             {
-                                char z = invocation[x];
-                                if (z == CallLexer.GenericDeclr)
-                                    break;
-                                if (z == CallLexer.GenericTerminate)
-                                {
-                                    skip = true;
-                                    break;
-                                }
+                                i = x;
+                                break;
                             }
+                            if (nest > 0)
+                                nest--;
+                        }
                     }
-                    if (!skip)
-                        lastAccessorIndex = i;
+                    if (lastcount > 0)
+                        throw new LexicalException("Nested generics not properly terminated. You can fix this by slapping an ext a > on the end, usually.", invocation);
+                }
+                else if (c == CallLexer.MemberAccess)
+                {
+                    lastAccessorIndex = i;
                 }
 
             }

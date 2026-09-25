@@ -20,6 +20,10 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         bool _readFirstCharOfName; //Because it cannot be a digit
         bool _findGenericEnd;
         int _genericEnd;
+
+        int _generic_sub_params;
+
+        int _last_sub_count;
         public void Clear()
         {
             _memberAccessing = false;
@@ -29,6 +33,8 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             _readFirstCharOfName = false;
             _findGenericEnd = false;
             _genericEnd = -1;
+            _generic_sub_params = 0;
+            _last_sub_count = 0;
         }
 
 
@@ -167,74 +173,21 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         internal bool ReadGeneric(ref int i, string invocation)
         {
 
-            if (_findGenericEnd)
+            if (_lexer._curr_char == GenericTerminate) //generics can only be Lexer.terminated by these, so if its not, the lex will throw at the end
             {
-                int ending = -1;
-                bool passedComma = false;
-                for (int x = i; x < invocation.Length; x++)
+                if (_last_sub_count > _generic_sub_params)
+                    _last_sub_count--;
+                if (_last_sub_count == 0)
                 {
-                    char c = invocation[x];
-                    if (passedComma)
-                    {
-                        if (c == GenericDeclr || c.IsLetter() || c.IsDigit() || c == ValidNonAlphaNumeric)
-                            passedComma = false;
-                    }
-                    if (c == GenericTerminate)
-                    {
-                        if (passedComma)
-                            passedComma = false;
-                        ending = x;
-                    }
-                    else if (c == ParamTerminate)
-                    {
-                        bool skip = false;
-                        for (int y = x; y >= 0; y--)
-                        {
-                            char z = invocation[y];
-                            if (z == CallLexer.GenericTerminate)
-                                break;
-                            if (z == CallLexer.GenericDeclr)
-                            {
-                                skip = true;
-                                break;
-                            }
-                        }
-                        if (!skip)
-                            for (int y = x; y < invocation.Length; y++)
-                            {
-                                char z = invocation[y];
-                                if (z == CallLexer.GenericDeclr)
-                                    break;
-                                if (z == CallLexer.GenericTerminate)
-                                {
-                                    skip = true;
-                                    break;
-                                }
-                            }
-                        if (passedComma)
-                            break;
-                        passedComma = true;
-                        if (!skip)
-                            break;
-                    }
-
-                    else if (c == MethodDeclr || c == MethodTerminate)
-                        break;
+                    _readFirstGeneric = false;
+                    _lexer._skipping = false;
+                    _lexer._writer.Append(GenericTerminate);
+                    _lexer._read_generic_args = false;
+                    _memberAccessing = false;
+                    return false;
                 }
-                if (ending == -1)
-                    throw new LexicalException("Invalid generic arguments.", invocation, _lexer._writer);
-                _genericEnd = ending;
-                _findGenericEnd = false;
-            }
-            if (i == _genericEnd) //generics can only be Lexer.terminated by these, so if its not, the lex will throw at the end
-            {
-                _genericEnd = 0;
-                _readFirstGeneric = false;
-                _lexer._skipping = false;
-                _lexer._writer.Append(GenericTerminate);
-                _lexer._read_generic_args = false;
-                _memberAccessing = false;
-                return false;
+                if (_generic_sub_params > 0)
+                    _generic_sub_params--;
             }
             else if (_lexer._curr_char == MemberAccess)
                 _memberAccessing = true;
@@ -268,6 +221,8 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 if (_readFirstGeneric)
                     throw new LexicalException("Invalid generic arguments.", invocation, _lexer._curr_char, _lexer._writer);
                 _readFirstGeneric = true;
+                _generic_sub_params++;
+                _last_sub_count++;
             }
             else if (_lexer._curr_char == GenericTerminate && _readFirstGeneric)
                 throw new LexicalException("Invalid generic arguments.", invocation, _lexer._curr_char, _lexer._writer);
@@ -282,8 +237,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             {
                 if (_lexer._read_generic_args)
                 {
-                    ReadGeneric(ref i, invocation); //readgeneric is so special isnt it, this is the only read called by another read, but it works
-                    return true;
+                   return ReadGeneric(ref i, invocation); //readgeneric is so special isnt it, this is the only read called by another read, but it works
                 }
                 if (_lexer._curr_char == Whitespace)
                     while (i < invocation.Length)
