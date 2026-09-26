@@ -35,12 +35,12 @@ namespace XQuinn.Runtime.NavigatorEngine
             //          throw new ArgumentNullException();
             if (_fields.TryGetValue(member.DeclaringType.StringID, out FieldInfo? field))
             {
-                instance = field.GetValue(_instance) ?? throw new ArgumentException($"Field {field} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
+                instance = field.GetValue(_object) ?? throw new ArgumentException($"Field {field} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
                 return instance.GetType(); //will not always be == fieldtype
             }
             if (_props.TryGetValue(member.DeclaringType.StringID, out PropertyInfo? prop))
             {
-                instance = prop.GetValue(_instance, NavigatorCore.Flag, null, null, null) ?? throw new ArgumentException($"Property {member.DeclaringType.Name} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
+                instance = prop.GetValue(_object, NavigatorCore.Flag, null, null, null) ?? throw new ArgumentException($"Property {member.DeclaringType.Name} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
                 return instance.GetType();
             }
             if (_variables.TryGetValue(member.DeclaringType.StringID, out VariableBinding? variable))

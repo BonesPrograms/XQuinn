@@ -126,7 +126,7 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         internal object? TargetInstance(Type fromType, object? variable)
         {
-            return variable ?? (fromType.IsAssignableFrom(_instanceType) ? _instance : null);
+            return variable ?? (fromType.IsAssignableFrom(_instanceType) ? _object : null);
         }
 
         //TargetInstance is an old method back from before the navigator was able to treat fields, variables and properties as if they were types that can be accessed

@@ -139,11 +139,11 @@ namespace XQuinn.Runtime.NavigatorEngine
             string strng = value.Argument;
             if (strng.EqualsCaseless("this"))
             {
-                if (_instance == null)
+                if (_object == null)
                     throw new InvalidOperationException("Cannot pass this as parameter, instance is null.");
                 // if (!paramType.IsAssignableFrom(_instanceType))
                 //     throw new InvalidCastException($"Current instance is a {_instanceType} and does not cast to parameter type {paramType}");
-                return _instance;
+                return _object;
             }
             if (_variables?.TryGetValue(strng, out VariableBinding? variable) ?? false)
             {
@@ -156,11 +156,11 @@ namespace XQuinn.Runtime.NavigatorEngine
                 // object? val = field.GetValue(_instance);
                 // Type t = val == null ? field.FieldType : val.GetType();
                 // if(!paramType.IsAssignableFrom(t))
-                return field.GetValue(_instance);
+                return field.GetValue(_object);
             }
             if (_props.TryGetValue(strng, out PropertyInfo? prop))
             {
-                return prop.GetValue(_instance, NavigatorCore.Flag, null, null, null);
+                return prop.GetValue(_object, NavigatorCore.Flag, null, null, null);
             }
             return value.Parse(paramType);
         }

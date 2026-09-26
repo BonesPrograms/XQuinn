@@ -18,7 +18,7 @@ namespace XQuinn.Runtime.NavigatorEngine
     internal abstract class CoreObject
     {
         protected readonly NavigatorCore _core;
-        protected object? _instance => _core._object;
+        protected object? _object => _core._object;
         protected Dictionary<string, FieldInfo> _fields => _core._fields;
         protected Dictionary<string, PropertyInfo> _props => _core._props;
         protected Dictionary<string, VariableBinding> _variables => _core._variables;
