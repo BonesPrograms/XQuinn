@@ -18,9 +18,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             for (int i = 0; i < invocation.Length; i++)
             {
                 char value = invocation[i];
-                if (CharOrString(value))
-                    return false;
-                if (value == '(')
+                if (value == CallLexer.MethodDeclr)
                     return false;
                 if (value == '=')
                 {
@@ -36,12 +34,12 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         }
 
-        internal static string? ResolveMemberAccessOrFloat(string invocation, out string member, out bool field) //returns typename, outputs the accessed member
+        internal static string? ResolveMemberAccess(string invocation, out string member, out bool field) //returns typename, outputs the accessed member
         {
-            int stop = invocation.IndexOf('(');
-            field = stop < 0;
-            stop = field ? invocation.Length : stop;
-            int index = 0;
+            int halt = invocation.IndexOf(CallLexer.MethodDeclr);
+            field = halt < 0;
+            halt = field ? invocation.Length : halt;
+            int start = 0;
             member = invocation;
             if (field)
             {
@@ -50,8 +48,8 @@ namespace XQuinn.Runtime.NavigatorEngine
                     char value = invocation[x];
                     if (value != CallLexer.Whitespace)
                     {
-                        index = x;
-                        if (CharOrString(value) || value.IsDigit() || value == CallLexer.MemberAccess || value == '-') //because floats will resolve as member access. lol.
+                        start = x;
+                        if (IsLiteral(value)) //because floats will resolve as member access. lol.
                             return null;
                         else
                             break;
@@ -59,7 +57,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 }
             }
             int? lastAccessorIndex = null;
-            for (int i = index; i < stop; i++)
+            for (int i = start; i < halt; i++)
             {
                 char c = invocation[i];
                 if (c == CallLexer.Whitespace)
@@ -69,7 +67,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                     int nest = 0;
                     int lastcount = 0;
                     bool beginNest = false;
-                    for (int x = i; x < stop; x++)
+                    for (int x = i; x < halt; x++)
                     {
                         c = invocation[x];
                         if (c == CallLexer.GenericDeclr)
@@ -118,15 +116,20 @@ namespace XQuinn.Runtime.NavigatorEngine
             for (int i = 0; i < righthand.Length; i++)
             {
                 char value = righthand[i];
-                if (CharOrString(value))
+                if (IsLiteral(value))
                     return false;
-                if (value == '(')
+                if (value == CallLexer.MethodDeclr)
                     return true;
             }
             return false;
         }
 
-        static bool CharOrString(char c) => c == '"' || c == '\'';
+        static bool IsLiteral(char value) =>
+        value switch
+        {
+            CallLexer.StringDeclr or CallLexer.CharDeclr or CallLexer.MemberAccess or CallLexer.NegSign or CallLexer.NoEscDeclr => true,
+            _ => char.IsDigit(value)
+        };
     }
 
 

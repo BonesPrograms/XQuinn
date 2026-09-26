@@ -9,22 +9,6 @@ using XQuinn.Reflection;
 namespace XQuinn.Extensions
 {
 
-
-
-    public static class CharExtensions
-    {
-        public static bool IsLetter(this char value) => value switch
-        {
-            >= 'a' and <= 'z' or >= 'A' and <= 'Z' => true,
-            _ => false
-        };
-
-        public static bool IsDigit(this char value) => value switch
-        {
-            >= '0' and <= '9' => true,
-            _ => false
-        };
-    }
     public static class StringBuilderExtensions
     {
 
@@ -87,7 +71,8 @@ namespace XQuinn.Extensions
     {
         public static void ForEach<T>(this IEnumerable<T> objs, Action<T> action)
         {
-            foreach (var obj in objs) action(obj);
+            foreach (T obj in objs)
+                action(obj);
         }
     }
 

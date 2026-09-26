@@ -130,7 +130,7 @@ namespace XQuinn.Private
                     _skip = true;
                     continue;
                 }
-                if (_value.IsDigit() || (_value == '-' && (_readOp || _firstDig)))
+                if (char.IsDigit(_value)|| (_value == '-' && (_readOp || _firstDig)))
                 {
                     if (_skip && _readDigit)
                         throw new CalculatorException("Invalid digit", expr);

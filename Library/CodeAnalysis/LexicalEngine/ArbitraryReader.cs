@@ -173,7 +173,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         internal bool ReadGeneric(ref int i, string invocation)
         {
 
-            if (_lexer._curr_char == GenericTerminate) //generics can only be Lexer.terminated by these, so if its not, the lex will throw at the end
+            if (_lexer._curr_char  == GenericDeclr) //generics can only be Lexer.terminated by these, so if its not, the lex will throw at the end
             {
                 if (_last_sub_count > _generic_sub_params)
                     _last_sub_count--;
@@ -181,10 +181,8 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 {
                     _readFirstGeneric = false;
                     _lexer._skipping = false;
-                    _lexer._writer.Append(GenericTerminate);
                     _lexer._read_generic_args = false;
                     _memberAccessing = false;
-                    return false;
                 }
                 if (_generic_sub_params > 0)
                     _generic_sub_params--;
@@ -207,9 +205,9 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             {
                 if (_lexer._skipping && !_readFirstGeneric && !_genericParamTerminate && !_memberAccessing) //this specifically checks if the last value was a char
                     throw new LexicalException("Invalid generic arguments.", invocation, _lexer._curr_char, _lexer._writer); //in essence this means youre putting something like "String"
-                if (_genericParamTerminate && !_readFirstGeneric)
+                if (_memberAccessing || (_genericParamTerminate && !_readFirstGeneric))
                     ValidIdentifierFirstCharOrThrow(_lexer._curr_char, invocation);
-                else if (_memberAccessing)
+                else
                     _lexer.ValidIdentifier(_lexer._curr_char, invocation);
                 _genericParamTerminate = false;
                 _readFirstGeneric = false;
@@ -329,7 +327,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         {
             string qualifiedMember = _lexer._writer.ToString();
             _lexer._writer.Length = 0;
-            return MiniLexer.ResolveMemberAccessOrFloat(qualifiedMember, out member, out _);
+            return MiniLexer.ResolveMemberAccess(qualifiedMember, out member, out _);
         }
 
         void CheckGenericBeforeReadGeneric(string invocation)

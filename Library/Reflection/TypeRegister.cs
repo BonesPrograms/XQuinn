@@ -205,9 +205,9 @@ namespace XQuinn.Reflection
         {
             if (string.IsNullOrWhiteSpace(key))
                 throw new ArgumentException("Empty key.");
-            if (key[0].IsDigit())
+            if (char.IsDigit(key[0]))
                 throw new ArgumentException($"Keys cannot begin with a digit. Bad Key: {key}");
-            if (key[0] == '.')
+            if (key[0] == CallLexer.MemberAccess)
                 throw new ArgumentException($"Keys cannot begin with a period. Bad Key {key}");
             for (int i = 0; i < _illegalKeys.Length; i++)
                 if (_illegalKeys[i].EqualsCaseless(key))
@@ -218,7 +218,7 @@ namespace XQuinn.Reflection
                 char value = key[i];
                 if (CallLexer.Illegal(value))
                 {
-                    if (!accessor && value == '.')
+                    if (!accessor && value == CallLexer.MemberAccess)
                         accessor = true;
                     else
                         throw new ArgumentException($"Keys can only consist of digits, letters, underscores, or single periods between names. Bad Key {key}.");

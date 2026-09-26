@@ -46,6 +46,8 @@ namespace XQuinn.CodeAnalysis
 
         internal const char StringDeclr = '"';
 
+        internal const char NegSign = '-';
+
         internal const char EscSeq = '\\';
 
         internal const char Whitespace = ' ';
@@ -216,8 +218,12 @@ namespace XQuinn.CodeAnalysis
                 }
                 _read_string = true;
             }
-            else if (_curr_char == '-' || _curr_char.IsDigit())
+            else if (_curr_char == NegSign || _curr_char == MemberAccess || char.IsDigit(_curr_char))
+            {
                 _read_digit = true;
+                if (_curr_char == MemberAccess)
+                    _value_reader._readFloat = true;
+            }
             else if (ValidIdentifierFirstChar(_curr_char))
                 _read_arbitrary_legal_value = true;
             if (_read_digit || _read_string || _read_arbitrary_legal_value || _reading_char)
@@ -255,9 +261,9 @@ namespace XQuinn.CodeAnalysis
                 throw new LexicalException(error, invocation, value, _writer);
 
         }
-        internal static bool Illegal(char val) => val != ValidNonAlphaNumeric && !val.IsDigit() && !val.IsLetter();
+        internal static bool Illegal(char val) => val != ValidNonAlphaNumeric && !char.IsDigit(val) && !char.IsLetter(val);
         internal static bool Termination(char value) => value == ParamTerminate || value == MethodTerminate;
-        internal static bool ValidIdentifierFirstChar(char value) => value == ValidNonAlphaNumeric || value.IsLetter();
+        internal static bool ValidIdentifierFirstChar(char value) => value == ValidNonAlphaNumeric || char.IsLetter(value);
 
         void Clear() //This allows the Lexer to recover if an exception is thrown during analysis
         {             //There can also be some leftover values after a lex so state must be reset

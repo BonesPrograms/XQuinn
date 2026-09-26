@@ -14,7 +14,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         internal bool _readORDelimit;
         internal bool _readORVal;
 
-        bool _readFloat;
+        internal bool _readFloat;
         bool _finishedReadChar;  //Finishers/Enders are primarily for catching trailing garbage data or Lexer.skipping whtiespace - ex Method("hello"  , 22, 33 s)
         bool _readCharValue;
         bool _stringEnding;         //the trailing whitespace after "hello" willbe skipped, and the trailing s after 33 will cause an exception
@@ -123,7 +123,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         }
         internal bool ReadNum(ref int i, string invocation) //readnum doesnt influence jumps because numeric values are strict and can only contain digits/decimal pointer
         {
-            if (_lexer._curr_char.IsDigit())
+            if (char.IsDigit(_lexer._curr_char))
                 return true;
             if (_lexer._curr_char == Whitespace) //we skip leading and trailing whitespace
             {
@@ -136,7 +136,8 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             {
                 if (_lexer._curr_char == MemberAccess)
                 {
-                    if (_readFloat) throw new LexicalException("Floats cannot contain multiple decimals.", invocation, _lexer._curr_char, _lexer._writer, i);
+                    if (_readFloat)
+                        throw new LexicalException("Floats cannot contain multiple decimals.", invocation, _lexer._curr_char, _lexer._writer, i);
                     _readFloat = true;
                     return true;
                 }
