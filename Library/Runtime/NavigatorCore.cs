@@ -21,9 +21,9 @@ namespace XQuinn.Runtime
         internal readonly Parser _parser;
         internal readonly Reflector _reflector;
         internal readonly Invoker _invoker;
-        internal object? _instance;
+        internal object? _object;
         internal string? _variable;
-        internal Type? _instance_type; ///Raw type of the instance
+        internal Type? _object_type => _object?.GetType();
         internal Type? _static_type; ///Loaded type; could vary from instance type via cast.
         internal TypeString? _implicit_this; ///Data referring back to the loaded type that works within the MethodLexer
         internal readonly Dictionary<MethodKey, MethodBase> _methods = new();
@@ -158,17 +158,15 @@ namespace XQuinn.Runtime
             Type t = _reflector.FindType(tstring, true);
             _implicit_this = tstring;
             LoadTypeMembers(t);
-            _instance = null;
-            _instance_type = null;
+            _object = null;
             _variable = null;
             return t;
         }
 
-        void LoadInstance(object instance, Type instanceType)
+        void LoadInstance(object instance)
         {
-            _instance = instance;
-            LoadTypeMembers(instanceType);
-            _instance_type = instanceType;
+            _object = instance;
+            LoadTypeMembers(_object_type!);
             _implicit_this = TypeString.s_this;
         }
         void LoadTypeMembers(Type type)
@@ -180,17 +178,14 @@ namespace XQuinn.Runtime
         object LoadInstance(string invocation)
         {
             object? instance = null;
-            Type? objectType = null;
             _variable = null;
             if (_variables.TryGetValue(invocation, out VariableBinding? variable))
             {
                 _variable = invocation;
                 instance = variable.Object;
-                objectType = variable.ObjectType;
             }
             instance ??= InvokeOrAssign(invocation) ?? throw new ArgumentException($"Failed to load new instance from {invocation}, invocation returned null!");
-            objectType ??= instance.GetType();
-            LoadInstance(instance, objectType);
+            LoadInstance(instance);
             return variable ?? instance;
         }
         //Isolated lexing, loading and invocation for "quick invocation" without resetting loaded instance, method or type.
@@ -211,7 +206,7 @@ namespace XQuinn.Runtime
             {
                 member = member.Trim();
                 if (member.EqualsCaseless("this"))
-                    return _instance ?? "null";
+                    return _object ?? "null";
                 if (_variables.TryGetValue(member, out VariableBinding? variable))
                     return variable;
                 TypeString declaringtype = ThisOrNew(typeName);
@@ -223,13 +218,13 @@ namespace XQuinn.Runtime
 
         Type CastInstance(string invocation)
         {
-            if (_instance == null)
+            if (_object == null)
                 throw new InvalidOperationException("Cannot cast, instance is null.");
             TypeString tstring = TypeString.New(invocation);
             Type t = _reflector.FindType(tstring, true);
             _implicit_this = tstring;
-            if (!t.IsAssignableFrom(_instance_type))
-                throw new InvalidCastException($"{_instance_type} cannot cast to {t}.");
+            if (!t.IsAssignableFrom(_object_type))
+                throw new InvalidCastException($"{_object_type} cannot cast to {t}.");
             LoadTypeMembers(t);
             return t;
         }
@@ -255,7 +250,7 @@ namespace XQuinn.Runtime
             if (lefthandTypeName == null)
             {
                 lefthandtype = _static_type ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {invocation}");
-                lefthandInstance = _instance;
+                lefthandInstance = _object;
             }
             else
             {
@@ -339,7 +334,7 @@ namespace XQuinn.Runtime
 
         bool AddViarable(string key)
         {
-            if (_instance == null)
+            if (_object == null)
                 throw new InvalidOperationException("No instance is loaded.");
             key = key.Trim();
             TypeRegister.ThrowIfBadKey(key);
@@ -347,11 +342,11 @@ namespace XQuinn.Runtime
                 throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
             if (_variables.TryGetValue(key, out VariableBinding? variable))
             {
-                if (!ReferenceEquals(_instance, variable.Object))
+                if (!ReferenceEquals(_object, variable.Object))
                     throw new ArgumentException("Duplicate keyname detected.");
                 return false;
             }
-            _variables[key] = new(_instance);
+            _variables[key] = new(_object);
             _variable = key;
             return true;
         }
@@ -371,8 +366,7 @@ namespace XQuinn.Runtime
             _methods.Clear();
             _fields.Clear();
             LocalCache = null;
-            _instance = null;
-            _instance_type = null;
+            _object = null;
             _static_type = null;
         }
         // }

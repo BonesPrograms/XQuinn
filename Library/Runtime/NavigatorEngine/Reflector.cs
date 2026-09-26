@@ -46,7 +46,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             if (_variables.TryGetValue(member.DeclaringType.StringID, out VariableBinding? variable))
             {
                 instance = variable.Object;
-                return variable.ObjectType;
+                return instance.GetType();
 
             }
             instance = null;
@@ -128,7 +128,6 @@ namespace XQuinn.Runtime.NavigatorEngine
 
     internal sealed class VariableBinding
     {
-        public Type ObjectType => Object.GetType();
         public readonly object Object;
         internal VariableBinding(object instance)
         {
@@ -138,7 +137,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         public override string ToString()
         {
             string? objToStr = Object is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : Object.ToString();
-            return $"ObjectType: {ReflectionPrinter.Print(ObjectType, false)} :: ToString: {objToStr}";
+            return $"ObjectType: {ReflectionPrinter.Print(Object.GetType(), false)} :: ToString: {objToStr}";
         }
     }
 

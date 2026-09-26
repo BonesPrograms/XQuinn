@@ -100,9 +100,9 @@ namespace XQuinn.Runtime
             if (_core._static_type != null)
             {
                 _feed.AppendLine($"Loaded Type: {ReflectionPrinter.Print(_core._static_type, false)}");
-                if (_core._instance_type != null)
+                if (_core._object_type != null)
                 {
-                    _feed.AppendLine($"Loaded Instance Type: {ReflectionPrinter.Print(_core._instance_type, false)}");
+                    _feed.AppendLine($"Loaded Instance Type: {ReflectionPrinter.Print(_core._object_type, false)}");
                     if (_core._variable != null)
                         _feed.AppendLine($"Loaded Variable: {_core._variable}");
                 }
