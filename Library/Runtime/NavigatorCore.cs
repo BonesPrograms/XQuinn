@@ -18,7 +18,7 @@ namespace XQuinn.Runtime
         ///.This is for the DynamicNavigator.
         internal TypeBook? LocalCache;
         internal readonly CallLexer _lexer = new();
-        internal readonly Parser _parser;
+        internal readonly Parser _parser; 
         internal readonly Reflector _reflector;
         internal readonly Invoker _invoker;
         internal object? _object;

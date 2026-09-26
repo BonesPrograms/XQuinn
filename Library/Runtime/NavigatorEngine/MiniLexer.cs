@@ -34,74 +34,80 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         }
 
-        internal static string? ResolveMemberAccess(string invocation, out string member, out bool field) //returns typename, outputs the accessed member
+        internal static string? ResolveMemberAccess(string invocation, out string member, out bool notMethod) //returns typename, outputs the accessed member
         {
-            int halt = invocation.IndexOf(CallLexer.MethodDeclr);
-            field = halt < 0;
-            halt = field ? invocation.Length : halt;
-            int start = 0;
+            int sublength = invocation.IndexOf(CallLexer.MethodDeclr);
+            notMethod = sublength < 0;
+            sublength = notMethod ? invocation.Length : sublength;
             member = invocation;
-            if (field)
+            int? lastAccessorIndex = null;
+            if (notMethod)
             {
-                for (int x = 0; x < invocation.Length; x++)
+                for (int i = 0; i < sublength; i++)
                 {
-                    char value = invocation[x];
+                    char value = invocation[i];
                     if (value != CallLexer.Whitespace)
                     {
-                        start = x;
                         if (IsLiteral(value)) //because floats will resolve as member access. lol.
                             return null;
                         else
                             break;
                     }
                 }
-            }
-            int? lastAccessorIndex = null;
-            for (int i = start; i < halt; i++)
-            {
-                char c = invocation[i];
-                if (c == CallLexer.Whitespace)
-                    continue;
-                if (c == CallLexer.GenericDeclr)
+                for (int i = sublength - 1; i >= 0; i--)
                 {
-                    int nest = 0;
-                    int lastcount = 0;
-                    bool beginNest = false;
-                    for (int x = i; x < halt; x++)
+                    char c = invocation[i];
+                    if (c == CallLexer.MemberAccess)
                     {
-                        c = invocation[x];
-                        if (c == CallLexer.GenericDeclr)
-                        {
-                            if (beginNest)
-                            {
-                                nest++;
-                                lastcount++;
-                            }
-                            else
-                                beginNest = true;
-                        }
-                        else if (c == CallLexer.GenericTerminate)
-                        {
-                            if (lastcount > nest)
-                                lastcount--;
-                            if (lastcount == 0)
-                            {
-                                i = x;
-                                break;
-                            }
-                            if (nest > 0)
-                                nest--;
-                        }
+                        lastAccessorIndex = i;
+                        break;
                     }
-                    if (lastcount > 0)
-                        throw new LexicalException("Nested generics not properly terminated. You can fix this by slapping an ext a > on the end, usually.", invocation);
                 }
-                else if (c == CallLexer.MemberAccess)
-                {
-                    lastAccessorIndex = i;
-                }
-
             }
+            else
+                for (int i = 0; i < sublength; i++)
+                {
+                    char c = invocation[i];
+                    if (c == CallLexer.GenericDeclr)
+                    {
+                        int nest = 0;
+                        int lastcount = 0;
+                        bool beginNest = false;
+                        for (int x = i; x < sublength; x++)
+                        {
+                            c = invocation[x];
+                            if (c == CallLexer.GenericDeclr)
+                            {
+                                if (beginNest)
+                                {
+                                    nest++;
+                                    lastcount++;
+                                }
+                                else
+                                    beginNest = true;
+                            }
+                            else if (c == CallLexer.GenericTerminate)
+                            {
+                                if (lastcount > nest)
+                                    lastcount--;
+                                if (lastcount == 0)
+                                {
+                                    i = x;
+                                    break;
+                                }
+                                if (nest > 0)
+                                    nest--;
+                            }
+                        }
+                        if (lastcount > 0)
+                            throw new LexicalException("Nested generics not properly terminated. You can fix this by slapping an ext a > on the end, usually.", invocation);
+                    }
+                    else if (c == CallLexer.MemberAccess)
+                    {
+                        lastAccessorIndex = i;
+                    }
+
+                }
             if (lastAccessorIndex != null)
             {
                 member = invocation.Substring(lastAccessorIndex.Value + 1);

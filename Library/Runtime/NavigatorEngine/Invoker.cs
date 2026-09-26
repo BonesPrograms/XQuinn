@@ -47,7 +47,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 if (_props.TryGetValue(fname, out PropertyInfo? propMember))
                     fieldOrProp = propMember;
             }
-            else if (fieldOrProp == null)
+            else if (fieldOrProp == null && fromType != _loadedType)
             {
                 PropertyInfo? getprop = fromType.GetProperty(fname, NavigatorCore.Flag);
                 if (getprop?.GetIndexParameters().Length > 0)
@@ -71,7 +71,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 if (_fields.TryGetValue(fname, out FieldInfo? fieldMember))
                     fieldOrProp = fieldMember;
             }
-            else if (fieldOrProp == null)
+            else if (fieldOrProp == null && fromType != _loadedType)
                 fieldOrProp = fromType.GetField(fname, NavigatorCore.Flag);
             if (fieldOrProp is FieldInfo field)
             {

@@ -133,7 +133,6 @@ namespace XQuinn.Runtime.NavigatorEngine
         {
             Object = instance;
         }
-
         public override string ToString()
         {
             string? objToStr = Object is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : Object.ToString();
