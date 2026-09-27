@@ -193,7 +193,7 @@ namespace XQuinn.Runtime
         {
             if (Assignment(invocation, out object? assigned))
                 return assigned;
-            string typeName = MiniLexer.ResolveMemberAccess(invocation, out string member, out bool field) ?? _implicit_this?.StringID ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
+            string typeName = MiniLexer.ResolveMemberAccessOrLiteral(invocation, out string member, out bool field) ?? _implicit_this?.StringID ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
             if (typeName != _implicit_this?.StringID)
                 typeName = typeName.Trim();
             if (!field)
@@ -237,7 +237,7 @@ namespace XQuinn.Runtime
                 return false;
             string lefthand = left!;
             string righthand = right!;
-            string? lefthandTypeName = MiniLexer.ResolveMemberAccess(lefthand, out lefthand, out bool lefthandfield);
+            string? lefthandTypeName = MiniLexer.ResolveMemberAccessOrLiteral(lefthand, out lefthand, out bool lefthandfield);
             lefthand = lefthand.Trim();
             righthand = righthand.Trim();
             if (!lefthandfield)
@@ -271,7 +271,7 @@ namespace XQuinn.Runtime
                 assigningTo = new Reflector.Assignment(prop);
             }
 
-            string? righthandTypeName = MiniLexer.ResolveMemberAccess(righthand, out righthand, out bool righthandfield);// ?? _key ?? throw new ArgumentException("No type loaded for implicit access on righthand side.");
+            string? righthandTypeName = MiniLexer.ResolveMemberAccessOrLiteral(righthand, out righthand, out bool righthandfield);// ?? _key ?? throw new ArgumentException("No type loaded for implicit access on righthand side.");
             righthand = righthand.Trim();
             if (righthandTypeName != null)
             {

@@ -51,6 +51,19 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             _lexer._curr_method!.AddParameter(param);
         }
 
+        void SkipTrailingWhitespace(ref int i, string invocation)
+        {
+            while (i < invocation.Length)
+            {
+                i++;
+                _lexer._curr_char = invocation[i];
+                if (WhitespaceEnd())
+                    return;
+                if (_lexer._curr_char != CallLexer.Whitespace)
+                    throw new LexicalException("Detected trailing input after whitespace.", invocation, _lexer._curr_char, _lexer._writer, i);
+            }
+        }
+
         internal bool ReadEnumOR(string invocation)
         {
             if (Termination(_lexer._curr_char))
@@ -93,7 +106,6 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         }
         internal bool ReadChar(ref int i, string invocation)
         {
-            const string error = "Characer declarations must be enclosed with apostrophes.";
             if (!_readCharValue)
             {
                 _readCharValue = true;
@@ -102,14 +114,14 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             else if (!_finishedReadChar)
             {
                 if (_lexer._curr_char != CharDeclr)
-                    throw new LexicalException(error, invocation, _lexer._curr_char, _lexer._writer, i);
+                    throw new LexicalException("Characer declarations must be enclosed with apostrophes.", invocation, _lexer._curr_char, _lexer._writer, i);
                 _finishedReadChar = true;
                 return true;
             }
             else if (_lexer._curr_char == Whitespace)
             {
-                SkipWhitespaceTrail(ref i, invocation);
-                _lexer._reading_char = false;
+                SkipTrailingWhitespace(ref i, invocation);
+                _lexer._read_char = false;
                 _finishedReadChar = false;
                 _readCharValue = false;
             }
@@ -117,7 +129,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             {
                 _finishedReadChar = false;
                 _readCharValue = false;
-                _lexer._reading_char = false;
+                _lexer._read_char = false;
             }
             return false;
         }
@@ -127,14 +139,14 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 return true;
             if (_lexer._curr_char == Whitespace) //we skip leading and trailing whitespace
             {
-                SkipWhitespaceTrail(ref i, invocation);
+                SkipTrailingWhitespace(ref i, invocation);
                 _lexer._read_digit = false;
                 _readFloat = false;
                 return false;
             }
             else //nondigit value
             {
-                if (_lexer._curr_char == MemberAccess)
+                if (_lexer._curr_char == MemberAccessOrDecimal)
                 {
                     if (_readFloat)
                         throw new LexicalException("Floats cannot contain multiple decimals.", invocation, _lexer._curr_char, _lexer._writer, i);
@@ -157,7 +169,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             if (_stringEnding)
             {
                 if (_lexer._curr_char == Whitespace)
-                    SkipWhitespaceTrail(ref i, invocation);
+                    SkipTrailingWhitespace(ref i, invocation);
                 _stringEnding = false;
                 _lexer._read_string = false;
                 _noEscape = false;

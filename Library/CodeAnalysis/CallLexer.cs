@@ -42,7 +42,7 @@ namespace XQuinn.CodeAnalysis
 
         internal const char ParamTerminate = ',';
 
-        internal const char MemberAccess = '.';
+        internal const char MemberAccessOrDecimal = '.';
 
         internal const char StringDeclr = '"';
 
@@ -73,7 +73,7 @@ namespace XQuinn.CodeAnalysis
         internal bool _start = true;
 
         //Primary reading rulesets - determine how to lex incoming data based on context
-        internal bool _reading_char;
+        internal bool _read_char;
         internal bool _read_arbitrary_legal_value; //anything that isnt a digit, string or char but also hasnt yet been determined as a method field or enumOR
         internal bool _read_qualified_member; //something that has a member access operator and is not a digit
         internal bool _read_digit;
@@ -101,12 +101,9 @@ namespace XQuinn.CodeAnalysis
 
         internal MethodString MethodTemplate(string invocation, TypeString declaringType, TypeString? implicitAccess)
         {
-
-            //   if (string.IsNullOrWhiteSpace(invocation))
-            //   throw new ArgumentException("Invocation cannot be null or whitespace.");
             Clear();
             int? breakpoint = Breakpoint(invocation);
-            _declr_type = declaringType; //this is specifically to support trycatch, though otherwise not necessary because it always clears at the end to avoid holding onto stale data
+            _declr_type = declaringType;
             _implicit_this = implicitAccess;
             StringBuffer(invocation, breakpoint);
             FatalLexicalError(invocation);
@@ -150,31 +147,34 @@ namespace XQuinn.CodeAnalysis
                     if (_value_reader.ReadString(ref i, invocation))
                         goto Append;
                 }
-                else if (_reading_char)
+                else if (_read_char)
                 {
                     if (_value_reader.ReadChar(ref i, invocation))
                         goto Append;
                 }
                 else if (_read_arbitrary_legal_value)
                 {
-                    int result = _arbitrary_reader.ReadArbitrary(ref i, invocation);
-                    if (result == 1)
+                    ControlFlow flow = _arbitrary_reader.ReadArbitrary(ref i, invocation);
+                    if (flow == ControlFlow.Append)
                         goto Append;
-                    else if (result == 2)
+                    else if (flow == ControlFlow.Increment)
                         goto Increment;
                 }
                 else if (_read_qualified_member)
                 {
-                    int result = _arbitrary_reader.ReadIdentifier(ref i, invocation);
-                    if (result == 1)
+                    ControlFlow flow = _arbitrary_reader.ReadQualifiedMember(ref i, invocation);
+                    if (flow == ControlFlow.Append)
                         goto Append;
-                    else if (result == 0)
+                    else if (flow == ControlFlow.Increment)
                         goto Increment;
                 }
                 else if (_curr_char == Whitespace)
                     goto Increment;
                 else if (_terminated || _method_params_began)
-                    GetContext();
+                {
+                    if (GetContext())
+                        goto Append;
+                }
                 if (_last_nested_read_count > _reading_sub_params)
                 {
                     _curr_method = _curr_method!._subParamOf;
@@ -192,23 +192,22 @@ namespace XQuinn.CodeAnalysis
                         _value_reader.ReadParam();
                         _read_arbitrary_legal_value = false;
                         _terminated = true;
-
                     }
-
                     goto Increment;
                 }
+                ValidIdentifier(_curr_char, invocation);
             Append:
-                if (!_read_arbitrary_legal_value && !_reading_char && !_read_digit && !_read_string && !_read_qualified_member && !_start && !_read_enumOR && !_read_generic_args)
-                    ValidIdentifier(_curr_char, invocation);
                 _writer.Append(_curr_char);
             Increment:
                 i++;
             }
         }
-        void GetContext() //helps us figure out whats about to be read 
+
+        // if (!_read_arbitrary_legal_value && !_read_char && !_read_digit && !_read_string && !_read_qualified_member && !_start && !_read_enumOR && !_read_generic_args)
+        bool GetContext() //helps us figure out whats about to be read 
         {
             if (_curr_char == CharDeclr)
-                _reading_char = true;
+                _read_char = true;
             else if (_curr_char == StringDeclr || _curr_char == NoEscDeclr)
             {
                 if (_curr_char == NoEscDeclr) //there can be an invalid sequence here but it wont throw until we get to ValueString
@@ -218,19 +217,21 @@ namespace XQuinn.CodeAnalysis
                 }
                 _read_string = true;
             }
-            else if (_curr_char == NegSign || _curr_char == MemberAccess || char.IsDigit(_curr_char))
+            else if (_curr_char == NegSign || _curr_char == MemberAccessOrDecimal || char.IsDigit(_curr_char))
             {
                 _read_digit = true;
-                if (_curr_char == MemberAccess)
+                if (_curr_char == MemberAccessOrDecimal)
                     _value_reader._readFloat = true;
             }
             else if (ValidIdentifierFirstChar(_curr_char))
                 _read_arbitrary_legal_value = true;
-            if (_read_digit || _read_string || _read_arbitrary_legal_value || _reading_char)
+            if (_read_digit || _read_string || _read_arbitrary_legal_value || _read_char)
             {
                 _terminated = false;
                 _method_params_began = false;
+                return true;
             }
+            return false;
         }
 
 
@@ -240,7 +241,7 @@ namespace XQuinn.CodeAnalysis
                 throw new LexicalException("Nested method parameters not properly terminated. You can usually throw another ending parenthesis at the end of your invocation to fix this. ", invocation, _writer);
             if (_read_generic_args) //if you dont terminate a generic with . or ( then this will throw. genericlex checks later to make sure theyre propelry closed with >
                 throw new LexicalException("Invalid generic arguments.", invocation, _writer);
-            if (_reading_char)
+            if (_read_char)
                 throw new LexicalException("Chars require a closing apostrophe character.", invocation, _writer);
             if (_read_digit)
                 throw new LexicalException("Digit parameter not terminated.", invocation, _writer);
@@ -279,7 +280,7 @@ namespace XQuinn.CodeAnalysis
             _read_generic_args = false;
             _skipping = false;
             _read_qualified_member = false;
-            _reading_char = false;
+            _read_char = false;
             _read_enumOR = false;
             _read_arbitrary_legal_value = false;
             _method_params_began = false;

@@ -4,23 +4,28 @@ using XQuinn.CodeAnalysis;
 
 namespace XQuinn.CodeAnalysis.LexicalEngine
 {
+
+
+    enum ControlFlow
+    {
+        _default,
+        /// <summary>
+        /// Jumps to Increment, skips Append, skips following branches.
+        /// </summary>
+        Increment,
+        /// <summary>
+        /// Jumps to Append, skips following branches.
+        /// </summary>
+        Append,
+        /// <summary>
+        /// Releases control of the character so that it may reach following branches.
+        /// </summary>
+        Release
+    }
     abstract class LexicalObject
     {
         protected CallLexer _lexer;
-        internal void SkipWhitespaceTrail(ref int i, string invocation)
-        {
-            while (i < invocation.Length)
-            {
-                i++;
-                _lexer._curr_char = invocation[i];
-                if (WhitespaceEnd())
-                    return;
-                if (_lexer._curr_char != CallLexer.Whitespace)
-                    throw new LexicalException("Detected trailing input after whitespace.", invocation, _lexer._curr_char, _lexer._writer, i);
-            } 
-        }
-
-       protected bool WhitespaceEnd() => CallLexer.Termination(_lexer._curr_char) || ((_lexer._read_qualified_member || _lexer._arbitrary_reader._beganReadingMainMethodName || _lexer._read_arbitrary_legal_value) && _lexer._curr_char == CallLexer.MethodDeclr);
+        protected bool WhitespaceEnd() => CallLexer.Termination(_lexer._curr_char) || ((_lexer._read_qualified_member || _lexer._arbitrary_reader._beganReadingMainMethodName || _lexer._read_arbitrary_legal_value) && _lexer._curr_char == CallLexer.MethodDeclr);
         public LexicalObject(CallLexer lexer)
         {
             _lexer = lexer;
