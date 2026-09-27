@@ -38,13 +38,13 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         {
 
         }
-        void CrossWhitespace(ref int i, string invocation, Func<bool>? pred)
+        void CrossWhitespace(ref int i, string invocation, Predicate<char>? pred)
         {
             while (i < invocation.Length)
             {
                 i++;
                 _lexer._curr_char = invocation[i];
-                if (WhitespaceEnd() || _lexer._curr_char == GenericDeclr || (pred != null && pred()))
+                if (WhitespaceEnd() || _lexer._curr_char == GenericDeclr || (pred != null && pred(_lexer._curr_char)))
                     break;
                 else if (_lexer._curr_char != CallLexer.Whitespace)
                     throw new LexicalException("Detected trailing input after whitespace.", invocation, _lexer._curr_char, _lexer._writer, i);
@@ -54,7 +54,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         internal ControlFlow ReadArbitrary(ref int i, string invocation)
         {
             if (_lexer._curr_char == Whitespace)
-                CrossWhitespace(ref i, invocation, delegate { return _lexer._curr_char == MemberAccessOrDecimal || _lexer._curr_char == EnumOR; });
+                CrossWhitespace(ref i, invocation, x => x == MemberAccessOrDecimal || x == EnumOR);
             if (_lexer._curr_char == EnumOR)
             {
                 ActivateReadEnumOR(invocation);
@@ -82,7 +82,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         internal ControlFlow ReadQualifiedMember(ref int i, string invocation) //once an arbitrary is determined to be an identifier, it is read with stricter rules
         {
             if (_lexer._curr_char == Whitespace)
-                CrossWhitespace(ref i, invocation, delegate { return (_memberAccessing && ValidIdentifierFirstChar(_lexer._curr_char)) || _lexer._curr_char == MemberAccessOrDecimal; });
+                CrossWhitespace(ref i, invocation, x => (_memberAccessing && x != Whitespace) || x == MemberAccessOrDecimal);
             if (_lexer._curr_char == GenericDeclr)
                 return ActivateReadGeneric(invocation);
             if (_lexer._curr_char == MemberAccessOrDecimal)

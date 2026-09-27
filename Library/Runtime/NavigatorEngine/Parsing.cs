@@ -17,25 +17,25 @@ namespace XQuinn.Runtime.NavigatorEngine
         /// <summary>
         /// Convert a method AST object to actual parameters by matching it to a MethodInfo's parameter array.
         /// </summary>
-        public object?[] ParseParameters(ParameterInfo[] parameters, MethodString invocation)
+        public object?[] ParseParameters(ParameterInfo[] parameters, MethodString method)
         {
-            int inputAmount = invocation.Params.Count;
+            int inputAmount = method.Params.Count;
             int reqAmount = parameters.Length;
             int lastparam = reqAmount - 1;
             if (reqAmount == 0)
-                return inputAmount == 0 ? Array.Empty<object>() : throw new TargetParameterCountException($"input param count: {invocation.Params.Count} required count: {parameters.Length} method name {invocation.Name}");
+                return inputAmount == 0 ? Array.Empty<object>() : throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {parameters.Length} method name {method.StringID}");
             object?[] args = new object[parameters.Length];
-            if (invocation.Params.Count != reqAmount)
-                UnequalParamCount(inputAmount, reqAmount, parameters, args, invocation, lastparam);
+            if (method.Params.Count != reqAmount)
+                UnequalParamCount(inputAmount, reqAmount, parameters, args, method, lastparam);
             else if (parameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
-                ParamsArray(lastparam, parameters, args, invocation);
+                ParamsArray(lastparam, parameters, args, method);
             else
                 for (int i = 0; i < parameters.Length; i++)
-                    args[i] = ParameterToObject(invocation.Params[i], parameters[i].ParameterType);
+                    args[i] = ParameterToObject(method.Params[i], parameters[i].ParameterType);
             return args;
         }
 
-        void UnequalParamCount(int inputAmount, int reqAmount, ParameterInfo[] parameters, object?[] args, MethodString invocation, int lastparam)
+        void UnequalParamCount(int inputAmount, int reqAmount, ParameterInfo[] parameters, object?[] args, MethodString method, int lastparam)
         {
             if (inputAmount < reqAmount)
             {
@@ -50,28 +50,28 @@ namespace XQuinn.Runtime.NavigatorEngine
                         args[i] = Array.CreateInstance(elementType, 0);
                     }
                     else
-                        throw new TargetParameterCountException($"Parameter {parameter} does not have a default value. Input param count {inputAmount} Required count {reqAmount} method name {invocation.Name}");
+                        throw new TargetParameterCountException($"Parameter {parameter} does not have a default value. Input param count {inputAmount} Required count {reqAmount} method name {method.StringID}");
                 }
                 for (int i = 0; i < inputAmount; i++)
-                    args[i] = ParameterToObject(invocation.Params[i], parameters[i].ParameterType);
+                    args[i] = ParameterToObject(method.Params[i], parameters[i].ParameterType);
             }
             else if (lastparam >= 0 && parameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
             {
-                ParamsArray(lastparam, parameters, args, invocation);
+                ParamsArray(lastparam, parameters, args, method);
             }
             else
-                throw new TargetParameterCountException($"input param count: {invocation.Params.Count} required count: {parameters.Length} method name {invocation.Name}");
+                throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {parameters.Length} method name {method.Name}");
         }
 
         //Notes about
-        void ParamsArray(int lastparam, ParameterInfo[] parameters, object?[] args, MethodString invocation)
+        void ParamsArray(int lastparam, ParameterInfo[] parameters, object?[] args, MethodString method)
         {
             for (int i = 0; i < lastparam; i++)
-                args[i] = ParameterToObject(invocation.Params[i], parameters[i].ParameterType);
+                args[i] = ParameterToObject(method.Params[i], parameters[i].ParameterType);
             Type elementType = parameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentNullException();
-            if (invocation.Params.Count == parameters.Length)
+            if (method.Params.Count == parameters.Length)
             {
-                ParameterString parameter = invocation.Params[lastparam];
+                ParameterString parameter = method.Params[lastparam];
                 if (parameter is ValueString val && (val.Argument.EqualsCaseless("null") || val.Argument.EqualsCaseless("default")))
                     args[lastparam] = null; //we do this because ParameterToObject pases vs elementType rather than array type. If elementType is a struct, it will fail to parse null,
                 else                        //so for single-arguments that are explicitly null or default, there is a special case where we check early. more info on why below.
@@ -89,10 +89,10 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
             else
             {
-                Array paramsArray = Array.CreateInstance(elementType, invocation.Params.Count - lastparam); //assign array type via reflection becuase object[] wont work for params keyword
-                for (int i = lastparam; i < invocation.Params.Count; i++)
+                Array paramsArray = Array.CreateInstance(elementType, method.Params.Count - lastparam); //assign array type via reflection becuase object[] wont work for params keyword
+                for (int i = lastparam; i < method.Params.Count; i++)
                 {
-                    object? arg = ParameterToObject(invocation.Params[i], elementType);
+                    object? arg = ParameterToObject(method.Params[i], elementType);
                     if (arg != null)
                         paramsArray.SetValue(arg, i - lastparam); //null anyways so we skip setvalue if the result is null
                 }

@@ -18,7 +18,7 @@ namespace XQuinn.Runtime
         ///.This is for the DynamicNavigator.
         internal TypeBook? LocalCache;
         internal readonly CallLexer _lexer = new();
-        internal readonly Parser _parser; 
+        internal readonly Parser _parser;
         internal readonly Reflector _reflector;
         internal readonly Invoker _invoker;
         internal object? _object;
@@ -56,7 +56,7 @@ namespace XQuinn.Runtime
                 }
             }
             if (substring == -1)
-                return "No command detected.";
+                return "No instruction detected.";
             return controller switch
             {
                 '+' => AddViarable(invocation.Substring(substring)),
@@ -81,14 +81,14 @@ namespace XQuinn.Runtime
             {
                 MethodString query = _lexer.MethodTemplate(invocation, _implicit_this!, _implicit_this);
                 if (query.Name.EqualsCaseless("methods"))
-                    return QueryParameters(_methods, query);
+                    return ParseQuery(_methods, query);
                 if (query.Name.EqualsCaseless("fields"))
-                    return QueryParameters(_fields, query);
+                    return ParseQuery(_fields, query);
                 if (query.Name.EqualsCaseless("props"))
                 {
                     if (query.Params.Count == 2)
                         throw new TargetParameterCountException("Local query for properties only supports max one paramter: a containing string.");
-                    return QueryParameters(_props, query);
+                    return ParseQuery(_props, query);
                 }
             }
             else //parameterless default
@@ -103,18 +103,13 @@ namespace XQuinn.Runtime
             throw new ArgumentException("Invalid query");
         }
 
-        IEnumerable<string> QueryParameters<K, V>(Dictionary<K, V> dic, MethodString query) where V : MemberInfo where K : notnull
+        IEnumerable<string> ParseQuery<K, V>(Dictionary<K, V> dic, MethodString query) where V : MemberInfo where K : notnull
         {
             if (query.Params.Count <= 2)
             {
-                string? contains = null;
-                if (query.Params.Count >= 1)
-                    contains = (string?)_parser.ParameterToObject(query.Params[0], typeof(string));
-                BindingFlags? flags = null;
-                if (query.Params.Count == 2)
-                    flags = (BindingFlags)_parser.ParameterToObject(query.Params[1], typeof(BindingFlags))!;
-                flags ??= Flag;
-                return Types.ReadMembers(dic, contains, flags.Value);
+                string? contains = query.Params.Count >= 1 ? (string?)_parser.ParameterToObject(query.Params[0], typeof(string)) : null;
+                BindingFlags flags = query.Params.Count == 2 ? (BindingFlags)_parser.ParameterToObject(query.Params[1], typeof(BindingFlags))! : Flag;
+                return Types.ReadMembers(dic, contains, flags);
             }
             throw new TargetParameterCountException("Local query is max 2 params: a containig string and bindingflags search flags.");
         }
@@ -131,7 +126,7 @@ namespace XQuinn.Runtime
                 try
                 {
                     object? ret = Interface(cmd);
-                    if (ret is string s && s == "No command detected.")
+                    if (ret is string s && s == "No instruction detected.")
                         continue;
                     string? retstring = ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString();
                     invocations.Add($"[Instruction: {cmd} :: Returned: {retstring ?? "null"}]");
@@ -142,7 +137,7 @@ namespace XQuinn.Runtime
                     StringBuilder sb = new();
                     sb.CatchException(ex, StackTrace);
                     invocations.Insert(0, sb.ToString());
-                    invocations.Add($"!!! EXCEPTION on [Invocation: {cmd}]");
+                    invocations.Add($"!!! EXCEPTION on [Instructinon: {cmd}]");
                     return invocations;
                 }
             }
@@ -324,31 +319,31 @@ namespace XQuinn.Runtime
 
 
 
-        bool RemoveVariable(string key)
+        string RemoveVariable(string key)
         {
             key = key.Trim();
             if (key.EqualsCaseless(_variable))
                 _variable = null;
-            return _variables.Remove(key);
+            return _variables.Remove(key) ? $"{key} removed." : $"No variable named {key}.";
         }
 
-        bool AddViarable(string key)
+        string AddViarable(string key)
         {
             if (_object == null)
                 throw new InvalidOperationException("No instance is loaded.");
             key = key.Trim();
             TypeRegister.ThrowIfBadKey(key);
             if (TypeRegister.s_registry.ContainsKey(new(key)))
-                throw new ArgumentException($"Key {key} is already taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
+                throw new ArgumentException($"Key {key} is taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
             if (_variables.TryGetValue(key, out VariableBinding? variable))
             {
                 if (!ReferenceEquals(_object, variable.Object))
                     throw new ArgumentException("Duplicate keyname detected.");
-                return false;
+                return $"The current instance already is a variable named {key}.";
             }
             _variables[key] = new(_object);
             _variable = key;
-            return true;
+            return $"Added current instance as variable {key}.";
         }
 
 
