@@ -2,7 +2,7 @@ using System;
 using XQuinn.Reflection;
 using XQuinn.Runtime.NavigatorEngine;
 
-namespace XQuinn.CodeAnalysis.AST
+namespace XQuinn.LangInterp.SyntaxTree
 {
     internal sealed class TypeString : GenericString//, IEquatable<TypeString>
     {
@@ -16,13 +16,6 @@ namespace XQuinn.CodeAnalysis.AST
         internal static TypeString New(string name, GenericString? typeArgOf = null)
         {
             return New<TypeString>(new(name, typeArgOf));
-        }
-
-        internal static TypeString NewGeneric(string name) //This is for a string that has been externally confirmed as generic by GenericString.HasTypeArgs()
-        {
-            TypeString tstring = new(name);
-            tstring.UpdateGenericArgs();
-            return tstring;
         }
         internal Type ToType(TypeBook? dic = null)
         {

@@ -3,7 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections;
 using System.Text;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LangInterp.SyntaxTree;
 using System.Runtime.CompilerServices;
 using System.CodeDom.Compiler;
 using XQuinn.Extensions;

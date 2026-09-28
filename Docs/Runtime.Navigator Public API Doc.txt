@@ -55,6 +55,8 @@ This is an example of the kind of freedom you are allowed with whitespace.
 class < object > . Generic < long > ( Class < int > . Method < int > ( 33 ) )
 Avoid it in numbers. Dont do things like "- 23 . 3"
 Do "-23.3"
+
+Objects inherting from IEnumerable will be enumerated and it's elements output as the return value.
                               
 
 Additional Tips:
@@ -195,7 +197,7 @@ The Navigator comes with a static helper class called Types. It provides various
 mentioned alternative/static query methods. Here is a list of Types' additional helper methods:
 
 Of<T> and Of(string) - return a type object, either with a key matching the string, or typeof(T). String variant is mainly for obtaining generic definitions, ex. "List<T>" or "Dictionary<K,V>"
-Struct<T>(T) - return an unmanaged struct == the parameter values
+Num<T>(T) - return an integral numeric type with the parameter values
 Enum<T>(T) - return an enum value == the parameter values
 String(string) - return a string == the parameter values
 Array<T>(params T[]) and Array<T>(int) - create an array using params, or create a presized array

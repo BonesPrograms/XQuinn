@@ -1,11 +1,11 @@
 using System.Reflection;
 using XQuinn.Extensions;
 using XQuinn.Reflection;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LangInterp.SyntaxTree;
 using System.Linq;
 using System;
 using System.Collections.Generic;
-using XQuinn.CodeAnalysis;
+using XQuinn.LangInterp;
 using System.Text;
 using System.Collections;
 using System.Runtime.ExceptionServices;

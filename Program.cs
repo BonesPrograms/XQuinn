@@ -9,13 +9,13 @@ using XQuinn.IO;
 using System.Text;
 using System;
 using System.Runtime.Versioning;
-using XQuinn.CodeAnalysis;
+using XQuinn.LangInterp;
 using System.Linq;
 using System.Collections.Generic;
 using XQuinn.Extensions;
 using XQuinn.Parsing;
 using System.IO;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LangInterp.SyntaxTree;
 using System.Collections;
 using XQuinn.ObjectModel;
 using System.Runtime.InteropServices;
@@ -42,10 +42,10 @@ namespace XQuinn.Private
             ConsoleTools.WriteMany(TypeRegister.s_registry, "\n");
             RunNavigator();
         }
-        //  static void method()
-        //  {
-        //      int[] array = new int[] { 8, 16, 32 };
-        // }
+        static void method()
+        {
+            int[] array = new int[] { 8, 16, 32 };
+        }
 
 
         static Dictionary<GenericKey, Type>? s_reg_copy;
@@ -56,6 +56,7 @@ namespace XQuinn.Private
                 throw new InvalidOperationException();
             TypeRegister.s_registry.Clear();
             s_reg_copy.ForEach(x => TypeRegister.s_registry[x.Key] = x.Value);
+            s_reg_copy = null;
         }
 
         static void NamespaceTest()
@@ -78,7 +79,7 @@ namespace XQuinn.Private
             string path = Path.Combine(XQuinn.IO.Finders.CodeLabFinder.s_path, @"XQuinnLib\dump\instance.log");
             string[] instructions = new string[]
             {$"~ *types . enum < bindingFlags > ( {flag} ); +flag;",
-            $"*InstanceReader . new (  @\"{path}\"  , true,  types . of < object > () ); +reader;",
+        //    $"*InstanceReader . new (  @\"{path}\"  , true,  types . of < object > () ); +reader;",
             "*class<float>.new();",
             "Program.NamespaceTest();",
             "* xq.class <xq.object> .new();",
@@ -89,7 +90,7 @@ namespace XQuinn.Private
             "* GetMethod ( \"Func\" ); +method_func;",
             " * xq.class<xq.float>.new(); +float_class; *method_func; xq.class<xq.string> . s_obj = \"Hello World\";",
             "Invoke:1 ( XQ.Class<XQ.Object>.new() , XQ.Types.Array <XQ.Object> ( XQ.Class <XQ.Int> . S_Obj, XQ . Class< XQ. String> . S_OBJ)));",
-            "*xq.class<xq.object>.new();",
+            "* xq.class<xq.object>.new();",
             "func2:1( xq.class<xq.int>. s_obj  , xq . types. array <xq.object> (xq. class. ret( xq.class.s_obj ) ), xq.class<xq . object>  .  func(xq.class <xq.string> .new(), \"fingas\"));"
             ,"xq.program.namespaceRevert(); types.FlushStaticCache();",
                       
@@ -101,14 +102,32 @@ namespace XQuinn.Private
             "*Types.Of<Class<Object>>(); *GetMethod(\"RefRet\"); +refret;",
             "class<int>.s_obj = 14003214;",
             "*Types . Array <object> ( class<int> . s_obj ); +args;",
-           "refret . invoke:1 ( null, Types . Array <object> ( class<int> . s_obj )); class<int> . s_obj",
-           "types.FlushStaticCache(); @program" };
+           "refret . invoke:1 ( null, Types . Array <object> ( class<int> . s_obj )); class<int> . s_obj"};
             //"xq.Class< xq . kvp< xq . string , xq . int>>.new()"};
             StringBuilder sb = new();
             sb.AppendMany(instructions, ";");
             string ret = monitor.SafeInterface(sb.ToString());
-            monitor._core.Clear();
             Console.WriteLine(ret);
+            monitor._core.Clear();
+            NavigatorCore.FlushStaticCache();
+            Console.WriteLine("Navigator core state reset!\nRuntimeCache flushed!");
+            sb.Length = 0;
+            instructions = new string[]
+            {
+                "~",
+                $"* Types.Enum<BindingFlags>({flag})", "+ flag", "+ flags",
+                $"* InstanceReader.new(@\"{path}\", true)", "+ reader",
+                "* StringBuilder.new()", "+ sb",
+                "* Types.Array:1<int>(8)", "+ arr", // for viewing backing fields via getfields
+                "* Program.s_arr_init_type", "+ init_type",
+                "* Activator.CreateInstance:3 (init_type)", "+ init_obj",
+                "* arr.GetType()", "+ arr_type",
+                "* init_type"
+            };
+            sb.AppendMany(instructions, ";");
+            ret = monitor.SafeInterface(sb.ToString());
+            Console.WriteLine(ret);
+          //   ConsoleTools.WriteMany(TypeRegister.s_registry, "\n");
             while (true)
             {
                 string? msg = Console.ReadLine();
@@ -116,24 +135,45 @@ namespace XQuinn.Private
                     Console.WriteLine(monitor.SafeInterface(msg));
             }
         }
+
+        internal static Type? s_arr_init_type;
         static void Cache()
         {
             Assembly xquinn = Assembly.Load("XQuinn");
-            TypeRegister.CacheTypes(xquinn.GetTypes(), false);
+            List<Type> types = new(xquinn.GetTypes());
+            for (int i = 0; i < types.Count; i++)
+            {
+                Type t = types[i];
+                if (t.Name == "__StaticArrayInitTypeSize=12")
+                {
+                    s_arr_init_type = t;
+                    types.Remove(t);
+                    break;
+                }
+            }
+            TypeRegister.CacheTypes(types, false);
             TypeRegister.CacheType<Harmony>(false);
             TypeRegister.CacheType(typeof(AccessTools), false);
-            TypeRegister.CacheType(typeof(AccessToolsExtensions), "accesstoolsE");
+            TypeRegister.CacheType<StringBuilder>(false);
+            TypeRegister.CacheType(typeof(StringBuilderExtensions), "sbe");
+            TypeRegister.CacheType<ValueType>(false);
         }
 
     }
 
+    class Top<T>
+    {
+        class Nest<X>
+        {
 
+        }
+    }
     class Objer
     {
         public static object? objer = "Helldasd";
     }
 
-    class Class
+    class Class : Class<object>
     {
         static object? s_obj;
         static object? ret(object? obj) => obj;
@@ -179,6 +219,7 @@ namespace XQuinn.Private
             return arr;
         }
     }
+
 
 }
 

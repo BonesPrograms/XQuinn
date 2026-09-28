@@ -1,8 +1,9 @@
 using System.Reflection;
 using System;
 using System.Text;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LangInterp.SyntaxTree;
 using XQuinn.Extensions;
+using XQuinn.LangInterp;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
@@ -12,13 +13,42 @@ namespace XQuinn.Runtime.NavigatorEngine
         public readonly int Args;
         public static GenericKey TypeQuery(string typename)
         {
-            if (GenericString.HasTypeArgs(typename))
+            if (HasTypeArgs(ref typename, out int count))
             {
-                TypeString query = TypeString.NewGeneric(typename);
-                GenericKey key = new(query);
+                GenericKey key = new(typename, count);
                 return key;
             }
             return new(typename);
+        }
+
+        static bool HasTypeArgs(ref string typename, out int count)
+        {
+            int nest = 0;
+            int declrindex = -1;
+            bool readFirstGeneric = false;
+            count = 0;
+            for (int i = 0; i < typename.Length; i++)
+            {
+                char c = typename[i];
+                if (c == CallLexer.GenericDeclr)
+                {
+                    if (readFirstGeneric)
+                        nest++;
+                    else
+                    {
+                        declrindex = i;
+                        count++;
+                    }
+                    readFirstGeneric = true;
+                }
+                if (c == CallLexer.GenericTerminate)
+                    nest--;
+                if (nest == 0 && c == CallLexer.ParamTerminate)
+                    count++;
+            }
+            if (declrindex != -1)
+                typename = typename.Remove(declrindex);
+            return count > 0;
         }
 
 
@@ -83,7 +113,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             for (int i = 1; i < Args; i++)
             {
                 sb.Append($"T{i + 1}");
-                if (For.NeedsDelimiter(Args, i))
+                if (For.SmartDelimiter(Args, i))
                     sb.Append(", ");
             }
             sb.Append('>');
@@ -96,7 +126,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             {
                 if (Args == 1)
                     return $"{Name}<T>";
-               return ArgsToString(new(Name));
+                return ArgsToString(new(Name));
 
             }
             return Name;

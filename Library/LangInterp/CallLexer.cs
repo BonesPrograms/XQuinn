@@ -1,67 +1,32 @@
 using System.Text;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LangInterp.SyntaxTree;
 using System;
 using XQuinn.Extensions;
-using XQuinn.CodeAnalysis.LexicalEngine;
+using XQuinn.LangInterp.LexicalEngine;
+using System.Diagnostics.CodeAnalysis;
 
-namespace XQuinn.CodeAnalysis
+namespace XQuinn.LangInterp
 {
 
 
-    internal class LexicalException : Exception
-    {
-        internal LexicalException(string msg, string invocation, char next, StringBuilder sb, int i) : base(msg + $"Input: {invocation} Bad character: {next} Current string value: {sb} Index: {i + 1}")
-        {
 
-        }
-
-        internal LexicalException(string msg, string invocation, StringBuilder sb) : base(msg + $"Input: {invocation} Current string value: {sb}")
-        {
-
-        }
-
-        internal LexicalException(string msg, string invocation) : base(msg + $"Input: {invocation}")
-        {
-
-        }
-
-        internal LexicalException(string msg, string invocation, char val, StringBuilder sb) : base(msg + $"Input: {invocation} Bad Character:{val} Current String Value: {sb}")
-        {
-
-        }
-    }
     internal sealed class CallLexer
     {
 
-
         internal const char ValidNonAlphaNumeric = '_';
-
         internal const char MethodDeclr = '(';
-
         internal const char MethodTerminate = ')';
-
         internal const char ParamTerminate = ',';
-
         internal const char MemberAccessOrDecimal = '.';
-
         internal const char StringDeclr = '"';
-
         internal const char NegSign = '-';
-
         internal const char EscSeq = '\\';
-
-        internal const char Whitespace = ' ';
-
         internal const char CharDeclr = '\'';
-
         internal const char EnumOR = '|';
-
         internal const char NoEscDeclr = '@';
-
         internal const char GenericDeclr = '<';
-
         internal const char GenericTerminate = '>';
-
+        internal static Whitespace Whitespace => Whitespace._whitespace;
         internal readonly StringBuilder _writer = new();
         internal readonly ValueReader _value_reader;
         internal readonly ArbitraryReader _arbitrary_reader;
@@ -92,6 +57,33 @@ namespace XQuinn.CodeAnalysis
         //This is for additional awareness on how deeply nested a subparameter read is
         internal int _reading_sub_params;
         internal int _last_nested_read_count;
+        Read ReadState
+        {
+            get
+            {
+                if (_start)
+                    return Read.Start;
+                if (_read_generic_args)
+                    return Read.ReadGeneric;
+                if (_read_enumOR)
+                    return Read.ReadEnumOR;
+                if (_read_string)
+                    return Read.ReadString;
+                if (_read_char)
+                    return Read.ReadChar;
+                if (_read_digit)
+                    return Read.ReadDigit;
+                if (_read_arbitrary_legal_value)
+                    return Read.ReadArbitrary;
+                if (_read_qualified_member)
+                    return Read.ReadQualified;
+                if (_curr_char == Whitespace)
+                    return Read.Whitespace;
+                if (_terminated || _method_params_began)
+                    return Read.Context;
+                return Read.Releasing;
+            }
+        }   
 
         internal CallLexer()
         {
@@ -112,6 +104,8 @@ namespace XQuinn.CodeAnalysis
             return method;
         }
 
+
+
         void StringBuffer(string invocation, int? breakpoint)
         {
             int i = 0;
@@ -120,61 +114,24 @@ namespace XQuinn.CodeAnalysis
                 if (i == breakpoint)
                     break;
                 _curr_char = invocation[i];
-                if (_start)
+                ControlFlow flow = ReadState switch
                 {
-                    if (_arbitrary_reader.ReadMainMethod(ref i, invocation))
-                        goto Append;
+                    Read.Start => _arbitrary_reader.ReadMainMethod(ref i, invocation),
+                    Read.ReadGeneric => _arbitrary_reader.ReadGeneric(invocation),
+                    Read.ReadEnumOR => _value_reader.ReadEnumOR(invocation),
+                    Read.ReadDigit => _value_reader.ReadNum(ref i, invocation),
+                    Read.ReadString => _value_reader.ReadString(ref i, invocation),
+                    Read.ReadChar => _value_reader.ReadChar(ref i, invocation),
+                    Read.ReadArbitrary => _arbitrary_reader.ReadArbitrary(ref i, invocation),
+                    Read.ReadQualified => _arbitrary_reader.ReadQualifiedMember(ref i, invocation),
+                    Read.Context => GetContext(),
+                    Read.Whitespace => ControlFlow.Increment,
+                    Read.Releasing => ControlFlow.Release,
+                };
+                if (flow == ControlFlow.Append)
+                    goto Append;
+                if (flow == ControlFlow.Increment)
                     goto Increment;
-                }
-                else if (_read_generic_args)
-                {
-                    if (_arbitrary_reader.ReadGeneric(ref i, invocation))
-                        goto Append;
-                    goto Increment;
-                }
-                else if (_read_enumOR)
-                {
-                    if (_value_reader.ReadEnumOR(invocation))
-                        goto Append;
-                }
-                else if (_read_digit)
-                {
-                    if (_value_reader.ReadNum(ref i, invocation))
-                        goto Append;
-                }
-                else if (_read_string)
-                {
-                    if (_value_reader.ReadString(ref i, invocation))
-                        goto Append;
-                }
-                else if (_read_char)
-                {
-                    if (_value_reader.ReadChar(ref i, invocation))
-                        goto Append;
-                }
-                else if (_read_arbitrary_legal_value)
-                {
-                    ControlFlow flow = _arbitrary_reader.ReadArbitrary(ref i, invocation);
-                    if (flow == ControlFlow.Append)
-                        goto Append;
-                    else if (flow == ControlFlow.Increment)
-                        goto Increment;
-                }
-                else if (_read_qualified_member)
-                {
-                    ControlFlow flow = _arbitrary_reader.ReadQualifiedMember(ref i, invocation);
-                    if (flow == ControlFlow.Append)
-                        goto Append;
-                    else if (flow == ControlFlow.Increment)
-                        goto Increment;
-                }
-                else if (_curr_char == Whitespace)
-                    goto Increment;
-                else if (_terminated || _method_params_began)
-                {
-                    if (GetContext())
-                        goto Append;
-                }
                 if (_last_nested_read_count > _reading_sub_params)
                 {
                     _curr_method = _curr_method!._subParamOf;
@@ -204,7 +161,7 @@ namespace XQuinn.CodeAnalysis
         }
 
         // if (!_read_arbitrary_legal_value && !_read_char && !_read_digit && !_read_string && !_read_qualified_member && !_start && !_read_enumOR && !_read_generic_args)
-        bool GetContext() //helps us figure out whats about to be read 
+        ControlFlow GetContext() //helps us figure out whats about to be read 
         {
             if (_curr_char == CharDeclr)
                 _read_char = true;
@@ -229,9 +186,9 @@ namespace XQuinn.CodeAnalysis
             {
                 _terminated = false;
                 _method_params_began = false;
-                return true;
+                return ControlFlow.Append;
             }
-            return false;
+            return ControlFlow.Release;
         }
 
 
@@ -257,9 +214,8 @@ namespace XQuinn.CodeAnalysis
 
         internal void ValidIdentifier(char value, string invocation)
         {
-            const string error = "Detected illegal character in identifier.";//&&value!='('
             if (value != ':' && Illegal(value))
-                throw new LexicalException(error, invocation, value, _writer);
+                throw new LexicalException("Detected illegal character in identifier.", invocation, value, _writer);
 
         }
         internal static bool Illegal(char val) => val != ValidNonAlphaNumeric && !char.IsDigit(val) && !char.IsLetter(val);
@@ -347,15 +303,70 @@ namespace XQuinn.CodeAnalysis
         /// without also recreating that original bug
         /// (we solve the bug by checking if our StringBuilder is empty before appending, which would also be the logical
         /// point to throw an 'empty parameter' exception, so doesnt really work)
+        enum Read
+        {
+            Releasing,
+            Start,
+            ReadGeneric,
+            ReadEnumOR,
+            ReadString,
+            ReadDigit,
+            ReadChar,
+            ReadArbitrary,
+            ReadQualified,
+            Whitespace,
+            Context
+        }
 
 
     }
 
+    internal sealed class Whitespace
+    {
 
+        internal static readonly Whitespace _whitespace = new();
+        public override bool Equals(object? obj)
+        {
+            return obj is char c && char.IsWhiteSpace(c);
+        }
 
+        public static bool operator ==(char left, Whitespace right) => char.IsWhiteSpace(left);
 
+        public static bool operator !=(char left, Whitespace right) => !(left == right);
 
+        public override int GetHashCode()
+        {
+            throw new NotImplementedException();
+        }
 
+        Whitespace()
+        {
+
+        }
+    }
+
+    internal sealed class LexicalException : Exception
+    {
+        internal LexicalException(string msg, string invocation, char next, StringBuilder sb, int i) : base(msg + $"Input: {invocation} Bad character: {next} Current string value: {sb} Index: {i + 1}")
+        {
+
+        }
+
+        internal LexicalException(string msg, string invocation, StringBuilder sb) : base(msg + $"Input: {invocation} Current string value: {sb}")
+        {
+
+        }
+
+        internal LexicalException(string msg, string invocation) : base(msg + $"Input: {invocation}")
+        {
+
+        }
+
+        internal LexicalException(string msg, string invocation, char val, StringBuilder sb) : base(msg + $"Input: {invocation} Bad Character:{val} Current String Value: {sb}")
+        {
+
+        }
+    }
 
 
 

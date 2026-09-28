@@ -5,7 +5,7 @@ using System;
 using XQuinn.Reflection;
 using XQuinn.Extensions;
 
-namespace XQuinn.CodeAnalysis.AST
+namespace XQuinn.LangInterp.SyntaxTree
 {
     internal sealed class MethodString : GenericString, IMemberString
     {
@@ -51,38 +51,15 @@ namespace XQuinn.CodeAnalysis.AST
             _args ??= new List<ParameterString>();
             _args.Add(param);
         }
-
-        void ParamStringShort(StringBuilder sb)
-        {
-            sb.Append(StringID);
-            sb.Append("( ");
-            AppendParams(sb);
-            sb.Append(" )");
-
-        }
-
-        void AppendParams(StringBuilder sb)
-        {
-            StringBuilder sb2 = new();
-            sb.AppendMany(Params, ", ", false, x =>
-            {
-                if (x is MethodString ms)
-                    return $"{ms.DeclaringType.StringID}.{ms.StringID}()";
-                else return x!.ToString();
-            });
-        }
-
         public override string ToString()
         {
             StringBuilder sb = new();
-            sb.Append($"{DeclaringType.StringID}.{StringID}()");
-            if (_subParamOf != null)
-                sb.Append($" :: Nested in {_subParamOf.DeclaringType.StringID}.{_subParamOf.StringID}()");
-            if (Params.Count > 0)
-            {
-                sb.Append(" :: Params: ");
-                AppendParams(sb);
-            }
+            sb.Append($"{DeclaringType.StringID}.{StringID}");
+            //  if (_subParamOf != null)
+            //     sb.Append($" :: Nested in {_subParamOf.DeclaringType.StringID}.{_subParamOf.StringID}()");
+            sb.Append('(');
+            sb.AppendMany(Params, ", ", false, x => x is MethodString ms ? $"{ms.DeclaringType.StringID}.{ms.StringID}()" : x!.ToString());
+            sb.Append(')');
             return sb.ToString();
 
         }

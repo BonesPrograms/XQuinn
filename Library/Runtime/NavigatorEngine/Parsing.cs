@@ -1,9 +1,10 @@
 using System.Reflection;
 using XQuinn.Extensions;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LangInterp.SyntaxTree;
 using System;
 using System.Collections;
 using System.Diagnostics.CodeAnalysis;
+using HarmonyLib;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
@@ -69,6 +70,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             for (int i = 0; i < lastparam; i++)
                 args[i] = ParameterToObject(method.Params[i], parameters[i].ParameterType);
             Type elementType = parameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentNullException();
+            object? defaultValue = elementType.GetDefaultValue();
             if (method.Params.Count == parameters.Length)
             {
                 ParameterString parameter = method.Params[lastparam];
@@ -80,7 +82,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                     if (!arg?.GetType().IsArray ?? true) //list && list.GetType() == actualParameters[lastparam].ParameterType) //i dont bother checking conversions most of the time runtime does it for me
                     {
                         Array singleArgArray = Array.CreateInstance(elementType, 1);
-                        if (arg != null)
+                        if (arg != null && !arg.Equals(defaultValue))
                             singleArgArray.SetValue(arg, 0);
                         arg = singleArgArray;
                     }
@@ -93,7 +95,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 for (int i = lastparam; i < method.Params.Count; i++)
                 {
                     object? arg = ParameterToObject(method.Params[i], elementType);
-                    if (arg != null)
+                    if (arg != null && !arg.Equals(defaultValue))
                         paramsArray.SetValue(arg, i - lastparam); //null anyways so we skip setvalue if the result is null
                 }
                 args[lastparam] = paramsArray;

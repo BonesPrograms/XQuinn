@@ -1,11 +1,11 @@
 using System.Reflection;
 using XQuinn.Extensions;
 using XQuinn.Reflection;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LangInterp.SyntaxTree;
 using System.Linq;
 using System;
 using System.Collections.Generic;
-using XQuinn.CodeAnalysis;
+using XQuinn.LangInterp;
 using System.Text;
 using XQuinn.Runtime.NavigatorEngine;
 
@@ -31,7 +31,7 @@ namespace XQuinn.Runtime
         internal readonly Dictionary<string, PropertyInfo> _props = new(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, VariableBinding> _variables = new(StringComparer.OrdinalIgnoreCase);
         // public bool Caching = true;
-        bool _chaining = false;
+        bool _chaining;
         public bool StackTrace;
         internal const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
 
@@ -59,7 +59,7 @@ namespace XQuinn.Runtime
                 return "No instruction detected.";
             return controller switch
             {
-                '+' => AddViarable(invocation.Substring(substring)),
+                '+' => AddVariable(invocation.Substring(substring)),
                 '-' => RemoveVariable(invocation.Substring(substring)),
                 '@' => LoadTypeStatic(invocation.Substring(substring)),
                 '*' => LoadInstance(invocation.Substring(substring)),
@@ -73,6 +73,7 @@ namespace XQuinn.Runtime
 
         IEnumerable<string> Query(string invocation)
         {
+            invocation = invocation.Trim();
             if (invocation.EqualsCaseless("vars"))
                 return _variables.Select(x => $"Key: {x.Key} :: {x.Value}");
             if (_static_type == null)
@@ -85,11 +86,7 @@ namespace XQuinn.Runtime
                 if (query.Name.EqualsCaseless("fields"))
                     return ParseQuery(_fields, query);
                 if (query.Name.EqualsCaseless("props"))
-                {
-                    if (query.Params.Count == 2)
-                        throw new TargetParameterCountException("Local query for properties only supports max one paramter: a containing string.");
                     return ParseQuery(_props, query);
-                }
             }
             else //parameterless default
             {
@@ -172,6 +169,7 @@ namespace XQuinn.Runtime
         //Checks for method or field syntax. If it detects a method, it diverts to an isolated type load and method invocation.
         object LoadInstance(string invocation)
         {
+            invocation = invocation.Trim();
             object? instance = null;
             _variable = null;
             if (_variables.TryGetValue(invocation, out VariableBinding? variable))
@@ -215,7 +213,7 @@ namespace XQuinn.Runtime
         {
             if (_object == null)
                 throw new InvalidOperationException("Cannot cast, instance is null.");
-            TypeString tstring = TypeString.New(invocation);
+            TypeString tstring = TypeString.New(invocation.Trim());
             Type t = _reflector.FindType(tstring, true);
             _implicit_this = tstring;
             if (!t.IsAssignableFrom(_object_type))
@@ -324,10 +322,10 @@ namespace XQuinn.Runtime
             key = key.Trim();
             if (key.EqualsCaseless(_variable))
                 _variable = null;
-            return _variables.Remove(key) ? $"{key} removed." : $"No variable named {key}.";
+            return _variables.Remove(key) ? $"{key} removed from variables." : $"No variable named {key}.";
         }
 
-        string AddViarable(string key)
+        string AddVariable(string key)
         {
             if (_object == null)
                 throw new InvalidOperationException("No instance is loaded.");
@@ -360,9 +358,13 @@ namespace XQuinn.Runtime
             _variables.Clear();
             _methods.Clear();
             _fields.Clear();
+            _props.Clear();
             LocalCache = null;
             _object = null;
             _static_type = null;
+            _implicit_this = null;
+            _chaining = false;
+            _variable = null;
         }
         // }
 

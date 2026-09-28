@@ -1,4 +1,4 @@
-namespace XQuinn.CodeAnalysis.AST
+namespace XQuinn.LangInterp.SyntaxTree
 {
     internal abstract class ParameterString
     {

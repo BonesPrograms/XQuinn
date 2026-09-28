@@ -4,7 +4,7 @@ using HarmonyLib;
 using XQuinn.Extensions;
 using XQuinn.Parsing;
 
-namespace XQuinn.CodeAnalysis.AST
+namespace XQuinn.LangInterp.SyntaxTree
 {
     internal sealed class ValueString : ParameterString
     {

@@ -1,7 +1,7 @@
 using System.Reflection;
 using XQuinn.Extensions;
 using XQuinn.Reflection;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LangInterp.SyntaxTree;
 using System.Linq;
 using System;
 using System.Collections.Generic;
@@ -46,7 +46,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             if (_variables.TryGetValue(member.DeclaringType.StringID, out VariableBinding? variable))
             {
                 instance = variable.Object;
-                return instance.GetType();
+                return variable.Object.GetType();
 
             }
             instance = null;

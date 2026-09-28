@@ -3,7 +3,7 @@ using System.Collections.ObjectModel;
 using System.Reflection;
 using System;
 using System.Collections.Generic;
-using XQuinn.CodeAnalysis;
+using XQuinn.LangInterp;
 using XQuinn.Extensions;
 using System.Text;
 using System.Collections;
@@ -13,6 +13,7 @@ using System.Runtime.CompilerServices;
 using System.Linq;
 using XQuinn.Runtime.NavigatorEngine;
 using System.ComponentModel;
+using XQuinn.Private;
 
 
 namespace XQuinn.Reflection
@@ -43,8 +44,8 @@ namespace XQuinn.Reflection
               ("int", typeof(int)),  ("uint", typeof(uint)),
               ("short", typeof(short)), ("ushort", typeof(ushort)),
               ("long", typeof(long)), ("ulong", typeof(ulong)),
-              ("float", typeof(float)), ("Tuple", typeof(ValueTuple)),
-              ("KVP", typeof(KeyValuePair<,>))
+              ("float", typeof(float)), ("bool", typeof(bool)),
+              ("Tuple", typeof(ValueTuple)), ("KVP", typeof(KeyValuePair<,>))
             };
             for (int i = 0; i < preNamedTypes.Length; i++)
             {
@@ -56,11 +57,12 @@ namespace XQuinn.Reflection
             {                                   //so its easier to just add new ones to the array
             typeof(object), typeof(string),
             typeof(sbyte),  typeof(byte),
-            typeof(bool), typeof(char),
-            typeof(double), typeof(decimal),
+            typeof(char), typeof(double),
+            typeof(decimal),
 
             typeof(Enum), typeof(BindingFlags),
-            typeof(Nullable<>), typeof(IDisposable),
+            typeof(Nullable<>), typeof(Nullable),
+            typeof(IDisposable),
 
             typeof(Types), typeof(TypeRegister),
 

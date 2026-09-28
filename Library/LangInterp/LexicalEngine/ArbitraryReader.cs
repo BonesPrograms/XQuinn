@@ -1,13 +1,13 @@
-using XQuinn.CodeAnalysis;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LangInterp;
+using XQuinn.LangInterp.SyntaxTree;
 using XQuinn.Extensions;
 using System;
 
-using static XQuinn.CodeAnalysis.CallLexer;
+using static XQuinn.LangInterp.CallLexer;
 using XQuinn.Runtime.NavigatorEngine;
 
 
-namespace XQuinn.CodeAnalysis.LexicalEngine
+namespace XQuinn.LangInterp.LexicalEngine
 {
     sealed class ArbitraryReader : LexicalObject
     {
@@ -16,7 +16,6 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         bool _genericParamTerminate;
         bool _readFirstGeneric;
         int _generic_sub_params;
-
         int _last_sub_count;
         public void Clear()
         {
@@ -38,13 +37,13 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         {
 
         }
-        void CrossWhitespace(ref int i, string invocation, Predicate<char>? pred)
+        void CrossWhitespace(ref int i, string invocation, Func<bool>? pred)
         {
             while (i < invocation.Length)
             {
                 i++;
                 _lexer._curr_char = invocation[i];
-                if (WhitespaceEnd() || _lexer._curr_char == GenericDeclr || (pred != null && pred(_lexer._curr_char)))
+                if (WhitespaceEnd() || _lexer._curr_char == GenericDeclr || (pred != null && pred()))
                     break;
                 else if (_lexer._curr_char != CallLexer.Whitespace)
                     throw new LexicalException("Detected trailing input after whitespace.", invocation, _lexer._curr_char, _lexer._writer, i);
@@ -53,8 +52,8 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         internal ControlFlow ReadArbitrary(ref int i, string invocation)
         {
-            if (_lexer._curr_char == Whitespace)
-                CrossWhitespace(ref i, invocation, x => x == MemberAccessOrDecimal || x == EnumOR);
+            if (_lexer._curr_char == CallLexer.Whitespace)
+                CrossWhitespace(ref i, invocation, delegate{return _lexer._curr_char == MemberAccessOrDecimal || _lexer._curr_char == EnumOR;});
             if (_lexer._curr_char == EnumOR)
             {
                 ActivateReadEnumOR(invocation);
@@ -81,8 +80,8 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
 
         internal ControlFlow ReadQualifiedMember(ref int i, string invocation) //once an arbitrary is determined to be an identifier, it is read with stricter rules
         {
-            if (_lexer._curr_char == Whitespace)
-                CrossWhitespace(ref i, invocation, x => (_memberAccessing && x != Whitespace) || x == MemberAccessOrDecimal);
+            if (_lexer._curr_char == CallLexer.Whitespace)
+                CrossWhitespace(ref i, invocation, delegate{return (_memberAccessing && _lexer._curr_char != CallLexer.Whitespace) || _lexer._curr_char == MemberAccessOrDecimal;});
             if (_lexer._curr_char == GenericDeclr)
                 return ActivateReadGeneric(invocation);
             if (_lexer._curr_char == MemberAccessOrDecimal)
@@ -107,7 +106,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
         }
 
 
-        internal bool ReadGeneric(ref int i, string invocation)
+        internal ControlFlow ReadGeneric(string invocation)
         {
 
             if (_lexer._curr_char == GenericTerminate) //generics can only be Lexer.terminated by these, so if its not, the lex will throw at the end
@@ -137,10 +136,10 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                 _genericParamTerminate = true;
                 _lexer._skipping = false;
             }
-            else if (_lexer._curr_char == Whitespace)
+            else if (_lexer._curr_char == CallLexer.Whitespace)
             {
                 _lexer._skipping = true; //unlike most other reads, this one allows whitespace, so instead of Lexer.skipping to Termination and ending the read
-                return false; //we must instead increment one by one and keep the read active until we reach a proper termination
+                return ControlFlow.Increment; //we must instead increment one by one and keep the read active until we reach a proper termination
             }
             else if (_lexer._curr_char != GenericDeclr && _lexer._curr_char != GenericTerminate)
             {
@@ -165,18 +164,18 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             }
             else if (_lexer._curr_char == GenericTerminate && _readFirstGeneric)
                 throw new LexicalException("Invalid generic arguments.", invocation, _lexer._curr_char, _lexer._writer);
-            return true;
+            return ControlFlow.Append;
 
         }
 
         //all errors stop the program, but these errors mean you really messed up 
-        internal bool ReadMainMethod(ref int i, string invocation)
+        internal ControlFlow ReadMainMethod(ref int i, string invocation)
         {
             if (_beganReadingMainMethodName)
             {
                 if (_lexer._read_generic_args)
-                    return ReadGeneric(ref i, invocation); //readgeneric is so special isnt it, this is the only read called by another read, but it works
-                if (_lexer._curr_char == Whitespace)
+                    return ReadGeneric(invocation); //readgeneric is so special isnt it, this is the only read called by another read, but it works
+                if (_lexer._curr_char == CallLexer.Whitespace)
                     CrossWhitespace(ref i, invocation, null);
                 if (_lexer._curr_char == MethodDeclr)
                     return ReadMain();
@@ -184,17 +183,17 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
                     ActivateReadGeneric(invocation);
                 else
                     _lexer.ValidIdentifier(_lexer._curr_char, invocation);
-                return true;
+                return ControlFlow.Append;
             }
-            else if (_lexer._curr_char == Whitespace)
-                return false;
+            else if (_lexer._curr_char == CallLexer.Whitespace)
+                return ControlFlow.Increment;
             if (ValidIdentifierFirstCharOrThrow(_lexer._curr_char, invocation))
                 _beganReadingMainMethodName = true;
-            return true;
+            return ControlFlow.Append;
         }
 
 
-        bool ReadMain()
+        ControlFlow ReadMain()
         {
             MethodString method = MethodString.New(_lexer._writer.ToString(), null, _lexer._declr_type!);// ?? throw new InvalidOperationException());
             _lexer._writer.Length = 0;
@@ -203,7 +202,7 @@ namespace XQuinn.CodeAnalysis.LexicalEngine
             _lexer._method_params_began = true;
             _lexer._start = false;
             _beganReadingMainMethodName = false;
-            return false;
+            return ControlFlow.Increment;
 
         }
 

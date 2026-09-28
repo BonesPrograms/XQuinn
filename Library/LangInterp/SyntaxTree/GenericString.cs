@@ -5,7 +5,7 @@ using XQuinn.Reflection;
 using XQuinn.Extensions;
 using XQuinn.Runtime.NavigatorEngine;
 
-namespace XQuinn.CodeAnalysis.AST
+namespace XQuinn.LangInterp.SyntaxTree
 {
     internal abstract class GenericString : MetadataString
     {
@@ -32,7 +32,7 @@ namespace XQuinn.CodeAnalysis.AST
             return genericString;
         }
 
-        protected void UpdateGenericArgs()
+        void UpdateGenericArgs()
         {
             StringBuilder sb = new();
             LexGenerics(sb);
@@ -40,7 +40,7 @@ namespace XQuinn.CodeAnalysis.AST
             GenericID(sb);
         }
 
-        internal static bool HasTypeArgs(string NameOrValue)
+        static bool HasTypeArgs(string NameOrValue)
         {
             bool genericStart = false;
             bool genericEnd = false;

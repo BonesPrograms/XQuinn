@@ -1,5 +1,5 @@
 using System.Reflection;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LangInterp.SyntaxTree;
 using System;
 using System.Collections.Generic;
 

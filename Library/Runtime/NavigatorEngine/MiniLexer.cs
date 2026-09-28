@@ -1,6 +1,6 @@
 using System;
 using System.Text;
-using XQuinn.CodeAnalysis;
+using XQuinn.LangInterp;
 using XQuinn.Extensions;
 
 namespace XQuinn.Runtime.NavigatorEngine

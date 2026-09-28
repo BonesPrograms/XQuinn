@@ -42,11 +42,13 @@ namespace XQuinn.Extensions
         {
             if (appendIndex)
                 sb.Append($"[{i}] ");
-            string? text = toString?.Invoke(element);
+            string? text;
             if (toString == null)
                 text = element?.ToString();
+            else
+                text = toString.Invoke(element);
             sb.Append(text ?? "null");
-            if (delimiter != null && For.NeedsDelimiter(length, i))
+            if (delimiter != null && For.SmartDelimiter(length, i))
                 sb.Append(delimiter);
             i++;
         }

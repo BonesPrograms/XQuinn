@@ -13,14 +13,14 @@ namespace XQuinn.Runtime.NavigatorEngine
 
     static class Types
     {
-        public static IEnumerable<string> Props<T>(string? contains = null) => Props(typeof(T), contains);
+        public static IEnumerable<string> Props<T>(string? contains = null, BindingFlags search = NavigatorCore.Flag) => Props(typeof(T), contains, search);
         public static IEnumerable<string> Methods<T>(string? contains = null, BindingFlags search = NavigatorCore.Flag) => Methods(typeof(T), contains, search);
         public static IEnumerable<string> Fields<T>(string? contains = null, BindingFlags search = NavigatorCore.Flag) => Fields(typeof(T), contains, search);
-        public static IEnumerable<string> Props(Type t, string? contains = null)
+        public static IEnumerable<string> Props(Type t, string? contains = null, BindingFlags search = NavigatorCore.Flag)
         {
             Dictionary<string, PropertyInfo> props = new();
             TypeMap.MapType(null, null, t, props, false);
-            return ReadMembers(props, contains, NavigatorCore.Flag);
+            return ReadMembers(props, contains, search);
         }
 
         public static IEnumerable<string> Fields(Type t, string? contains = null, BindingFlags search = NavigatorCore.Flag)
@@ -45,7 +45,7 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         public static Type Of<T>() => typeof(T); //typeof(T[])
         public static Type Of(string name) => GetTypeOrThrow(name); //for generic definitions which cant be passed as T without their own typeargs
-        public static T Struct<T>(T obj = default) where T : unmanaged => obj; 
+        public static T Num<T>(T obj = default) where T : struct => obj;
         public static T Enum<T>(T obj) where T : Enum => obj;
         public static string String(string txt) => txt; //only way to instantiate an isolated new string using the navigator
         public static T[] Array<T>(params T[] arr) => arr.Length == 0 ? System.Array.Empty<T>() : arr;
@@ -89,6 +89,19 @@ namespace XQuinn.Runtime.NavigatorEngine
             readonly bool _static;
             readonly bool _public;
             readonly bool _inherited;
+            SearchModifiers(MethodBase method)
+            {
+                _static = method.IsStatic;
+                _public = method.IsPublic;
+                _inherited = Inherited(method);
+            }
+
+            SearchModifiers(FieldInfo field)
+            {
+                _static = field.IsStatic;
+                _public = field.IsPublic;
+                _inherited = Inherited(field);
+            }
 
             public static bool ProcessSearch(MemberInfo inf, BindingFlags flags)
             {
@@ -96,10 +109,10 @@ namespace XQuinn.Runtime.NavigatorEngine
                     return new SearchModifiers(mthd).ProcessSearch(flags);
                 if (inf is FieldInfo field)
                     return new SearchModifiers(field).ProcessSearch(flags);
-                return true;
+                return PropertySearch((PropertyInfo)inf, flags);
             }
 
-            public readonly bool ProcessSearch(BindingFlags flags)
+            readonly bool ProcessSearch(BindingFlags flags)
             {
                 if (_inherited && flags.HasFlag(BindingFlags.DeclaredOnly))
                     return false;
@@ -123,25 +136,18 @@ namespace XQuinn.Runtime.NavigatorEngine
 
             }
 
-            public SearchModifiers(MethodBase method)
+            static bool PropertySearch(PropertyInfo prop, BindingFlags flags)
             {
-                _static = method.IsStatic;
-                _public = method.IsPublic;
-                _inherited = Inherited(method);
+                MethodInfo? getter = prop.GetGetMethod();
+                if (getter != null && ProcessSearch(getter, flags))
+                    return true;
+                MethodInfo? setter = prop.GetSetMethod();
+                if (setter != null && ProcessSearch(setter, flags))
+                    return true;
+                return false;
             }
 
-            public SearchModifiers(FieldInfo field)
-            {
-                _static = field.IsStatic;
-                _public = field.IsPublic;
-                _inherited = Inherited(field);
-            }
 
-            //                  public SearchModifiers(PropertyInfo prop)
-            //                 {
-            //                     _static = prop.GetGetMethod(true) is {IsStatic:true};
-            //                     _inherited = Inherited(prop);
-            //                 }
             static bool Inherited(MemberInfo obj)
             {
                 if (obj.DeclaringType != null)

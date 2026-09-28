@@ -1,6 +1,6 @@
 using System;
 using XQuinn.Reflection;
-using XQuinn.CodeAnalysis.AST;
+using XQuinn.LangInterp.SyntaxTree;
 using System.Text;
 
 namespace XQuinn.Runtime.NavigatorEngine

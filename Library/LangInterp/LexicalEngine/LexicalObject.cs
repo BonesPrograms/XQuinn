@@ -1,14 +1,13 @@
 using System;
 using System.Text;
-using XQuinn.CodeAnalysis;
+using XQuinn.LangInterp;
 
-namespace XQuinn.CodeAnalysis.LexicalEngine
+namespace XQuinn.LangInterp.LexicalEngine
 {
 
 
     enum ControlFlow
     {
-        _default,
         /// <summary>
         /// Jumps to Increment, skips Append, skips following branches.
         /// </summary>

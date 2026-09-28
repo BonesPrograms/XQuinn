@@ -97,7 +97,7 @@ namespace XQuinn.Reflection
             Writer.WriteLine("Locals");
             for (int i = 0; i < _localvars.Count; i++)
             {
-                bool needcomma = For.NeedsDelimiter(_localvars.Count, i);
+                bool needcomma = For.SmartDelimiter(_localvars.Count, i);
                 char? comma = needcomma ? ',' : null;
                 Writer.WriteLine($"		[{i}] {_localvars[i].LocalType.Name}{comma}");
 

@@ -29,7 +29,7 @@ namespace XQuinn.Reflection
 
         static StringBuilder MemberToString(StringBuilder sb, MemberInfo member, bool fullname)
         {
-            sb.Append(member.MemberType.ToString());
+            sb.Append(member.GetUnderlyingType().ToString());
             sb.Append(' ');
             GenericTypeToString(sb, member.DeclaringType, fullname);
             sb.Append("::");
@@ -62,7 +62,8 @@ namespace XQuinn.Reflection
         {
             if (ctor.DeclaringType != null)
                 GenericTypeToString(sb, ctor.DeclaringType, fullname);
-            sb.Append($"::.ctor{ParamsToString(ctor.GetParameters(), fullname)}");
+            sb.Append($"::.ctor");
+            ParamsToString(sb, ctor.GetParameters(), fullname);
             return sb;
         }
 
@@ -75,7 +76,7 @@ namespace XQuinn.Reflection
             sb.Append("::");
             sb.Append(mthd.Name);
             AddGenericArguments(sb, mthd.GetGenericArguments(), fullname);
-            sb.Append(ParamsToString(mthd.GetParameters(), fullname));
+            ParamsToString(sb, mthd.GetParameters(), fullname);
             return sb;
         }
 
@@ -87,16 +88,14 @@ namespace XQuinn.Reflection
                 return;
             }
             string lowered = mthd.ReturnType.Name.ToLower();
-            if (lowered != "string" && lowered != "boolean" && lowered != "void")
+            if (lowered != "string" && lowered != "void")
                 GenericTypeToString(sb, mthd.ReturnType, fullname);
             else
                 sb.Append(lowered);
 
         }
-        static StringBuilder ParamsToString(ParameterInfo[] args, bool fullname)
+        static StringBuilder ParamsToString(StringBuilder txt, ParameterInfo[] args, bool fullname)
         {
-            StringBuilder txt = new();
-            StringBuilder tname = new();
             txt.Append('(');
             for (int i = 0; i < args.Length; i++)
             {
@@ -109,11 +108,15 @@ namespace XQuinn.Reflection
                     txt.Append("out ");
                 else if (arg.ParameterType.IsByRef)
                     txt.Append("ref ");
-                tname.Length = 0;
-                GenericTypeToString(tname, arg.ParameterType, fullname);
-                txt.Append(tname);
+                GenericTypeToString(txt, arg.ParameterType, fullname);
                 txt.Append($" {arg.Name}");
-                if (For.NeedsDelimiter(args.Length, i))
+                if (arg.HasDefaultValue)
+                {
+                    object? value = arg.DefaultValue;
+                    string? ret = value != null ? value.ToString() : arg.ParameterType.IsClass ? "null" : "default";
+                    txt.Append($" = {ret}");
+                }
+                if (For.SmartDelimiter(args.Length, i))
                     txt.Append(", ");
             }
             txt.Append(')');
@@ -151,7 +154,7 @@ namespace XQuinn.Reflection
                     FixGenericString(sb, fullname ? genericargs[i].FullName ?? genericargs[i].Name : genericargs[i].Name);
                     if (genericargs[i].IsGenericType)
                         AddGenericArguments(sb, genericargs[i].GetGenericArguments(), fullname);
-                    if (For.NeedsDelimiter(genericargs.Length, i))
+                    if (For.SmartDelimiter(genericargs.Length, i))
                         sb.Append(", ");
                 }
                 sb.Append('>');
