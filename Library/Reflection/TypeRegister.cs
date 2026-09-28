@@ -31,73 +31,60 @@ namespace XQuinn.Reflection
             foreach (KeyValuePair<GenericKey, Type> obj in s_registry)
                 yield return new(obj.Key.ToString(), obj.Value);
         }
-        internal static readonly Dictionary<GenericKey, Type> s_registry = new()
-        {
-            [new("object")] = typeof(object), ///Keyword types, primitives, strings, object
-            [new("string")] = typeof(string),
-            [new("bool")] = typeof(bool),
-            [new("byte")] = typeof(byte),
-            [new("sbyte")] = typeof(sbyte), 
-            [new("char")] = typeof(char),
-            [new("int")] = typeof(int),
-            [new("uint")] = typeof(uint),
-            [new("short")] = typeof(short),
-            [new("ushort")] = typeof(ushort),
-            [new("long")] = typeof(long),
-            [new("ulong")] = typeof(ulong),
-            [new("float")] = typeof(float),
-            [new("double")] = typeof(double),
-            [new("decimal")] = typeof(decimal),
-            [new("nint")] = typeof(nint),
-            [new("nuint")] = typeof(nuint),
 
-            [new(nameof(Enum))] = typeof(Enum),
-            [new("Tuple")] = typeof(ValueTuple),
-            [new(nameof(BindingFlags))] = typeof(BindingFlags), //Handy types
-            [new(nameof(Nullable<_>), 1)] = typeof(Nullable<>),
-            [new(nameof(IDisposable))] = typeof(IDisposable),
+        internal static readonly Dictionary<GenericKey, Type> s_registry = new();
 
-            [new(nameof(Types))] = typeof(Types),
-            [new(nameof(InstanceReader))] = typeof(InstanceReader), //XQuinn Types
-            [new(nameof(ILReader))] = typeof(ILReader),
-            [new(nameof(TypeRegister))] = typeof(TypeRegister),
-
-            [new(nameof(Assembly))] = typeof(Assembly),
-            [new(nameof(Activator))] = typeof(Activator), //reflection/conversion types
-            [new(nameof(Convert))] = typeof(Convert),
-            [new(nameof(TypeConverter))] = typeof(TypeConverter),
-
-            [new(nameof(Environment))] = typeof(Environment),
-            [new(nameof(AppDomain))] = typeof(AppDomain),       //domain/runtime types
-            [new(nameof(AppContext))] = typeof(AppContext),
-            [new(nameof(RuntimeEnvironment))] = typeof(RuntimeEnvironment),
-            [new(nameof(RuntimeInformation))] = typeof(RuntimeInformation),
-
-            [new(nameof(Array))] = typeof(Array),
-            [new(nameof(List<_>), 1)] = typeof(List<>),
-            [new(nameof(IList), 1)] = typeof(IList<>),
-            [new(nameof(IList))] = typeof(IList),
-            [new(nameof(Enumerable))] = typeof(Enumerable),             //collections and their necessities
-            [new(nameof(IEnumerable))] = typeof(IEnumerable),
-            [new(nameof(IEnumerable), 1)] = typeof(IEnumerable<>),
-            [new(nameof(Dictionary<_, _>), 2)] = typeof(Dictionary<,>),
-            [new(nameof(IDictionary), 2)] = typeof(IDictionary<,>),
-            [new(nameof(IDictionary))] = typeof(IDictionary),
-            [new("KVP", 2)] = typeof(KeyValuePair<,>),
-            [new(nameof(HashSet<_>), 1)] = typeof(HashSet<>),
-            [new(nameof(Collection<_>), 1)] = typeof(Collection<>),
-            [new(nameof(ICollection))] = typeof(ICollection),
-            [new(nameof(ICollection), 1)] = typeof(ICollection<>)
-
-        };
-
-        readonly static string[] _illegalKeys = new string[] { "null", "default", "base", "this" }; ///Reserved "language" keywords
+        readonly static string[] s_illegal_keys = new string[] { "null", "default", "base", "this", bool.FalseString, bool.TrueString }; ///Reserved "language" keywords
 
         static TypeRegister()
         {
+            (string, Type)[] preNamedTypes = new (string, Type)[]
+            {
+              ("int", typeof(int)),  ("uint", typeof(uint)),
+              ("short", typeof(short)), ("ushort", typeof(ushort)),
+              ("long", typeof(long)), ("ulong", typeof(ulong)),
+              ("float", typeof(float)), ("Tuple", typeof(ValueTuple)),
+              ("KVP", typeof(KeyValuePair<,>))
+            };
+            for (int i = 0; i < preNamedTypes.Length; i++)
+            {
+                (string name, Type type) = preNamedTypes[i];
+                GenericKey gkey = new(name, type);
+                s_registry[gkey] = type;
+            }
+            Type[] preCachedTypes = new Type[] //Most types are cached with a name based on their type object's name property
+            {                                   //so its easier to just add new ones to the array
+            typeof(object), typeof(string),
+            typeof(sbyte),  typeof(byte),
+            typeof(bool), typeof(char),
+            typeof(double), typeof(decimal),
+
+            typeof(Enum), typeof(BindingFlags),
+            typeof(Nullable<>), typeof(IDisposable),
+
+            typeof(Types), typeof(TypeRegister),
+
+            typeof(Assembly), typeof(Activator),
+            typeof(Environment), typeof(AppDomain),
+            typeof(AppContext), typeof(RuntimeEnvironment),
+            typeof(RuntimeInformation),
+
+            typeof(Array), typeof(List<>), typeof(IList<>), typeof(IList),
+            typeof(Enumerable), typeof(IEnumerable), typeof(IEnumerable<>),
+            typeof(Dictionary<,>), typeof(IDictionary<,>), typeof(IDictionary),
+            typeof(HashSet<>), typeof(ICollection<>), typeof(ICollection), typeof(Collection<>)
+            };
+            for (int i = 0; i < preCachedTypes.Length; i++)
+            {
+                Type type = preCachedTypes[i];
+                string name = GetCompatibleName(type, false);
+                GenericKey gkey = new(name, type);
+                s_registry[gkey] = type;
+            }
             Assembly mscorlib = Assembly.Load("System.Private.CoreLib");
             Type runtimeType = mscorlib.GetType("System.RuntimeType", true)!;
-            s_registry[new(nameof(Type))] = runtimeType; //There is a desync between Type's resolved method overloads and RuntimeType's resolved method overloads.
+            GenericKey key = new(typeof(Type).Name, runtimeType);
+            s_registry[key] = runtimeType; //There is a desync between Type's resolved method overloads and RuntimeType's resolved method overloads.
         }                                               //Type becomes RuntimeType at runtime, so it is irrelevent to us, we cache RuntimeType instead.
 
         public static bool Contains(string name) => s_registry.ContainsKey(GenericKey.TypeQuery(name));
@@ -209,8 +196,8 @@ namespace XQuinn.Reflection
                 throw new ArgumentException($"Keys cannot begin with a digit. Bad Key: {key}");
             if (key[0] == CallLexer.MemberAccessOrDecimal)
                 throw new ArgumentException($"Keys cannot begin with a period. Bad Key {key}");
-            for (int i = 0; i < _illegalKeys.Length; i++)
-                if (_illegalKeys[i].EqualsCaseless(key))
+            for (int i = 0; i < s_illegal_keys.Length; i++)
+                if (s_illegal_keys[i].EqualsCaseless(key))
                     throw new ArgumentException($"This key is restricted and cannot be registered. Bad Key {key}.");
             bool accessor = false;
             for (int i = 0; i < key.Length; i++)
