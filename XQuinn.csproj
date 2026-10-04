@@ -10,7 +10,7 @@
     <Prefer32Bit>false</Prefer32Bit>
     <Nullable>enable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  <Configurations>Release;IApp;Debug;-</Configurations> <!--Release;IApp;Debug-->
+    <Configurations>Release;IApp;Debug</Configurations> <!--Release;IApp;Debug-->
     <LangVersion>9.0</LangVersion> 
    <!--  <LangVersion>11.0</LangVersion> -->
   <!-- <GenerateDocumentationFile>true</GenerateDocumentationFile> 

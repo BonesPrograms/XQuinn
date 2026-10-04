@@ -17,7 +17,7 @@ namespace XQuinn.Runtime
     public sealed class NavigationFeed
     {
         readonly StringBuilder _feed = new();
-        readonly internal NavigatorCore _core = new();
+        internal readonly NavigatorCore _core = new();
         public bool StackTrace
         {
             get => _stackTrace;
@@ -28,8 +28,9 @@ namespace XQuinn.Runtime
             }
         }
         bool _stackTrace;
-        public NavigationFeed()
+        internal NavigationFeed(bool stacktrace)
         {
+            StackTrace = stacktrace;
         }
         public string SafeInterface(string input)
         {
@@ -50,8 +51,11 @@ namespace XQuinn.Runtime
         }
         internal string Interface(string input)
         {
-            _feed.AppendLine($"{Environment.NewLine}{DateTime.Now}");
-            _feed.AppendLine($"Instruction : {input}");
+            _feed.AppendLine();
+            _feed.Append(DateTime.Now);
+            _feed.AppendLine();
+            _feed.Append($"Instruction :");
+            _feed.AppendLine(input);
             ProcessReturn(_core.Interface(input));
             AppendNavigData();
             string output = _feed.ToString();
@@ -64,7 +68,8 @@ namespace XQuinn.Runtime
             VariableBinding? variable = ret as VariableBinding;
             if (variable != null)
             {
-                _feed.AppendLine($"Variable: {variable}");
+                _feed.Append($"Variable: ");
+                _feed.AppendLine(variable.ToString());
                 ret = variable.Object;
             }
             IEnumerable? enumerator = ret is string ? null : ret as IEnumerable;
@@ -99,12 +104,17 @@ namespace XQuinn.Runtime
         {
             if (_core._static_type != null)
             {
-                _feed.AppendLine($"Loaded Type: {ReflectionPrinter.Print(_core._static_type, false)}");
+                _feed.Append($"Loaded Type: ");
+                _feed.AppendLine(ReflectionPrinter.Print(_core._static_type, false));
                 if (_core._object_type != null)
                 {
-                    _feed.AppendLine($"Loaded Instance Type: {ReflectionPrinter.Print(_core._object_type, false)}");
+                    _feed.Append($"Loaded Instance Type: ");
+                    _feed.AppendLine(ReflectionPrinter.Print(_core._object_type, false));
                     if (_core._variable != null)
-                        _feed.AppendLine($"Loaded Variable: {_core._variable}");
+                    {
+                        _feed.Append($"Loaded Variable: ");
+                        _feed.AppendLine(_core._variable);
+                    }
                 }
 
             }

@@ -34,7 +34,7 @@ namespace XQuinn.Runtime
             }
         }
 
-        readonly NavigationFeed _monitor = new();
+        readonly NavigationFeed _monitor = new(true);
         public Func<Type, string?> BookDelegate = x => TypeRegister.GetCompatibleName(x, false);
         public string? DefaultLoadedTypeName;
         /// <summary>

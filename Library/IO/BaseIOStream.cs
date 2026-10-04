@@ -24,7 +24,7 @@ public abstract class IOStream : IDisposable
     {
 
     }
-    static void SafetyCheck(string path)
+    public static void SafetyCheck(string path)
     {
         if (string.IsNullOrWhiteSpace(path))
             throw new ArgumentException("Pah cannot be null or whitespace.");

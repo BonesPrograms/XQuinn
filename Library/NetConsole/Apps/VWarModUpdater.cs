@@ -14,13 +14,13 @@ namespace XQuinn.NetConsole.Apps
 {
 
 
-    internal  sealed class VWarModUpdater : IApp
+    internal sealed class VWarModUpdater : IApp
     {
         VWarModUpdater()
         {
 
         }
-        public  void Run()
+        public void Run()
         {
             Dictionary<string, string> roots = ProjectFinder.GetProjectRoots();
             List<Mod> mods = ModFetcher.FetchMods(roots);
@@ -107,7 +107,7 @@ namespace XQuinn.NetConsole.Apps
 
     }
 
-     sealed class Mod
+    sealed class Mod
     {
         public List<CSFile> Files;
         public string Name;
@@ -121,7 +121,7 @@ namespace XQuinn.NetConsole.Apps
     }
 
     [XmlRoot("CSFile")]
-     sealed class CSFile
+    public sealed class CSFile
     {
         [XmlElement]
         public DateTime LastWrite = default!;
@@ -132,7 +132,7 @@ namespace XQuinn.NetConsole.Apps
         [XmlElement]
         public string Name = null!;
 
-        CSFile()
+        public CSFile()
         {
 
         }
@@ -180,7 +180,7 @@ namespace XQuinn.NetConsole.Apps
 
     class ModSerializer
     {
-        static readonly string SaveLocation = Path.Combine(VietnamWarModLab.s_path, @"UpdatePlugins2\ModData\VietnamWar");
+        static readonly string SaveLocation = Path.Combine(VietnamWarModLab.s_path, @"updateplugins\modData\vwar");
         static readonly string[] SaveFolders = Directory.GetDirectories(SaveLocation);
         readonly HashSet<Mod> NeedUpdate = new();
         static readonly XmlSerializer Serializer = new(typeof(CSFile));

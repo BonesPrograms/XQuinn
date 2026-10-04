@@ -13,15 +13,12 @@ namespace XQuinn.Runtime.NavigatorEngine
         public readonly int Args;
         public static GenericKey TypeQuery(string typename)
         {
-            if (HasTypeArgs(ref typename, out int count))
-            {
-                GenericKey key = new(typename, count);
-                return key;
-            }
-            return new(typename);
+            CountGenericArgs(ref typename, out int count);
+            GenericKey key = new(typename, count);
+            return key;
         }
 
-        static bool HasTypeArgs(ref string typename, out int count)
+        static void CountGenericArgs(ref string typename, out int count)
         {
             int nest = 0;
             int declrindex = -1;
@@ -44,11 +41,13 @@ namespace XQuinn.Runtime.NavigatorEngine
                 if (c == CallLexer.GenericTerminate)
                     nest--;
                 if (nest == 0 && c == CallLexer.ParamTerminate)
-                    count++;
+                    if (!readFirstGeneric)
+                        throw new LexicalException("Invalid type name", typename);
+                    else
+                        count++;
             }
             if (declrindex != -1)
                 typename = typename.Remove(declrindex);
-            return count > 0;
         }
 
 

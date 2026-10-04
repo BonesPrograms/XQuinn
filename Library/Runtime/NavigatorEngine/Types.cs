@@ -138,10 +138,10 @@ namespace XQuinn.Runtime.NavigatorEngine
 
             static bool PropertySearch(PropertyInfo prop, BindingFlags flags)
             {
-                MethodInfo? getter = prop.GetGetMethod();
+                MethodInfo? getter = prop.GetGetMethod(true);
                 if (getter != null && ProcessSearch(getter, flags))
                     return true;
-                MethodInfo? setter = prop.GetSetMethod();
+                MethodInfo? setter = prop.GetSetMethod(true);
                 if (setter != null && ProcessSearch(setter, flags))
                     return true;
                 return false;

@@ -30,10 +30,10 @@ namespace XQuinn.Private
 
     static class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
 #if IAPP_BUILD
-            XQuinn.NetConsole.Apps.IApp.RunApp(args);
+            XQuinn.NetConsole.Apps.IApp.RunApp();
         }
     }
 }
@@ -73,7 +73,7 @@ namespace XQuinn.Private
         }
         static void RunNavigator()
         {
-            NavigationFeed monitor = new();
+            NavigationFeed monitor = new(true);
             monitor.StackTrace = true;
             string flag = NavigatorCore.Flag.ToString().Replace(',', '|');
             string path = Path.Combine(XQuinn.IO.Finders.CodeLabFinder.s_path, @"XQuinnLib\dump\instance.log");
@@ -161,6 +161,14 @@ namespace XQuinn.Private
 
     }
 
+    class The
+    {
+        static GameObject Player = new GameObject();
+    }
+
+    class GameObject
+    {
+    }
     class Top<T>
     {
         class Nest<X>
@@ -178,8 +186,15 @@ namespace XQuinn.Private
         static object? s_obj;
         static object? ret(object? obj) => obj;
     }
+
+    // ~ * Types.Of("Class<T>"); *MakeGenericType(Types.Array<Type>(Types.Of<byte>())); *GetMethod(\"Func\"); Invoke:1(Class<byte>.new(), Types.Array<object>( Types.Num<byte>(37), Types.Num<byte>(80)))
     class Class<T>
     {
+
+        class Nest
+        {
+            static T obj;
+        }
 
         static List<T?> list = new() { default, default, default, default };
         static T? S_Obj

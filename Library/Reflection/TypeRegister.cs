@@ -113,6 +113,8 @@ namespace XQuinn.Reflection
 
         public static bool CacheType(Type type, string key)
         {
+            if(type.IsNested)
+            return false;
             if (type.IsDefined(typeof(CompilerGeneratedAttribute), true) || TypeBook.IsFileType(type))
                 return false;
             if (type.IsGenericType && !type.IsGenericTypeDefinition)

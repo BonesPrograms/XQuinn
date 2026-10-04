@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.IO;
+using System.Text;
 
 
 namespace XQuinn.NetConsole.Apps
@@ -18,7 +19,7 @@ namespace XQuinn.NetConsole.Apps
     /// </summary>
     internal interface IApp
     {
-
+        static Dictionary<string, Type> s_iapps = IApps();
         static Dictionary<string, Type> IApps()
         {
             Dictionary<string, Type> iapps = new(StringComparer.OrdinalIgnoreCase);
@@ -32,24 +33,40 @@ namespace XQuinn.NetConsole.Apps
             return iapps;
         }
 
-        internal static void RunApp(string[] args)
+        internal static void RunApp()
         {
-            if (args.Length == 1)
+            try
             {
-                if (!IApps().TryGetValue(args[0], out Type? apptype))
-                    return;
+                _ = Console.WindowHeight;
+            }
+            catch (IOException)
+            {
+                throw new IOException("Cannot run console app types outside of console apps.");
+            }
+            Console.WriteLine("Enter the name of an IApp:");
+            ConsoleTools.WriteMany(s_iapps, Environment.NewLine, x => x.Key);
+        Retry:
+            string input = Console.ReadLine() ?? string.Empty;
+            if (s_iapps.TryGetValue(input, out Type? apptype))
+            {
+                IApp iapp = (IApp)Activator.CreateInstance(apptype, true)!;
                 try
                 {
-                    _ = Console.WindowHeight;
+                    iapp.Run();
                 }
-                catch (IOException)
+                catch (Exception ex)
                 {
-                    throw new IOException("Cannot run console app types outside of console apps.");
+                    StringBuilder sb = new();
+                    sb.CatchException(ex, true);
+                    Console.WriteLine(sb.ToString());
                 }
-                IApp iapp = (IApp)Activator.CreateInstance(apptype!, true)!;
-                iapp.Run();
-                Console.ReadLine();
-                Environment.Exit(0);
+            }
+            else goto Retry;
+            while (true)
+            {
+                var key = Console.ReadKey();
+                if (key.Key == ConsoleKey.Escape)
+                    Environment.Exit(0);
             }
         }
 
