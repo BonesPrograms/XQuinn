@@ -10,6 +10,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.IO;
 using System.Text;
+using System.Xml.Linq;
 
 
 namespace XQuinn.NetConsole.Apps
@@ -19,10 +20,10 @@ namespace XQuinn.NetConsole.Apps
     /// </summary>
     internal interface IApp
     {
-        static Dictionary<string, Type> s_iapps = IApps();
-        static Dictionary<string, Type> IApps()
+        static OrderedDictionary<string, Type> s_iapps = IApps();
+        static OrderedDictionary<string, Type> IApps()
         {
-            Dictionary<string, Type> iapps = new(StringComparer.OrdinalIgnoreCase);
+            OrderedDictionary<string, Type> iapps = new(StringComparer.OrdinalIgnoreCase);
             Assembly assembly = Assembly.Load("XQuinn");
             Type[] types = assembly.GetTypes();
             foreach (Type type in types)
@@ -43,30 +44,41 @@ namespace XQuinn.NetConsole.Apps
             {
                 throw new IOException("Cannot run console app types outside of console apps.");
             }
-            Console.WriteLine("Enter the name of an IApp:");
+            Console.WriteLine("Enter the name or index of an IApp:");
             ConsoleTools.WriteMany(s_iapps, Environment.NewLine, x => x.Key);
         Retry:
-            string input = Console.ReadLine() ?? string.Empty;
+            string input = Console.ReadLine()?.Trim() ?? string.Empty;
             if (s_iapps.TryGetValue(input, out Type? apptype))
             {
-                IApp iapp = (IApp)Activator.CreateInstance(apptype, true)!;
-                try
-                {
-                    iapp.Run();
-                }
-                catch (Exception ex)
-                {
-                    StringBuilder sb = new();
-                    sb.CatchException(ex, true);
-                    Console.WriteLine(sb.ToString());
-                }
+                Run(apptype);
             }
-            else goto Retry;
+            else if (int.TryParse(input, out int num))
+            {
+                if (num >= 0 && num < s_iapps.Count)
+                    Run(s_iapps.GetAt(num).Value);
+            }
+            else
+                goto Retry;
             while (true)
             {
                 var key = Console.ReadKey();
                 if (key.Key == ConsoleKey.Escape)
                     Environment.Exit(0);
+            }
+        }
+
+        static void Run(Type apptype)
+        {
+            IApp iapp = (IApp)Activator.CreateInstance(apptype, true)!;
+            try
+            {
+                iapp.Run();
+            }
+            catch (Exception ex)
+            {
+                StringBuilder sb = new();
+                sb.CatchException(ex, true);
+                Console.WriteLine(sb.ToString());
             }
         }
 
@@ -325,8 +337,19 @@ namespace XQuinn.NetConsole.Apps
         }
         static readonly string Source = Path.Combine(VietnamWarSource.s_path, @"BepInEx\interop");
         static readonly string CopyTo = Path.Combine(VietnamWarModLab.s_path, "interop");
-        static readonly string[] Assemblies = { "UnityEngine.CoreModule.dll", "Il2Cppmscorlib.dll", "Assembly-CSharp.dll" };
+        internal static readonly List<String> Assemblies = GetAssemblies();
 
+        static List<string> GetAssemblies()
+        {
+            XDocument doc = XDocument.Load(Path.Combine(CopyTo, "interop.xml"));
+            List<string> Assemblies = new();
+            if (doc.Root != null)
+            {
+                foreach (var element in doc.Root.Elements("interop"))
+                    Assemblies.Add(element.Value);
+            }
+            return Assemblies;
+        }
         public void Run()
         {
             foreach (var assembly in Assemblies)

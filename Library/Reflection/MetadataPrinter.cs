@@ -29,12 +29,12 @@ namespace XQuinn.Reflection
 
         static StringBuilder MemberToString(StringBuilder sb, MemberInfo member, bool fullname)
         {
-            sb.Append(member.GetUnderlyingType().ToString());
+            sb.Append(ReflectionPrinter.Print(member.GetUnderlyingType(), false));
             sb.Append(' ');
             GenericTypeToString(sb, member.DeclaringType, fullname);
             sb.Append("::");
-            GenericTypeToString(sb, member.GetUnderlyingType(), fullname);
-            sb.Append(' ');
+            GenericTypeToString(sb, member.GetUnderlyingType(), fullname); //maybe this doesnt need to be here cause i already
+            sb.Append(' ');         //get it up there
             FixGenericString(sb, member.Name);
             return sb;
         }

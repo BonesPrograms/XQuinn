@@ -39,7 +39,7 @@ namespace XQuinn.Reflection
         }
         static StringBuilder PropertyToString(StringBuilder sb, PropertyInfo p)
         {
-            sb.Append("Property ");
+            sb.Append(ReflectionPrinter.Print(p.PropertyType,false));
             sb.Append(p.Name);
             sb.Append(' ');
             MethodInfo? getter = p.GetGetMethod(true);
@@ -134,7 +134,7 @@ namespace XQuinn.Reflection
 
 
         //also maybe should add stuff that says if it is public, internal, nested private
-        static StringBuilder TypeToString(StringBuilder sb, Type type) //need to add stuff for nested types i think
+        internal static StringBuilder TypeToString(StringBuilder sb, Type type) //need to add stuff for nested types i think
         {
             if (type.IsAbstract && type.IsSealed)
                 return sb.Append("static ");

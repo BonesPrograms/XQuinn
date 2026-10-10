@@ -176,6 +176,7 @@ i thinki  could do it but id need some massive caches + lots of boilerplate
 
 
 Important
+REFLECTION PRINTER doesnt work with NESTED types if a NESTING type is GENERIC
 Casting using reflection only (???) I think you use it with the Convert class
 -25 If we update our generic regex, it will work for sub-parameters
 //-24 ChangedNames Autoappender (would detect if any of my type names are changed in the cache, and when i insert that typename into the invokerinterface, it autoappends)

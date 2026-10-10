@@ -1,0 +1,265 @@
+
+
+
+
+[10/8/2026 2:30:55 PM] Begin Log
+
+
+[10/8/2026 2:30:55 PM] Thor
+MovementChange
+mc
+SI
+SwayAnim
+RendTex
+Thunder
+v
+V
+CoverF
+sideroll x1
+sideroll x1.5
+sideroll x2
+sideroll x3
+sideroll x10
+hold fire
+hold position
+hold pos
+wedge
+Weap
+SI2
+Spawn SI
+HP10k
+penge
+BuildRes
+NightClubReset
+PRR9
+Tours+
+Goto Airport
+000
+SpyJob
+TexDark
+CamOnHead
+CamNoParent
+radio reset
+PoliceSquad
+SWATSquad
+FBISquad
+BorderPatrolSquad
+MexicanCriminalSquad
+gimigpenge
+annarahaa
+NoRegionUnload
+sTime1
+sTime0
+sTime10
+sTime01
+sTime+
+sTime-
+int1
+int0
+ext1
+DraftDodger
+TerrainModStats
+420
+SPset
+SPget
+FOV60
+FOV64
+FOV70
+FOV80
+FOV90
+FOV100
+Dark Mode
+DontRunInBackground
+Guidebook
+b1+
+b10+
+b100+
+b1-
+b10-
+b100-
+bounce0
+bounce1
+bounceCombineMin
+bouncedebug
+bouncedebug2
+bouncedebug3
+colDetectCony
+friction
+frictiondynamic
+contactoffset
+bouncethreshold
+solveriterations6
+FOVoffset50
+FOVoffset100
+FOVoffset150
+FOVoffset200
+Op0
+Op1
+Goto Tunnel
+Goto Cu Chi
+Goto Treehut
+Goto VP
+NegMental
+Mi8AI
+Armourer
+M16A1 Camo
+M16A1 Mag30
+RockApes
+Illumi
+Mine
+MineCrate
+Python
+Perimeter1
+Perimeter2
+Perimeter3
+Tent
+Camp
+King of the Castle
+C4
+Dynamite
+AT3
+BuildGenerator
+BuildAntenna
+BuildStorage
+BuildAmmoStorage
+BuildPump
+BuildWaterTower
+BuildLamp
+BuildLatrine
+BuildShower
+StorageRes
+Yard War
+DraftDodgerReset
+WantedLevel0
+WantedLevel1
+WantedLevel2
+WantedLevel3
+WantedLevel4
+WantedLevel5
+WantedLevel6
+WantedLevel7
+Bear
+K50
+K50mag71
+TT33
+M2
+Mk18
+DShK
+M2Mortar
+VCMortar
+Pak40
+GradBamboo
+P4
+Zhuk
+PBR
+ATC
+ATCH
+ATCMonitor
+ATCCommand
+ASPB
+LSSC
+Jeep
+JeepMOD
+JeepCrewed
+Gaz
+M54GunTruck
+M132
+M113
+M113 MedEvac
+V100
+V100 AI
+M577 ACPC
+M577 MedEvac
+M577 MedEvac
+M106
+Gaz69
+BTR60
+BTR60pas
+ZSU57
+ZSU
+ZU23
+Grad
+Sheridan
+M48A3
+M107
+M42
+M50
+Guntruck
+LVTP5
+Mule
+XM148 NPC
+XM148 SF NPC
+Wheelchair
+Jetpack
+Jetpack fire
+Jetpack no fire
+Jetpack fuel
+Jetpack no fuel
+Littlebird
+AgentO
+H13
+Sioux
+H13CamTest
+Porter
+Cobra
+AH56
+Cobraaaa
+Gunship2
+Mig21
+Mig17
+Mi8
+Mi8 ai
+Mi8 airlift
+airlift
+M102 Firesupport
+GroundRadar
+Boat
+ElephantVC
+Dog
+Dogpack
+DogGuardMP
+SG43
+Bow
+Crossbow
+Minigun
+Radar
+Sensor
+Spawn TunnelNetwork
+Gen TunnelNetwork
+Spawn CampVC
+take base VC
+take base US
+Montagnard
+Spawn VC
+Spawn 4 VC
+Spawn MAS36
+Spawn MAS49
+Spawn Khmer
+Spawn CarpFishPool
+ambush mode
+Spawn Ambush
+Spawn StrategicAttack
+Spawn NightAttack
+Spawn T55
+Spawn PT76
+Spawn Active T55
+Spawn Active PT76
+Fortify Village
+smoke
+start smoking
+smoking
+light cigarette
+ciggy
+cig
+square
+rr
+smoke cigarette
+stop smoke
+stop smoking
+dont smoke
+put out cigarette
+no ciggy
+no smoking
+no smoking please
+dont smoke cigarette
+

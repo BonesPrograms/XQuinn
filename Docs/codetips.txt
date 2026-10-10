@@ -8,6 +8,15 @@ numeric char - '0' = actual number for that char
 
 normalizing chars
 
+
+SPANS
+ beginExtraction = line.SequenceEqual("private void CompareChatWords()");
+ Line is a Char span
+ Was having a bug where if lines value was "private void CompareChatWords()"
+ it would fail equality checks when using the == operator
+ unless you did line.tostring
+ so you have to actually pass the string to sequencequal
+
 (T)(object)
 
 ```cs

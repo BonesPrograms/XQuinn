@@ -157,6 +157,7 @@ namespace XQuinn.Private
             TypeRegister.CacheType<StringBuilder>(false);
             TypeRegister.CacheType(typeof(StringBuilderExtensions), "sbe");
             TypeRegister.CacheType<ValueType>(false);
+            TypeRegister.CacheType(typeof(Path),false);
         }
 
     }
