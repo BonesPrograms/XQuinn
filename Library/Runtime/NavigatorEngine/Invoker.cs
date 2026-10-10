@@ -15,12 +15,9 @@ namespace XQuinn.Runtime.NavigatorEngine
 {
 
 
-    sealed class Invoker : ExpandedCoreObject
+    sealed class Invoker : CoreObject
     {
 
-        Reflector _reflector => _core._reflector;
-
-        Parser _parser => _core._parser;
 
         public Invoker(NavigatorCore navig) : base(navig)
         {
@@ -29,7 +26,7 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         internal object? InvokeFieldOrProperty(FieldString fieldstring)
         {
-            Type fromType = _reflector.FindReference(fieldstring, out object? variable);
+            Type fromType = _core._reflector.FindReference(fieldstring, out object? variable);
             string fname = fieldstring.Name;
             MemberInfo? fieldOrProp = RuntimeCache.FromCache<MemberInfo>(fieldstring.Name, fromType, out bool typeCached, out bool memberCached);
             if (ReturnField(fieldOrProp, fromType, fname, fieldstring, typeCached, memberCached, variable, out object? ret))
@@ -42,12 +39,12 @@ namespace XQuinn.Runtime.NavigatorEngine
         bool ReturnProperty(MemberInfo? fieldOrProp, Type fromType, string fname, FieldString fieldstring, bool typeCached, bool memberCached, object? variable, out object? ret)
         {
             ret = null;
-            if (fieldOrProp == null && fromType == _loadedType)
+            if (fieldOrProp == null && fromType == _core._static_type)
             {
-                if (_props.TryGetValue(fname, out PropertyInfo? propMember))
+                if (_core._props.TryGetValue(fname, out PropertyInfo? propMember))
                     fieldOrProp = propMember;
             }
-            else if (fieldOrProp == null && fromType != _loadedType)
+            else if (fieldOrProp == null && fromType != _core._static_type)
             {
                 PropertyInfo? getprop = fromType.GetProperty(fname, NavigatorCore.Flag);
                 if (getprop?.GetIndexParameters().Length > 0)
@@ -66,12 +63,12 @@ namespace XQuinn.Runtime.NavigatorEngine
         bool ReturnField(MemberInfo? fieldOrProp, Type fromType, string fname, FieldString fieldstring, bool typeCached, bool memberCached, object? variable, out object? ret)
         {
             ret = null;
-            if (fieldOrProp == null && fromType == _loadedType)
+            if (fieldOrProp == null && fromType == _core._static_type)
             {
-                if (_fields.TryGetValue(fname, out FieldInfo? fieldMember))
+                if (_core._fields.TryGetValue(fname, out FieldInfo? fieldMember))
                     fieldOrProp = fieldMember;
             }
-            else if (fieldOrProp == null && fromType != _loadedType)
+            else if (fieldOrProp == null && fromType != _core._static_type)
                 fieldOrProp = fromType.GetField(fname, NavigatorCore.Flag);
             if (fieldOrProp is FieldInfo field)
             {
@@ -84,11 +81,11 @@ namespace XQuinn.Runtime.NavigatorEngine
         }
         internal object? InvokeMethod(MethodString mthdString)
         {
-            Type fromType = _reflector.FindReference(mthdString, out object? variable);
+            Type fromType = _core._reflector.FindReference(mthdString, out object? variable);
             MethodBase? call = RuntimeCache.FromCache<MethodBase>(mthdString.StringID, fromType, out bool typeCached, out bool methodCached);
             ParameterInfo[]? args = null;
             ExternalMethod(ref call, ref args, fromType, mthdString);
-            call ??= fromType == _loadedType ? _reflector.FindMethod(mthdString) : throw new MissingMethodException($"No method named {mthdString.Name} with generic arg count {mthdString.Generics.Count} found in {fromType}'s methods or overload resolutions.");
+            call ??= fromType == _core._static_type ? _core._reflector.FindMethod(mthdString) : throw new MissingMethodException($"No method named {mthdString.Name} with generic arg count {mthdString.Generics.Count} found in {fromType}'s methods or overload resolutions.");
             ConvertGeneric(ref call, ref args, mthdString);
             args ??= call.GetParameters(); //generics get params first, nongenerics get after
             RuntimeCache.CacheMember(typeCached, methodCached, fromType, call, mthdString.StringID);
@@ -96,7 +93,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         }
         void ExternalMethod(ref MethodBase? call, ref ParameterInfo[]? args, Type fromType, MethodString mthdString)
         {
-            if (call == null && fromType != _loadedType)
+            if (call == null && fromType != _core._static_type)
             {
                 bool ambiguousMatch = RuntimeCache.CheckAmbiguousMatch(fromType, mthdString, out Type cachedType, out HashSet<string>? cachedMatches);
                 if (!ambiguousMatch)
@@ -126,7 +123,7 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         internal object? TargetInstance(Type fromType, object? variable)
         {
-            return variable ?? (fromType.IsAssignableFrom(_instanceType) ? _object : null);
+            return variable ?? (fromType.IsAssignableFrom(_core._object_type) ? _core._object : null);
         }
 
         //TargetInstance is an old method back from before the navigator was able to treat fields, variables and properties as if they were types that can be accessed
@@ -148,7 +145,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         object? FinalizeInvoke(MethodBase call, ParameterInfo[] parameters, MethodString mthdString, Type fromType, object? variable)
         {
             object? obj = null;
-            object?[] args = _parser.ParseParameters(parameters, mthdString);
+            object?[] args = _core._parser.ParseParameters(parameters, mthdString);
             try
             {
                 obj = call is ConstructorInfo ctor ? ctor.Invoke(args) : call.Invoke(TargetInstance(fromType, variable), args);
@@ -166,7 +163,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             {
                 if (mthd.IsGenericMethodDefinition)
                 {
-                    call = mthdString.ConvertToGeneric(mthd, LocalCache);
+                    call = mthdString.ConvertToGeneric(mthd, _core.LocalCache);
                     args = call.GetParameters();
                 }
                 else if (!mthd.IsGenericMethod && mthdString.Generics.Count > 0)

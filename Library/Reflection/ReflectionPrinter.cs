@@ -40,6 +40,7 @@ namespace XQuinn.Reflection
         static StringBuilder PropertyToString(StringBuilder sb, PropertyInfo p)
         {
             sb.Append(ReflectionPrinter.Print(p.PropertyType,false));
+            sb.Append(' ');
             sb.Append(p.Name);
             sb.Append(' ');
             MethodInfo? getter = p.GetGetMethod(true);

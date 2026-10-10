@@ -10,10 +10,8 @@ namespace XQuinn.Runtime.NavigatorEngine
 {
 
 
-    internal sealed class Reflector : ExpandedCoreObject
+    internal sealed class Reflector : CoreObject
     {
-        TypeString? _implicit_this => _core._implicit_this;
-        Dictionary<MethodKey, MethodBase> _methods => _core._methods;
         public Reflector(NavigatorCore navig) : base(navig)
         {
 
@@ -33,22 +31,23 @@ namespace XQuinn.Runtime.NavigatorEngine
             //  if (string.IsNullOrWhiteSpace(member.DeclaringType?.String)) { variable = new("this", _instance); return LoadedType ?? throw new InvalidOperationException("cannot implicitly access loaded type, no type is loaded"); }
             //        if (member.DeclaringType == null)
             //          throw new ArgumentNullException();
-            if (_fields.TryGetValue(member.DeclaringType.StringID, out FieldInfo? field))
-            {
-                instance = field.GetValue(_object) ?? throw new ArgumentException($"Field {field} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
-                return instance.GetType(); //will not always be == fieldtype
-            }
-            if (_props.TryGetValue(member.DeclaringType.StringID, out PropertyInfo? prop))
-            {
-                instance = prop.GetValue(_object, NavigatorCore.Flag, null, null, null) ?? throw new ArgumentException($"Property {member.DeclaringType.Name} in type {_loadedType} returned null and it's member methods and fields cannot be invoked.");
-                return instance.GetType();
-            }
-            if (_variables.TryGetValue(member.DeclaringType.StringID, out VariableBinding? variable))
+            if (_core._variables.TryGetValue(member.DeclaringType.StringID, out VariableBinding? variable))
             {
                 instance = variable.Object;
                 return variable.Object.GetType();
 
+            }            
+            if (_core._fields.TryGetValue(member.DeclaringType.StringID, out FieldInfo? field))
+            {
+                instance = field.GetValue(_core._object) ?? throw new ArgumentException($"Field {field} in type {_core._static_type} returned null and it's member methods and fields cannot be invoked.");
+                return instance.GetType(); //will not always be == fieldtype
             }
+            if (_core._props.TryGetValue(member.DeclaringType.StringID, out PropertyInfo? prop))
+            {
+                instance = prop.GetValue(_core._object, NavigatorCore.Flag, null, null, null) ?? throw new ArgumentException($"Property {member.DeclaringType.Name} in type {_core._static_type} returned null and it's member methods and fields cannot be invoked.");
+                return instance.GetType();
+            }
+
             instance = null;
             return FindType(member.DeclaringType, false);
         }
@@ -58,30 +57,30 @@ namespace XQuinn.Runtime.NavigatorEngine
         {
             if (!staticLoadOrCasting)
             {
-                // if (_variables.TryGetValue(typename.NameOrValue, out VariableBinding? variable))
+                // if (_core._variables.TryGetValue(typename.NameOrValue, out VariableBinding? variable))
                 //     return variable.ObjectType;
                 if (typename.StringID.EqualsCaseless("this"))
-                    return _instanceType == null ? throw new InvalidOperationException("Cannot pass this, instance is null.") : _loadedType!;
-                if (typename.StringID.EqualsCaseless(_implicit_this?.StringID))
-                    return _loadedType!;
+                    return _core._object_type == null ? throw new InvalidOperationException("Cannot pass this, instance is null.") : _core._static_type!;
+                if (typename.StringID.EqualsCaseless(_core._implicit_this?.StringID))
+                    return _core._static_type!;
             }
             if (typename.StringID.EqualsCaseless("base"))
             {
-                if (_instanceType == null)
+                if (_core._object_type == null)
                     throw new InvalidOperationException("Cannot get instance base, instance is null.");
-                return _instanceType.BaseType ?? throw new ArgumentException("Base type of instance is null.");
+                return _core._object_type.BaseType ?? throw new ArgumentException("Base type of instance is null.");
             }
-            return typename.ToType(LocalCache);
+            return typename.ToType(_core.LocalCache);
 
         }
 
         internal MethodBase FindMethod(MethodString method)// out ResolvedOverload? query)
         {
-            _methods.TryGetValue(MethodKey.MethodQuery(method), out MethodBase? methodbase);
+            _core._methods.TryGetValue(MethodKey.MethodQuery(method), out MethodBase? methodbase);
             if (methodbase == null)
-                throw new MissingMethodException($"No method named {method.Name}  with generic arg count {method.Generics.Count} found in {_loadedType}'s method dictionary. It may have been removed due to having a ref return type or in/out/ref parameters.");
+                throw new MissingMethodException($"No method named {method.Name}  with generic arg count {method.Generics.Count} found in {_core._static_type}'s method dictionary. It may have been removed due to having a ref return type or in/out/ref parameters.");
             if (methodbase.IsGenericMethodDefinition && methodbase is MethodInfo actualmethod)
-                methodbase = method.ConvertToGeneric(actualmethod, LocalCache);
+                methodbase = method.ConvertToGeneric(actualmethod, _core.LocalCache);
             return methodbase; //your dictionary will always hold generic definitions - after reification, methods are added to a static cache so it wont be reified a second time
         }
 

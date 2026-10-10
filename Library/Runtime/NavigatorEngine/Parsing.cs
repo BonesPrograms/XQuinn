@@ -10,7 +10,6 @@ namespace XQuinn.Runtime.NavigatorEngine
 {
     sealed class Parser : CoreObject
     {
-        Invoker _invoker => _core._invoker;
         public Parser(NavigatorCore navig) : base(navig)
         {
         }
@@ -126,8 +125,8 @@ namespace XQuinn.Runtime.NavigatorEngine
         {
             object? obj = arg switch
             {
-                FieldString field => _invoker.InvokeFieldOrProperty(field),
-                MethodString method => _invoker.InvokeMethod(method),
+                FieldString field => _core._invoker.InvokeFieldOrProperty(field),
+                MethodString method => _core._invoker.InvokeMethod(method),
                 ValueString value => ParseValue(value, paramType),
                 _ => throw new NotSupportedException()
             };
@@ -141,28 +140,28 @@ namespace XQuinn.Runtime.NavigatorEngine
             string strng = value.Argument;
             if (strng.EqualsCaseless("this"))
             {
-                if (_object == null)
+                if (_core._object == null)
                     throw new InvalidOperationException("Cannot pass this as parameter, instance is null.");
                 // if (!paramType.IsAssignableFrom(_instanceType))
                 //     throw new InvalidCastException($"Current instance is a {_instanceType} and does not cast to parameter type {paramType}");
-                return _object;
+                return _core._object;
             }
-            if (_variables?.TryGetValue(strng, out VariableBinding? variable) ?? false)
+            if (_core._variables.TryGetValue(strng, out VariableBinding? variable))
             {
                 // if (!paramType.IsAssignableFrom(variable.ObjectType))
                 //     throw new InvalidCastException($"Instance index object with key {strng} is a {variable.ObjectType} and does not cast to parameter type {paramType}");
                 return variable.Object;
             }
-            if (_fields.TryGetValue(strng, out FieldInfo? field))
+            if (_core._fields.TryGetValue(strng, out FieldInfo? field))
             {
                 // object? val = field.GetValue(_instance);
                 // Type t = val == null ? field.FieldType : val.GetType();
                 // if(!paramType.IsAssignableFrom(t))
-                return field.GetValue(_object);
+                return field.GetValue(_core._object);
             }
-            if (_props.TryGetValue(strng, out PropertyInfo? prop))
+            if (_core._props.TryGetValue(strng, out PropertyInfo? prop))
             {
-                return prop.GetValue(_object, NavigatorCore.Flag, null, null, null);
+                return prop.GetValue(_core._object, NavigatorCore.Flag, null, null, null);
             }
             return value.Parse(paramType);
         }
