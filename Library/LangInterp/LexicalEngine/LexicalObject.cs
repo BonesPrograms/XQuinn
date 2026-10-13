@@ -1,24 +1,11 @@
-using System;
-using System.Text;
-using XQuinn.LangInterp;
-
 namespace XQuinn.LangInterp.LexicalEngine
 {
-
-
     enum ControlFlow
     {
-        /// <summary>
-        /// Jumps to Increment, skips Append, skips following branches.
-        /// </summary>
         Increment,
-        /// <summary>
-        /// Jumps to Append, skips following branches.
-        /// </summary>
+
         Append,
-        /// <summary>
-        /// Releases control of the character so that it may reach following branches.
-        /// </summary>
+
         Release
     }
     abstract class LexicalObject

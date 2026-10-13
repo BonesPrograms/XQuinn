@@ -1,27 +1,23 @@
-using XQuinn.LangInterp;
 using static XQuinn.LangInterp.CallLexer;
-using XQuinn.Extensions;
+
 using XQuinn.LangInterp.SyntaxTree;
 
 namespace XQuinn.LangInterp.LexicalEngine
 {
     sealed class ValueReader : LexicalObject
     {
-
-
         internal bool _noEscape;
         internal bool _readNoEscDeclr;
         internal bool _readORDelimit;
         internal bool _readORVal;
 
         internal bool _readFloat;
-        bool _finishedReadChar;  //Finishers/Enders are primarily for catching trailing garbage data or Lexer.skipping whtiespace - ex Method("hello"  , 22, 33 s)
+        bool _finishedReadChar;
         bool _readCharValue;
-        bool _stringEnding;         //the trailing whitespace after "hello" willbe skipped, and the trailing s after 33 will cause an exception
+        bool _stringEnding;
 
         bool _escaping;
         bool _justEscaped;
-
 
         internal void Clear()
         {
@@ -36,8 +32,6 @@ namespace XQuinn.LangInterp.LexicalEngine
             _readORDelimit = false;
             _readORVal = false;
         }
-
-
 
         public ValueReader(CallLexer lexer) : base(lexer)
         {
@@ -73,7 +67,6 @@ namespace XQuinn.LangInterp.LexicalEngine
                 _lexer._read_enumOR = false;
                 _readORVal = false;
                 return ControlFlow.Release;
-
             }
             if (_lexer._curr_char == CallLexer.Whitespace)
             {
@@ -100,9 +93,6 @@ namespace XQuinn.LangInterp.LexicalEngine
                 _lexer._skipping = false;
             }
             return ControlFlow.Append;
-
-
-
         }
         internal ControlFlow ReadChar(ref int i, string invocation)
         {
@@ -133,18 +123,18 @@ namespace XQuinn.LangInterp.LexicalEngine
             }
             return ControlFlow.Release;
         }
-        internal ControlFlow ReadNum(ref int i, string invocation) //readnum doesnt influence jumps because numeric values are strict and can only contain digits/decimal pointer
+        internal ControlFlow ReadNum(ref int i, string invocation)
         {
             if (char.IsDigit(_lexer._curr_char))
                 return ControlFlow.Append;
-            if (_lexer._curr_char == CallLexer.Whitespace) //we skip leading and trailing whitespace
+            if (_lexer._curr_char == CallLexer.Whitespace)
             {
                 SkipTrailingWhitespace(ref i, invocation);
                 _lexer._read_digit = false;
                 _readFloat = false;
                 return ControlFlow.Release;
             }
-            else //nondigit value
+            else
             {
                 if (_lexer._curr_char == MemberAccessOrDecimal)
                 {
@@ -164,8 +154,7 @@ namespace XQuinn.LangInterp.LexicalEngine
         }
 
         internal ControlFlow ReadString(ref int i, string invocation)
-        { //here as well, just like in GetContext, there can be some invalid sequences here
-            //that will only throw once we reach ValueString (i didnt want to have duplicate checking code in 2 places)
+        {
             if (_stringEnding)
             {
                 if (_lexer._curr_char == CallLexer.Whitespace)
@@ -176,7 +165,7 @@ namespace XQuinn.LangInterp.LexicalEngine
                 _escaping = false;
                 _readNoEscDeclr = false;
                 _justEscaped = false;
-                return ControlFlow.Release; //return false allows parameter control flow to takeover
+                return ControlFlow.Release;
             }
             if (_escaping)
             {
@@ -202,8 +191,7 @@ namespace XQuinn.LangInterp.LexicalEngine
                 else
                     _readNoEscDeclr = false;
             }
-            return ControlFlow.Append; //skips parameter control flow, appends
+            return ControlFlow.Append;
         }
-
     }
 }

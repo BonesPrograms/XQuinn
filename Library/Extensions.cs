@@ -3,15 +3,11 @@ using System.Collections.Generic;
 using System;
 using System.Linq;
 using System.Collections;
-using System.Reflection;
-using XQuinn.Reflection;
 
 namespace XQuinn.Extensions
 {
-
     public static class StringBuilderExtensions
     {
-
         public static StringBuilder AppendMany(this StringBuilder sb, IEnumerable many, string? delimiter = null, bool appendIndex = false, Func<object?, string?>? toString = null)
         {
             int length;
@@ -67,8 +63,6 @@ namespace XQuinn.Extensions
         }
     }
 
-
-
     public static class CollectionExtensions
     {
         public static void ForEach<T>(this IEnumerable<T> objs, Action<T> action)
@@ -80,8 +74,6 @@ namespace XQuinn.Extensions
 
     public static class StringExtensions
     {
-
-
         public static bool EqualsCaseless(this string strng, string? txt)
         {
             return strng.Equals(txt, StringComparison.OrdinalIgnoreCase);
@@ -93,46 +85,5 @@ namespace XQuinn.Extensions
                 return false;
             return strng.IndexOf(txt, StringComparison.OrdinalIgnoreCase) >= 0;
         }
-
-        // /// <summary>
-        // /// Remove all occurances of a specified series of characters.
-        // /// </summary>
-        // public static string RemoveChar(this string text, params char[] chars)
-        // {
-        //     StringBuilder sb = new();
-        //     foreach (char c in text)
-        //     {
-        //         foreach (var bad in chars)
-        //         {
-        //             if (bad == c)
-        //                 continue;
-        //         }
-        //         sb.Append(c);
-        //     }
-        //     return sb.ToString();
-        // }
-
-        //         public static string ReplaceChar(this string text, char replace, char replacewith)
-        //         {
-        // #if NET10_0_OR_GREATER
-        //             ReadOnlySpan<char> span = text.AsSpan();
-        //             Span<char> buffer = stackalloc char[text.Length];
-        //             span.CopyTo(buffer);
-        //             for(int i = 0; i < buffer.Length; i++)
-        //             {
-        //                 char c = buffer[i];
-        //                 if(c == replace)
-        //                 buffer[i] = replacewith;
-        //             }
-        //             return buffer.ToString();
-        // #else
-        //             StringBuilder sb = new();
-        //             foreach (char c in text) sb.Append(c == replace ? replacewith : c);
-        //             return sb.ToString();
-        // #endif
-        //         }
-
-
     }
-
 }

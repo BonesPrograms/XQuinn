@@ -2,30 +2,10 @@ using System.Reflection;
 using System.Text;
 using System;
 
-
-
 namespace XQuinn.Reflection
 {
-
-    /// <summary>
-    /// A bridge to get access modifier values from fieldinfos and methodbases, which cannot cast into one another but share the same exact fields.
-    /// </summary>
-
-
-
-
-    /// <summary>
-    /// Wrapper for a reflection object. Primarily exists to return readable and relatively informative strings about the metadata (it will be roughly as informative as
-    /// viewing the type directly in code, it lacks deeper metadata information).
-    /// </summary>
-
     public static class ReflectionPrinter
     {
-        /// <summary>
-        /// Quick method for getting a reflectionreader string.
-        /// </summary>
-        /// <param name="x"></param>
-        /// <returns></returns>
         public static string Print(MemberInfo Info, bool fullname)
         {
             StringBuilder sb = MetadataTypeToString(new(), Info);
@@ -39,7 +19,7 @@ namespace XQuinn.Reflection
         }
         static StringBuilder PropertyToString(StringBuilder sb, PropertyInfo p)
         {
-            sb.Append(ReflectionPrinter.Print(p.PropertyType,false));
+            sb.Append(ReflectionPrinter.Print(p.PropertyType, false));
             sb.Append(' ');
             sb.Append(p.Name);
             sb.Append(' ');
@@ -69,30 +49,6 @@ namespace XQuinn.Reflection
             _ => sb
         };
 
-        //ive found this currently isnt necesary because the actual get and setter methods are already being read with their access modifiers shown
-        //though it could use a bit more organization, prob will have it find the getters and setters by name get_ set_ and then shift them up to be below their
-        //respective property in the list, based on the actual name of the property
-
-        //also this shit wasnt even really working anyways lmao
-
-        // static StringBuilder PropertyToString(PropertyInfo prop)
-        // {
-        //     StringBuilder sb = new();
-        //     MethodInfo? get = prop.GetGetMethod();
-        //     if (get != null)
-        //     {
-        //         sb.Append(MethodToString(get));
-        //         sb.Append("get ");
-        //     }
-        //     MethodInfo? set = prop.GetSetMethod();
-        //     if (set != null)
-        //     {
-        //         sb.Append(MethodToString(set));
-        //         sb.Append("set ");
-        //     }
-        //     return sb;
-        // }
-
         static StringBuilder FieldToString(StringBuilder sb, FieldInfo field)
         {
             sb.Append(new AccessModifiers(field).ToString() + ' ');
@@ -103,7 +59,6 @@ namespace XQuinn.Reflection
             if (field.IsInitOnly)
                 sb.Append("readonly ");
             return sb;
-
         }
 
         static StringBuilder MethodToString(StringBuilder sb, MethodBase mthd)
@@ -132,10 +87,7 @@ namespace XQuinn.Reflection
             return sb;
         }
 
-
-
-        //also maybe should add stuff that says if it is public, internal, nested private
-        internal static StringBuilder TypeToString(StringBuilder sb, Type type) //need to add stuff for nested types i think
+        internal static StringBuilder TypeToString(StringBuilder sb, Type type)
         {
             if (type.IsAbstract && type.IsSealed)
                 return sb.Append("static ");
@@ -191,15 +143,9 @@ namespace XQuinn.Reflection
                 else if (IsFamilyAndAssembly)
                     return "private protected";
                 else if (IsFamilyOrAssembly)
-                    return "protected internal"; //this should literally never throw
+                    return "protected internal";
                 throw new InvalidOperationException("FieldInfo or MethodBase object has invalid access modifiers.");
             }
         }
-
-
     }
-
-
-
-
 }

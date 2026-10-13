@@ -5,16 +5,8 @@ using System;
 
 namespace XQuinn.Reflection
 {
-
-
-
-    /// <summary>
-    /// Base wrapper class with robust ToString helpers for metadata objects.
-    /// </summary>
-
     internal static class MetadataPrinter
     {
-
         public static StringBuilder BuildPrint(StringBuilder sb, MemberInfo Object, bool fullname) =>
         Object switch
         {
@@ -25,16 +17,14 @@ namespace XQuinn.Reflection
             _ => MemberToString(sb, Object, fullname),
         };
 
-
-
         static StringBuilder MemberToString(StringBuilder sb, MemberInfo member, bool fullname)
         {
             sb.Append(ReflectionPrinter.Print(member.GetUnderlyingType(), false));
             sb.Append(' ');
             GenericTypeToString(sb, member.DeclaringType, fullname);
             sb.Append("::");
-            GenericTypeToString(sb, member.GetUnderlyingType(), fullname); //maybe this doesnt need to be here cause i already
-            sb.Append(' ');         //get it up there
+            GenericTypeToString(sb, member.GetUnderlyingType(), fullname);
+            sb.Append(' ');
             FixGenericString(sb, member.Name);
             return sb;
         }
@@ -92,7 +82,6 @@ namespace XQuinn.Reflection
                 GenericTypeToString(sb, mthd.ReturnType, fullname);
             else
                 sb.Append(lowered);
-
         }
         static StringBuilder ParamsToString(StringBuilder txt, ParameterInfo[] args, bool fullname)
         {
@@ -122,18 +111,13 @@ namespace XQuinn.Reflection
             txt.Append(')');
             return txt;
         }
-        /// <summary>
-        /// Be careful using this and FixGenericString together or you will not understand why you are producing duplicate name strings.
-        /// </summary>
-        /// <param name="type"></param>
-        /// <returns></returns>
+
         public static void GenericTypeToString(StringBuilder sb, Type? type, bool fullname)
         {
             if (type == null) return;
             FixGenericString(sb, fullname ? type.FullName ?? type.Name : type.Name);
             AddGenericArguments(sb, type.GetGenericArguments(), fullname);
         }
-
 
         internal static void FixGenericString(StringBuilder sb, string strng)
         {
@@ -160,6 +144,5 @@ namespace XQuinn.Reflection
                 sb.Append('>');
             }
         }
-
     }
 }

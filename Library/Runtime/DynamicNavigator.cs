@@ -109,7 +109,7 @@ namespace XQuinn.Runtime
         {
             if (CheckForReload())
                 Reload();
-            return _monitor.SafeInterface(invocation);
+            return _monitor.SafeInstruct(invocation);
         }
 
         //This is the dynamic part

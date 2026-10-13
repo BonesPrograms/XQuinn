@@ -6,14 +6,13 @@ using XQuinn.Parsing;
 
 namespace XQuinn.LangInterp.SyntaxTree
 {
-    internal sealed class ValueString : ParameterString
+    internal sealed class ValueString : ArgumentString
     {
-
         public string Argument => _arg;
         internal ValueString(string String) : base(String)
         {
         }
-        ///This does not work with FieldString,MethodString or TypeString. it is for true ParameterStrings
+
         public object? Parse(Type asType)
         {
             if (_arg.EqualsCaseless("default"))
@@ -30,8 +29,8 @@ namespace XQuinn.LangInterp.SyntaxTree
                 else
                     throw new NotSupportedException($"Cannot convert values to reference type instances. class type: {asType} Value: {_arg}");
             }
-            // if (asType.IsValueType || asType == typeof(object))
-            if (asType.IsGenericType && asType.GetGenericTypeDefinition() == typeof(Nullable<>)) //ValueType of Nullable<T>
+
+            if (asType.IsGenericType && asType.GetGenericTypeDefinition() == typeof(Nullable<>))
             {
                 if (_arg.EqualsCaseless("null"))
                     return null;
@@ -42,7 +41,7 @@ namespace XQuinn.LangInterp.SyntaxTree
                 if (EnumNet20.TryParse(_arg.Replace('|', ','), asType, true, out Enum? @enum))
                     return @enum;
             }
-            else if (asType.IsPrimitive || AsObjectOr<decimal>(asType)) //they told me enums were primitive, they were wrong!
+            else if (asType.IsPrimitive || AsObjectOr<decimal>(asType))
             {
                 if (ParsePrimitive(asType, out object? primitive))
                     return primitive;
@@ -50,7 +49,6 @@ namespace XQuinn.LangInterp.SyntaxTree
             throw asType.IsPrimitive || asType.IsEnum || AsObjectOr<decimal>(asType) ?
             new FormatException($"Failed to convert {_arg} to {asType}.") :
             new NotSupportedException($"Cannot convert values to user defined struct instances. struct type: {asType}. Value: {_arg}");
-
         }
 
         bool StringFormat(bool formatException, out string? extract)
@@ -70,7 +68,7 @@ namespace XQuinn.LangInterp.SyntaxTree
                 int lastIndex = arg.Length - 1;
                 if (arg[0] == '"' && arg[lastIndex] == '"')
                 {
-                    if (arg.Length <= 3) //technically speaking, you can do """ in assignment, or "\" and it will assign signle char string " or \, however this is only in assignment, if you try to send a string like """ or "\" to the lexer as a parameter for a method, it will throw
+                    if (arg.Length <= 3)
                         extract = arg.Length == 2 ? string.Empty : arg[1].ToString();
                     else
                     {
@@ -102,7 +100,7 @@ namespace XQuinn.LangInterp.SyntaxTree
             return formatException ? throw new FormatException($"Strings values must have one beginning and ending quotation mark, and be at least 2 chars in size (including quotations). Value: {_arg}") : false;
         }
 
-        bool ParsePrimitive(Type asType, out object? primitive) 
+        bool ParsePrimitive(Type asType, out object? primitive)
         {
             primitive = null;
             if (AsObjectOr<bool>(asType))
@@ -176,7 +174,7 @@ namespace XQuinn.LangInterp.SyntaxTree
                     primitive = utf16;
                     return true;
                 }
-            } //for (object) we check char last because byte sized integers easily convert to char
+            }
             if (asType == typeof(object))
                 return false;
             else if (asType == typeof(nint))
@@ -224,10 +222,7 @@ namespace XQuinn.LangInterp.SyntaxTree
                 }
             }
             return formatException ? throw new FormatException($"Invalid char format. Input: {_arg}. Must be surrounzed by apostrophes, must be a single char.") : false;
-
-
         }
         static bool AsObjectOr<T>(Type asType) => typeof(T) == asType || typeof(object) == asType;
-
     }
 }

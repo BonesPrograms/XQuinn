@@ -1,27 +1,19 @@
 using System.Reflection;
 using XQuinn.Extensions;
-using XQuinn.Reflection;
+
 using XQuinn.LangInterp.SyntaxTree;
-using System.Linq;
+
 using System;
 using System.Collections.Generic;
-using XQuinn.LangInterp;
-using System.Text;
-using System.Collections;
+
 using System.Runtime.ExceptionServices;
-using XQuinn.Runtime;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
-
-
     sealed class Invoker : CoreObject
     {
-
-
         public Invoker(NavigatorCore navig) : base(navig)
         {
-
         }
 
         internal object? InvokeFieldOrProperty(FieldString fieldstring)
@@ -77,7 +69,6 @@ namespace XQuinn.Runtime.NavigatorEngine
                 return true;
             }
             return false;
-
         }
         internal object? InvokeMethod(MethodString mthdString)
         {
@@ -87,7 +78,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             ExternalMethod(ref call, ref args, fromType, mthdString);
             call ??= fromType == _core._static_type ? _core._reflector.FindMethod(mthdString) : throw new MissingMethodException($"No method named {mthdString.Name} with generic arg count {mthdString.Generics.Count} found in {fromType}'s methods or overload resolutions.");
             ConvertGeneric(ref call, ref args, mthdString);
-            args ??= call.GetParameters(); //generics get params first, nongenerics get after
+            args ??= call.GetParameters();
             RuntimeCache.CacheMember(typeCached, methodCached, fromType, call, mthdString.StringID);
             return FinalizeInvoke(call, args, mthdString, fromType, variable);
         }
@@ -105,7 +96,6 @@ namespace XQuinn.Runtime.NavigatorEngine
                     catch (AmbiguousMatchException)
                     {
                         RuntimeCache.CacheAmbiguousMatch(cachedMatches, cachedType, mthdString);
-                        // throw new AmbiguousMatchException($"Method named {mthdString.String} in type {fromType} has multiple overloads and it's name has been modified (see CallInterp Overloads for details.)");
                     }
                     if (call != null)
                     {
@@ -125,22 +115,6 @@ namespace XQuinn.Runtime.NavigatorEngine
         {
             return variable ?? (fromType.IsAssignableFrom(_core._object_type) ? _core._object : null);
         }
-
-        //TargetInstance is an old method back from before the navigator was able to treat fields, variables and properties as if they were types that can be accessed
-        //and their members invoked. Typically, when you use a varaible, field or property as a "type", the system returns the actual object instance alongside the type, and it does so
-        //early - the moment you search for the type member, which happens before we actually search for members inside the member's type itself.
-
-        //TargetInstance works the opposite. If youre invoking something that requires the currently loaded instance, the system does not retrieve the instance early
-        //Instead, it retrieves the type, be it the instance type, or a base type, depending on whether or not youre casting, and then later on,
-        //it passes that type to TargetInstance. TargetInstance quickly checks if the current instancetype polymorphs into the accessed type,
-        //and if it does, it returns the currently loaded instance. This was again designed back when there was no member access, so it made sense to wrap things up
-        //and get the target instance right before invocation. Back then, there was no "FindReference", only "FindType", which could get the loaded type, instance type,
-        // or a static type, without returning the current instance. I havent yet found it necessary to migrate the code relating to getting the instance type up to "FindReference". 
-        // FindReference does not check for if youre looking for the currently loaded type or instance, it only checks for members or variables. So for now this will be "backwards".
-
-        //As you can see, we had to modify the system a bit once we introduced using members and variables as "types". Because we retrieve those early, if TargetInstance's
-        //variable value is not null, it means, "hey, we already found the reference this method is from, dont worry about it ,just return the object we passed to you"
-        //To prevent issues where if a member or variable is the same type as the loaded type and the system returns the loaded instance instead of the accessed member or variable.
 
         object? FinalizeInvoke(MethodBase call, ParameterInfo[] parameters, MethodString mthdString, Type fromType, object? variable)
         {
@@ -181,7 +155,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             foreach (MethodBase method in methodbases)
             {
                 GenericKey gkey = new(method);
-                if (gkey == mkey.GKey) //method.GetCustomAttribute<CompilerGeneratedAttribute>() == null)
+                if (gkey == mkey.GKey)
                 {
                     ParameterInfo[] parameters = method.GetParameters();
                     if (Reflector.SupportedMember(method, parameters))
@@ -197,8 +171,5 @@ namespace XQuinn.Runtime.NavigatorEngine
                 }
             }
         }
-
     }
-
 }
-

@@ -11,11 +11,8 @@ using XQuinn.Runtime.NavigatorEngine;
 
 namespace XQuinn.Runtime
 {
-
-
     internal sealed class NavigatorCore
     {
-        ///.This is for the DynamicNavigator.
         internal TypeBook? LocalCache;
         internal readonly CallLexer _lexer = new();
         internal readonly Parser _parser;
@@ -24,13 +21,13 @@ namespace XQuinn.Runtime
         internal object? _object;
         internal string? _variable;
         internal Type? _object_type => _object?.GetType();
-        internal Type? _static_type; ///Loaded type; could vary from instance type via cast.
-        internal TypeString? _implicit_this; ///Data referring back to the loaded type that works within the MethodLexer
+        internal Type? _static_type;
+        internal TypeString? _implicit_this;
         internal readonly Dictionary<MethodKey, MethodBase> _methods = new();
         internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
         internal readonly Dictionary<string, PropertyInfo> _props = new(StringComparer.OrdinalIgnoreCase);
-        internal readonly Dictionary<string, VariableBinding> _variables = new(StringComparer.OrdinalIgnoreCase);
-        // public bool Caching = true;
+        internal readonly Dictionary<string, ReferenceBinding> _variables = new(StringComparer.OrdinalIgnoreCase);
+
         bool _chaining;
         public bool StackTrace;
         internal const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
@@ -42,13 +39,13 @@ namespace XQuinn.Runtime
             _invoker = new(this);
         }
 
-        public object? Interface(string invocation) ///This is the primary and sole method for interfacing with the Navigator via strings.
+        public object? Instruct(string invocation)
         {
             char controller = default;
             int substring = -1;
-            for (int i = 0; i < invocation.Length; i++) //skips leading whitespace
+            for (int i = 0; i < invocation.Length; i++)
             {
-                if (invocation[i] != ' ') //didnt feel like trimming here since we do a lot more trimming later on
+                if (invocation[i] != ' ')
                 {
                     controller = invocation[i];
                     substring = i + 1;
@@ -66,10 +63,9 @@ namespace XQuinn.Runtime
                 '^' => CastInstance(invocation.Substring(substring)),
                 '~' => ChainInvoke(invocation.Substring(substring).Split(';')),
                 '?' => Query(invocation.Substring(substring)),
-                _ => InvokeOrAssign(invocation) //No controller
+                _ => InvokeOrAssign(invocation)
             };
         }
-
 
         IEnumerable<string> Query(string invocation)
         {
@@ -88,7 +84,7 @@ namespace XQuinn.Runtime
                 if (query.Name.EqualsCaseless("props"))
                     return ParseQuery(_props, query);
             }
-            else //parameterless default
+            else
             {
                 if (invocation.EqualsCaseless("methods"))
                     return Types.ReadMembers(_methods, null, Flag);
@@ -104,8 +100,8 @@ namespace XQuinn.Runtime
         {
             if (query.Params.Count <= 2)
             {
-                string? contains = query.Params.Count >= 1 ? (string?)_parser.ParameterToObject(query.Params[0], typeof(string)) : null;
-                BindingFlags flags = query.Params.Count == 2 ? (BindingFlags)_parser.ParameterToObject(query.Params[1], typeof(BindingFlags))! : Flag;
+                string? contains = query.Params.Count >= 1 ? (string?)_parser.NewArg(query.Params[0], typeof(string)) : null;
+                BindingFlags flags = query.Params.Count == 2 ? (BindingFlags)_parser.NewArg(query.Params[1], typeof(BindingFlags))! : Flag;
                 return Types.ReadMembers(dic, contains, flags);
             }
             throw new TargetParameterCountException("Local query is max 2 params: a containig string and bindingflags search flags.");
@@ -122,7 +118,7 @@ namespace XQuinn.Runtime
                 string cmd = commands[i];
                 try
                 {
-                    object? ret = Interface(cmd);
+                    object? ret = Instruct(cmd);
                     if (ret is string s && s == "No instruction detected.")
                         continue;
                     string? retstring = ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString();
@@ -141,8 +137,6 @@ namespace XQuinn.Runtime
             _chaining = false;
             return invocations;
         }
-
-
 
         public Type LoadTypeStatic(string typeName)
         {
@@ -166,13 +160,13 @@ namespace XQuinn.Runtime
             _static_type = type;
             TypeMap.MapType(_methods, _fields, type, _props);
         }
-        //Checks for method or field syntax. If it detects a method, it diverts to an isolated type load and method invocation.
+
         object LoadInstance(string invocation)
         {
             invocation = invocation.Trim();
             object? instance = null;
             _variable = null;
-            if (_variables.TryGetValue(invocation, out VariableBinding? variable))
+            if (_variables.TryGetValue(invocation, out ReferenceBinding? variable))
             {
                 _variable = invocation;
                 instance = variable.Object;
@@ -181,7 +175,7 @@ namespace XQuinn.Runtime
             LoadInstance(instance);
             return variable ?? instance;
         }
-        //Isolated lexing, loading and invocation for "quick invocation" without resetting loaded instance, method or type.
+
         object? InvokeOrAssign(string invocation)
         {
             if (Assignment(invocation, out object? assigned))
@@ -200,13 +194,12 @@ namespace XQuinn.Runtime
                 member = member.Trim();
                 if (member.EqualsCaseless("this"))
                     return _object ?? "null";
-                if (_variables.TryGetValue(member, out VariableBinding? variable))
+                if (_variables.TryGetValue(member, out ReferenceBinding? variable))
                     return variable;
                 TypeString declaringtype = ThisOrNew(typeName);
                 FieldString fieldStr = new(member, declaringtype);
                 return _invoker.InvokeFieldOrProperty(fieldStr);
             }
-
         }
 
         Type CastInstance(string invocation)
@@ -221,7 +214,6 @@ namespace XQuinn.Runtime
             LoadTypeMembers(t);
             return t;
         }
-
 
         bool Assignment(string invocation, out object? assignedValue)
         {
@@ -238,8 +230,7 @@ namespace XQuinn.Runtime
             Type? lefthandtype;
             object? lefthandInstance;
             Reflector.Assignment assigningTo;
-            // if (_variables.TryGetValue(lefthand, out VariableBinding? var))
-            //     assigningTo = new(var); //there are many reasons why i wont add variable assignment (none of which are explained here so dont bother looking just ask if youre curious)
+
             if (lefthandTypeName == null)
             {
                 lefthandtype = _static_type ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {invocation}");
@@ -255,7 +246,7 @@ namespace XQuinn.Runtime
             if (lefthandtype != _static_type && (!lefthandtype?.IsClass ?? false))
                 throw new NotSupportedException($"Assigning to the members of struct fields is currently unsupported due to constraints related to boxing.See \"Assignment\" in public API doc for more info.");
 
-            FieldInfo? field = lefthandtype!.GetField(lefthand, Flag);// ?? throw new MissingFieldException($"No field found in type {lefthandtype} named {lefthand}");
+            FieldInfo? field = lefthandtype!.GetField(lefthand, Flag);
             if (field != null)
                 assigningTo = new Reflector.Assignment(field);
             else
@@ -264,7 +255,7 @@ namespace XQuinn.Runtime
                 assigningTo = new Reflector.Assignment(prop);
             }
 
-            string? righthandTypeName = MiniLexer.ResolveMemberAccessOrLiteral(righthand, out righthand, out bool righthandfield);// ?? _key ?? throw new ArgumentException("No type loaded for implicit access on righthand side.");
+            string? righthandTypeName = MiniLexer.ResolveMemberAccessOrLiteral(righthand, out righthand, out bool righthandfield);
             righthand = righthand.Trim();
             if (righthandTypeName != null)
             {
@@ -277,11 +268,11 @@ namespace XQuinn.Runtime
                 }
                 else
                 {
-                    MethodString methodStr = _lexer.MethodTemplate(righthand, typeStr, _implicit_this); //implicit this for subparameters only
+                    MethodString methodStr = _lexer.MethodTemplate(righthand, typeStr, _implicit_this);
                     assignedValue = _invoker.InvokeMethod(methodStr);
                 }
             }
-            else if (!righthandfield && MiniLexer.ImplicitThisMethodCall(righthand))//this enables implicit this access, ie. field = method() for the lead method name
+            else if (!righthandfield && MiniLexer.ImplicitThisMethodCall(righthand))
             {
                 if (_static_type == null)
                     throw new ArgumentException("Cannot perform implicit this call, no type is loaded.");
@@ -297,25 +288,6 @@ namespace XQuinn.Runtime
             assigningTo.SetValue(_invoker.TargetInstance(lefthandtype, lefthandInstance), assignedValue);
             return true;
         }
-        //TargetInstance fixes a bug here where casting to base type explicitly in an assignment (does not cause an issue if you ^cast first and use implicit access)
-        // ex. base.field = 22 
-        // causes the system to search for the BaseType, but it does not return the baseType with the instance, the instance is returned null
-        //TargetInstance checks if type is assignable to the currently loaded instance, and if it is, it returns the currently loaded instance
-        //Unless the object that TargetInstance receives for it's "variable" parameter is not null, then it just returns that
-        //See TargetInstance for more info
-
-
-        // if (assignedValue != null && lefthandInstance != null && (lefthandInstance == _instance || var != null ))
-        // {
-        //     if (var != null)
-        //     {
-        //         LoadInstance(var.Object, var.ObjectType);
-        //     }
-        //     else
-        //         LoadInstance(assignedValue, assignedValue.GetType());
-        // }
-
-
 
         string RemoveVariable(string key)
         {
@@ -333,7 +305,7 @@ namespace XQuinn.Runtime
             TypeRegister.ThrowIfBadKey(key);
             if (TypeRegister.s_registry.ContainsKey(new(key)))
                 throw new ArgumentException($"Key {key} is taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
-            if (_variables.TryGetValue(key, out VariableBinding? variable))
+            if (_variables.TryGetValue(key, out ReferenceBinding? variable))
             {
                 if (!ReferenceEquals(_object, variable.Object))
                     throw new ArgumentException("Duplicate keyname detected.");
@@ -344,17 +316,13 @@ namespace XQuinn.Runtime
             return $"Added current instance as variable {key}.";
         }
 
-
-
         public static void FlushStaticCache(bool ambiguousMatches = false, bool typeMembers = true, bool reifiedGenerics = true)
         {
             RuntimeCache.FlushStaticCache(ambiguousMatches, typeMembers, reifiedGenerics);
         }
 
-
-        public void Clear() ///This is for DynamicNavigator
+        public void Clear()
         {
-
             _variables.Clear();
             _methods.Clear();
             _fields.Clear();
@@ -366,16 +334,10 @@ namespace XQuinn.Runtime
             _chaining = false;
             _variable = null;
         }
-        // }
-
 
         TypeString ThisOrNew(string typename)
         {
-            // return _implicit_this?.NameWithGenerics.EqualsCaseless(typename) ?? false ? _implicit_this : TypeString.New(typename);
             return typename.EqualsCaseless(_implicit_this?.StringID) ? _implicit_this! : TypeString.New(typename);
         }
-
-
     }
-
 }

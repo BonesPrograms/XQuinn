@@ -2,15 +2,12 @@ using System.Reflection;
 using System;
 using System.Collections.Generic;
 using XQuinn.Extensions;
-using XQuinn.Runtime;
-using XQuinn.Runtime.NavigatorEngine;
+
 using XQuinn.Reflection;
 using static XQuinn.Reflection.TypeRegister;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
-
-
     static class Types
     {
         public static IEnumerable<string> Props<T>(string? contains = null, BindingFlags search = NavigatorCore.Flag) => Props(typeof(T), contains, search);
@@ -37,24 +34,22 @@ namespace XQuinn.Runtime.NavigatorEngine
             return ReadMembers(methods, contains, search);
         }
 
-
         public static void FlushStaticCache(bool ambiguousMatches = true, bool accessedMembers = true, bool reifiedGenerics = true)
         {
             NavigatorCore.FlushStaticCache(ambiguousMatches, accessedMembers, reifiedGenerics);
         }
 
-        public static Type Of<T>() => typeof(T); //typeof(T[])
-        public static Type Of(string name) => GetTypeOrThrow(name); //for generic definitions which cant be passed as T without their own typeargs
+        public static Type Of<T>() => typeof(T);
+        public static Type Of(string name) => GetTypeOrThrow(name);
         public static T Num<T>(T obj = default) where T : struct => obj;
         public static T Enum<T>(T obj) where T : Enum => obj;
-        public static string String(string txt) => txt; //only way to instantiate an isolated new string using the navigator
+        public static string String(string txt) => txt;
         public static T[] Array<T>(params T[] arr) => arr.Length == 0 ? System.Array.Empty<T>() : arr;
         public static T[] Array<T>(int i) => i == 0 ? System.Array.Empty<T>() : new T[i];
         public static bool LateCache(string assemblyName, string targetTypeName, string keyForCaching)
         {
             Assembly assembly = Assembly.Load(assemblyName);
             return LateCache(assembly, targetTypeName, keyForCaching);
-
         }
         public static bool LateCache(Assembly assembly, string targetTypeName, string keyForCaching)
         {
@@ -133,7 +128,6 @@ namespace XQuinn.Runtime.NavigatorEngine
                 if (_static && _inherited && !flags.HasFlag(BindingFlags.FlattenHierarchy))
                     return false;
                 return true;
-
             }
 
             static bool PropertySearch(PropertyInfo prop, BindingFlags flags)
@@ -147,15 +141,12 @@ namespace XQuinn.Runtime.NavigatorEngine
                 return false;
             }
 
-
             static bool Inherited(MemberInfo obj)
             {
                 if (obj.DeclaringType != null)
                     return obj.ReflectedType != obj.DeclaringType;
                 return false;
             }
-
         }
-
     }
 }

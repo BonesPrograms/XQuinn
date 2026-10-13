@@ -3,16 +3,14 @@ using System.Collections.Generic;
 using System;
 using XQuinn.Reflection;
 using XQuinn.Extensions;
-using XQuinn.Runtime.NavigatorEngine;
 
 namespace XQuinn.LangInterp.SyntaxTree
 {
     internal abstract class GenericString : MetadataString
     {
-        public string StringID => _id; ///Cache ID for methods and types. Includes raw name, generic arguments, and overload index.
-        string _id;                     ///Used for comparison between concrete GenericString objects to see if they represent the same MemberInfo object. For caching primarily.
-                                        ///For methods, this comparison also includes comparing the StringID of their declaring type
-                                        ///      (though in practice we do not typically compare that way, usually we get the actual type first from their declaringtypes StringID)
+        public string StringID => _id;
+        string _id;
+
         public IReadOnlyList<TypeString> Generics
         {
             get
@@ -79,8 +77,7 @@ namespace XQuinn.LangInterp.SyntaxTree
                 return genericArgs;
             }
             throw new ArgumentException($"No generic parameters were provided to {GetType().Name} with name value {Name} ");
-        } //generally speaking the way the logic works you usally wont encounter this exception, but it is technically possible
-            //so ive yet to remove (our new key system matches by the user's input for generic args so the typical caller (the Reflector) wont even find the generic method/type if you dont provide args)
+        }
 
         void LexGenerics(StringBuilder sb)
         {
@@ -88,12 +85,12 @@ namespace XQuinn.LangInterp.SyntaxTree
             bool finishedReadingLeadName = false;
             int readingsubparams = 0;
             int lastread = 0;
-            for (int i = 0; i < _id.Length; i++) //this ones a lot simpler doesnt have smart whitespace skipping and doesnt actually check for context like
-            {                                           //whether or not its reading a proper identifier and not 83528474
-                char c = _id[i];                  //kinda busted it out quickly so it will allow things that the invocationlexer would throw for
+            for (int i = 0; i < _id.Length; i++)
+            {
+                char c = _id[i];
 
                 if (c == CallLexer.Whitespace)
-                    continue;                 //like collecting < s t r i n g> into string or allowing impossible names to lex
+                    continue;
                 if (c == CallLexer.GenericDeclr)
                 {
                     if (finishedReadingLeadName)
@@ -140,8 +137,7 @@ namespace XQuinn.LangInterp.SyntaxTree
             if (lastread > 0)
                 throw new LexicalException($"Nested generics not properly terminated. You can usually fix this by throwing an extra > at the end. Generic:", _id);
         }
-        //subparameter exceptions are not *totally* necessary, often times the system will resolve ur args properly anyways
-        //but sometimes you do genuinely fuck up your subparameters so, incase that happens, it throws whenever a subread is fucked up
+
         TypeString NewArg(StringBuilder sb)
         {
             string name = sb.ToString();
@@ -151,7 +147,6 @@ namespace XQuinn.LangInterp.SyntaxTree
             _type_args.Add(typearg);
             return typearg;
         }
-
 
         public override string ToString()
         {
@@ -166,9 +161,5 @@ namespace XQuinn.LangInterp.SyntaxTree
             sb.Append('>');
             _id = sb.ToString();
         }
-
-
-
-
     }
 }

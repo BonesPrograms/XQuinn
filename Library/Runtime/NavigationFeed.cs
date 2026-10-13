@@ -1,19 +1,15 @@
 using System;
 using System.Text;
 using XQuinn.Extensions;
-using System.Collections.Generic;
+
 using System.Reflection;
 using XQuinn.Reflection;
-using System.Linq;
+
 using System.Collections;
 using XQuinn.Runtime.NavigatorEngine;
 
 namespace XQuinn.Runtime
 {
-
-    /// <summary>
-    /// Monitor the output, activity and exceptions of a Navigator instance via strings.
-    /// </summary>
     public sealed class NavigationFeed
     {
         readonly StringBuilder _feed = new();
@@ -32,13 +28,21 @@ namespace XQuinn.Runtime
         {
             StackTrace = stacktrace;
         }
-        public string SafeInterface(string input)
+
+        public string ChainInstruct(params string[] args)
+        {
+            StringBuilder sb = new();
+            sb.Append('~');
+            sb.AppendMany(args, ";");
+            return SafeInstruct(sb.ToString());
+        }
+        public string SafeInstruct(string input)
         {
             _feed.Length = 0;
             string output;
             try
             {
-                output = Interface(input);
+                output = UnsafeInstruct(input);
             }
             catch (Exception ex)
             {
@@ -49,14 +53,14 @@ namespace XQuinn.Runtime
             }
             return output;
         }
-        internal string Interface(string input)
+        internal string UnsafeInstruct(string input)
         {
             _feed.AppendLine();
             _feed.Append(DateTime.Now);
             _feed.AppendLine();
             _feed.Append($"Instruction :");
             _feed.AppendLine(input);
-            ProcessReturn(_core.Interface(input));
+            ProcessReturn(_core.Instruct(input));
             AppendNavigData();
             string output = _feed.ToString();
             _feed.Length = 0;
@@ -65,7 +69,7 @@ namespace XQuinn.Runtime
 
         void ProcessReturn(object? ret)
         {
-            VariableBinding? variable = ret as VariableBinding;
+            ReferenceBinding? variable = ret as ReferenceBinding;
             if (variable != null)
             {
                 _feed.Append($"Variable: ");
@@ -81,7 +85,7 @@ namespace XQuinn.Runtime
                 if (enumerator is ICollection col)
                     empty = col.Count == 0;
                 else
-                    foreach (object? obj in enumerator) //Find this funny because im only counting one time but i cant use .Any so it is what it is
+                    foreach (object? obj in enumerator)
                     {
                         empty = false;
                         break;
@@ -96,9 +100,7 @@ namespace XQuinn.Runtime
             }
             else if (variable == null)
                 _feed.AppendLine(ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString() ?? "null");
-
         }
-
 
         void AppendNavigData()
         {
@@ -116,9 +118,7 @@ namespace XQuinn.Runtime
                         _feed.AppendLine(_core._variable);
                     }
                 }
-
             }
-
         }
     }
 }

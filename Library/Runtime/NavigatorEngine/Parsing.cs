@@ -2,8 +2,7 @@ using System.Reflection;
 using XQuinn.Extensions;
 using XQuinn.LangInterp.SyntaxTree;
 using System;
-using System.Collections;
-using System.Diagnostics.CodeAnalysis;
+
 using HarmonyLib;
 
 namespace XQuinn.Runtime.NavigatorEngine
@@ -14,9 +13,6 @@ namespace XQuinn.Runtime.NavigatorEngine
         {
         }
 
-        /// <summary>
-        /// Convert a method AST object to actual parameters by matching it to a MethodInfo's parameter array.
-        /// </summary>
         public object?[] ParseParameters(ParameterInfo[] parameters, MethodString method)
         {
             int inputAmount = method.Params.Count;
@@ -31,7 +27,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 ParamsArray(lastparam, parameters, args, method);
             else
                 for (int i = 0; i < parameters.Length; i++)
-                    args[i] = ParameterToObject(method.Params[i], parameters[i].ParameterType);
+                    args[i] = NewArg(method.Params[i], parameters[i].ParameterType);
             return args;
         }
 
@@ -53,7 +49,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                         throw new TargetParameterCountException($"Parameter {parameter} does not have a default value. Input param count {inputAmount} Required count {reqAmount} method name {method.StringID}");
                 }
                 for (int i = 0; i < inputAmount; i++)
-                    args[i] = ParameterToObject(method.Params[i], parameters[i].ParameterType);
+                    args[i] = NewArg(method.Params[i], parameters[i].ParameterType);
             }
             else if (lastparam >= 0 && parameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
             {
@@ -63,22 +59,21 @@ namespace XQuinn.Runtime.NavigatorEngine
                 throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {parameters.Length} method name {method.Name}");
         }
 
-        //Notes about
         void ParamsArray(int lastparam, ParameterInfo[] parameters, object?[] args, MethodString method)
         {
             for (int i = 0; i < lastparam; i++)
-                args[i] = ParameterToObject(method.Params[i], parameters[i].ParameterType);
+                args[i] = NewArg(method.Params[i], parameters[i].ParameterType);
             Type elementType = parameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentNullException();
             object? defaultValue = elementType.GetDefaultValue();
             if (method.Params.Count == parameters.Length)
             {
-                ParameterString parameter = method.Params[lastparam];
+                ArgumentString parameter = method.Params[lastparam];
                 if (parameter is ValueString val && (val.Argument.EqualsCaseless("null") || val.Argument.EqualsCaseless("default")))
-                    args[lastparam] = null; //we do this because ParameterToObject pases vs elementType rather than array type. If elementType is a struct, it will fail to parse null,
-                else                        //so for single-arguments that are explicitly null or default, there is a special case where we check early. more info on why below.
+                    args[lastparam] = null;
+                else
                 {
-                    object? arg = ParameterToObject(parameter, elementType);
-                    if (!arg?.GetType().IsArray ?? true) //list && list.GetType() == actualParameters[lastparam].ParameterType) //i dont bother checking conversions most of the time runtime does it for me
+                    object? arg = NewArg(parameter, elementType);
+                    if (!arg?.GetType().IsArray ?? true)
                     {
                         Array singleArgArray = Array.CreateInstance(elementType, 1);
                         if (arg != null && !arg.Equals(defaultValue))
@@ -90,38 +85,18 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
             else
             {
-                Array paramsArray = Array.CreateInstance(elementType, method.Params.Count - lastparam); //assign array type via reflection becuase object[] wont work for params keyword
+                Array paramsArray = Array.CreateInstance(elementType, method.Params.Count - lastparam);
                 for (int i = lastparam; i < method.Params.Count; i++)
                 {
-                    object? arg = ParameterToObject(method.Params[i], elementType);
+                    object? arg = NewArg(method.Params[i], elementType);
                     if (arg != null && !arg.Equals(defaultValue))
-                        paramsArray.SetValue(arg, i - lastparam); //null anyways so we skip setvalue if the result is null
+                        paramsArray.SetValue(arg, i - lastparam);
                 }
                 args[lastparam] = paramsArray;
             }
         }
 
-
-
-        //so this is secure
-        //if you directly assign null/default as a single arg (ValueString), then we return the array as null
-        //otherwise if you return null from a method field or property, it becomes a singleargarray with a null element
-        //otherwise if you provide an array, we assign it
-        //otherwise if you assign a single value, we add it to a singleargarray
-        //so if you want to directly assign "null" and have a singleargarray come out - you cant, you need to precreate an array of size one with a single "null" element
-        //i explain further below why this is correct and in line with C#
-
-        //Notes:
-        //If you send 'null' as your single argument to a 'params' array, I have a choice between creating an array of size 1 with a null value at index 0,
-        //or I have the choice of treating the entire argument as 'null' and returning 'null' for the params array.
-        //Experimentation reveals that if you send 'null' as a single argument to a params array in C#, the params array is assigned null
-        //However, if you send more than one 'null' argument to a params array, it will create an array of that size with it's elements null
-        //So we match that decision here as well.
-        //In essence if you want to have a 'params array' compile as a size 1 array with a single null element, you actually need to create your own array
-        //and pass it instead rather than utilizing the 'params' feature.
-        //Furthermore, if a method, property or field returns null, that value is turned into a single arg array in standard C#. So only explicit "null" or "default" will assign
-        //null to the array parameter.
-        internal object? ParameterToObject(ParameterString arg, Type paramType)
+        internal object? NewArg(ArgumentString arg, Type paramType)
         {
             object? obj = arg switch
             {
@@ -130,33 +105,26 @@ namespace XQuinn.Runtime.NavigatorEngine
                 ValueString value => ParseValue(value, paramType),
                 _ => throw new NotSupportedException()
             };
-            //   Reflector.InvalidCast(paramType, obj);
+
             Reflector.NotNullable(paramType, obj);
             return obj;
-
         }
-        internal object? ParseValue(ValueString value, Type paramType) //need half and int128 support
+        internal object? ParseValue(ValueString value, Type paramType)
         {
             string strng = value.Argument;
             if (strng.EqualsCaseless("this"))
             {
                 if (_core._object == null)
                     throw new InvalidOperationException("Cannot pass this as parameter, instance is null.");
-                // if (!paramType.IsAssignableFrom(_instanceType))
-                //     throw new InvalidCastException($"Current instance is a {_instanceType} and does not cast to parameter type {paramType}");
+
                 return _core._object;
             }
-            if (_core._variables.TryGetValue(strng, out VariableBinding? variable))
+            if (_core._variables.TryGetValue(strng, out ReferenceBinding? variable))
             {
-                // if (!paramType.IsAssignableFrom(variable.ObjectType))
-                //     throw new InvalidCastException($"Instance index object with key {strng} is a {variable.ObjectType} and does not cast to parameter type {paramType}");
                 return variable.Object;
             }
             if (_core._fields.TryGetValue(strng, out FieldInfo? field))
             {
-                // object? val = field.GetValue(_instance);
-                // Type t = val == null ? field.FieldType : val.GetType();
-                // if(!paramType.IsAssignableFrom(t))
                 return field.GetValue(_core._object);
             }
             if (_core._props.TryGetValue(strng, out PropertyInfo? prop))

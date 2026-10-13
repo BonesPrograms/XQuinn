@@ -4,17 +4,13 @@ using XQuinn.Reflection;
 using XQuinn.LangInterp.SyntaxTree;
 using System.Linq;
 using System;
-using System.Collections.Generic;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
-
-
     internal sealed class Reflector : CoreObject
     {
         public Reflector(NavigatorCore navig) : base(navig)
         {
-
         }
 
         public static bool SupportedMember(MethodBase method, ParameterInfo[] parameters)
@@ -28,19 +24,15 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         internal Type FindReference(IMemberString member, out object? instance)
         {
-            //  if (string.IsNullOrWhiteSpace(member.DeclaringType?.String)) { variable = new("this", _instance); return LoadedType ?? throw new InvalidOperationException("cannot implicitly access loaded type, no type is loaded"); }
-            //        if (member.DeclaringType == null)
-            //          throw new ArgumentNullException();
-            if (_core._variables.TryGetValue(member.DeclaringType.StringID, out VariableBinding? variable))
+            if (_core._variables.TryGetValue(member.DeclaringType.StringID, out ReferenceBinding? variable))
             {
                 instance = variable.Object;
                 return variable.Object.GetType();
-
-            }            
+            }
             if (_core._fields.TryGetValue(member.DeclaringType.StringID, out FieldInfo? field))
             {
                 instance = field.GetValue(_core._object) ?? throw new ArgumentException($"Field {field} in type {_core._static_type} returned null and it's member methods and fields cannot be invoked.");
-                return instance.GetType(); //will not always be == fieldtype
+                return instance.GetType();
             }
             if (_core._props.TryGetValue(member.DeclaringType.StringID, out PropertyInfo? prop))
             {
@@ -52,13 +44,10 @@ namespace XQuinn.Runtime.NavigatorEngine
             return FindType(member.DeclaringType, false);
         }
 
-
         internal Type FindType(TypeString typename, bool staticLoadOrCasting)
         {
             if (!staticLoadOrCasting)
             {
-                // if (_core._variables.TryGetValue(typename.NameOrValue, out VariableBinding? variable))
-                //     return variable.ObjectType;
                 if (typename.StringID.EqualsCaseless("this"))
                     return _core._object_type == null ? throw new InvalidOperationException("Cannot pass this, instance is null.") : _core._static_type!;
                 if (typename.StringID.EqualsCaseless(_core._implicit_this?.StringID))
@@ -71,28 +60,22 @@ namespace XQuinn.Runtime.NavigatorEngine
                 return _core._object_type.BaseType ?? throw new ArgumentException("Base type of instance is null.");
             }
             return typename.ToType(_core.LocalCache);
-
         }
 
-        internal MethodBase FindMethod(MethodString method)// out ResolvedOverload? query)
+        internal MethodBase FindMethod(MethodString method)
         {
             _core._methods.TryGetValue(MethodKey.MethodQuery(method), out MethodBase? methodbase);
             if (methodbase == null)
                 throw new MissingMethodException($"No method named {method.Name}  with generic arg count {method.Generics.Count} found in {_core._static_type}'s method dictionary. It may have been removed due to having a ref return type or in/out/ref parameters.");
             if (methodbase.IsGenericMethodDefinition && methodbase is MethodInfo actualmethod)
                 methodbase = method.ConvertToGeneric(actualmethod, _core.LocalCache);
-            return methodbase; //your dictionary will always hold generic definitions - after reification, methods are added to a static cache so it wont be reified a second time
+            return methodbase;
         }
 
-        // internal static void InvalidCast(Type paramType, object? obj)
-        // {
-        //     if (obj != null && !paramType.IsAssignableFrom(obj.GetType()))
-        //         throw new InvalidCastException($"Cannot convert {obj.GetType()} to {paramType}.");
-        // }
         internal static void NotNullable(Type type, object? value)
         {
-            if (value == null) //valuestring handles direct parsing from 'null' for structs (it throws), but methods and fields can return null and are not valuestrings, so we need to manually check on assignmnet
-            {                   //otherwise reflection will assign the default value if the target is a struct, rather than throwing like it should
+            if (value == null)
+            {
                 if (!(type.IsClass || (type.IsGenericType && type.GetGenericTypeDefinition() == typeof(Nullable<>))))
                     throw new ArgumentException($"Cannot assign null to type {type}.");
             }
@@ -113,7 +96,6 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
             public void SetValue(object? instance, object? value)
             {
-                //   InvalidCast(ObjectType, value);
                 NotNullable(ObjectType, value);
                 if (Member is PropertyInfo prop)
                     prop.SetValue(instance, value, NavigatorCore.Flag, null, null, null);
@@ -123,12 +105,10 @@ namespace XQuinn.Runtime.NavigatorEngine
         }
     }
 
-
-
-    internal sealed class VariableBinding
+    internal sealed class ReferenceBinding
     {
         public readonly object Object;
-        internal VariableBinding(object instance)
+        internal ReferenceBinding(object instance)
         {
             Object = instance;
         }
@@ -138,8 +118,4 @@ namespace XQuinn.Runtime.NavigatorEngine
             return $"ObjectType: {ReflectionPrinter.Print(Object.GetType(), false)} :: ToString: {objToStr}";
         }
     }
-
-
-
-
 }

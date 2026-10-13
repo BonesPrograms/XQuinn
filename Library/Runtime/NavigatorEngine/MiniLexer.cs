@@ -1,15 +1,9 @@
-using System;
-using System.Text;
 using XQuinn.LangInterp;
-using XQuinn.Extensions;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
-
     static class MiniLexer
     {
-
-
         internal static bool AssignmentSubstring(string invocation, out string? left, out string? right)
         {
             left = null;
@@ -31,10 +25,9 @@ namespace XQuinn.Runtime.NavigatorEngine
             left = invocation.Remove(assignment.Value);
             right = invocation.Substring(assignment.Value + 1);
             return true;
-
         }
 
-        internal static string? ResolveMemberAccessOrLiteral(string invocation, out string member, out bool notMethod) //returns typename, outputs the accessed member
+        internal static string? ResolveMemberAccessOrLiteral(string invocation, out string member, out bool notMethod)
         {
             int sublength = invocation.IndexOf(CallLexer.MethodDeclr);
             notMethod = sublength < 0;
@@ -48,21 +41,12 @@ namespace XQuinn.Runtime.NavigatorEngine
                     char value = invocation[i];
                     if (value != CallLexer.Whitespace)
                     {
-                        if (IsLiteral(value)) //because floats will resolve as member access. lol.
+                        if (IsLiteral(value))
                             return null;
                         else
                             break;
                     }
                 }
-                // for (int i = sublength - 1; i >= 0; i--)
-                // {
-                //     char c = invocation[i];
-                //     if (c == CallLexer.MemberAccess)
-                //     {
-                //         lastAccessorIndex = i;
-                //         break;
-                //     }
-                // }
             }
             for (int i = 0; i < sublength; i++)
             {
@@ -105,7 +89,6 @@ namespace XQuinn.Runtime.NavigatorEngine
                 {
                     lastAccessorIndex = i;
                 }
-
             }
             if (lastAccessorIndex != null)
             {
@@ -116,7 +99,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             return null;
         }
 
-        internal static bool ImplicitThisMethodCall(string righthand) //makes sure that the '(' contained is not part of a string and is actually a method parameter
+        internal static bool ImplicitThisMethodCall(string righthand)
         {
             for (int i = 0; i < righthand.Length; i++)
             {
@@ -136,7 +119,4 @@ namespace XQuinn.Runtime.NavigatorEngine
             _ => char.IsDigit(value)
         };
     }
-
-
-
 }

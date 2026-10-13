@@ -50,7 +50,6 @@ namespace XQuinn.Runtime.NavigatorEngine
                 typename = typename.Remove(declrindex);
         }
 
-
         public GenericKey(MethodBase method) : this(method is ConstructorInfo ? "new" : method.Name, method.IsGenericMethodDefinition ? method.GetGenericArguments().Length : 0)
         {
         }
@@ -64,7 +63,6 @@ namespace XQuinn.Runtime.NavigatorEngine
         public GenericKey(string key, Type t) : this(key, t.IsGenericTypeDefinition ? t.GetGenericArguments().Length : 0)
         {
         }
-
 
         internal GenericKey(TypeString str) : this(str.Name, str.Generics.Count)
         {
@@ -126,10 +124,8 @@ namespace XQuinn.Runtime.NavigatorEngine
                 if (Args == 1)
                     return $"{Name}<T>";
                 return ArgsToString(new(Name));
-
             }
             return Name;
         }
-
     }
 }

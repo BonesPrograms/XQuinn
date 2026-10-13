@@ -4,11 +4,11 @@ using XQuinn.Runtime.NavigatorEngine;
 
 namespace XQuinn.LangInterp.SyntaxTree
 {
-    internal sealed class TypeString : GenericString//, IEquatable<TypeString>
+    internal sealed class TypeString : GenericString
     {
         internal static readonly TypeString s_this = new("this");
-        internal readonly GenericString? _typeArgOf; //mostly used for generic lexing, not really necessary to be exposed right now
-        //(kind of like paramOf)
+        internal readonly GenericString? _typeArgOf;
+
         internal TypeString(string name, GenericString? typeArgOf = null) : base(name)
         {
             _typeArgOf = typeArgOf;
@@ -20,8 +20,8 @@ namespace XQuinn.LangInterp.SyntaxTree
         internal Type ToType(TypeBook? dic = null)
         {
             GenericKey key = new(this);
-            if (key.Args > 0) //this is what i was talking about, keys have generic arg data, so, unless someone intentionally inserts a nongeneric type with a key that has positive arguments
-            {                   //then you wont have a problem accidentally trying to reify types that are nongeneric
+            if (key.Args > 0)
+            {
                 if (RuntimeCache.s_reified_generic_types.TryGetValue(StringID, out Type? type))
                     return type;
                 type = ConvertToGeneric(FindType(dic, key), dic);
@@ -29,7 +29,6 @@ namespace XQuinn.LangInterp.SyntaxTree
                 return type;
             }
             return FindType(dic, key);
-
         }
         Type ConvertToGeneric(Type genericTypeDef, TypeBook? types = null)
         {

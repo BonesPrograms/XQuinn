@@ -106,7 +106,7 @@ namespace XQuinn.Private
             //"xq.Class< xq . kvp< xq . string , xq . int>>.new()"};
             StringBuilder sb = new();
             sb.AppendMany(instructions, ";");
-            string ret = monitor.SafeInterface(sb.ToString());
+            string ret = monitor.SafeInstruct(sb.ToString());
             Console.WriteLine(ret);
             monitor._core.Clear();
             NavigatorCore.FlushStaticCache();
@@ -125,14 +125,14 @@ namespace XQuinn.Private
                 "* init_type"
             };
             sb.AppendMany(instructions, ";");
-            ret = monitor.SafeInterface(sb.ToString());
+            ret = monitor.SafeInstruct(sb.ToString());
             Console.WriteLine(ret);
           //   ConsoleTools.WriteMany(TypeRegister.s_registry, "\n");
             while (true)
             {
                 string? msg = Console.ReadLine();
                 if (msg != null)
-                    Console.WriteLine(monitor.SafeInterface(msg));
+                    Console.WriteLine(monitor.SafeInstruct(msg));
             }
         }
 

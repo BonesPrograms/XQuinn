@@ -1,4 +1,3 @@
-using System.Collections.Concurrent;
 using System.Collections.ObjectModel;
 using System.Reflection;
 using System;
@@ -8,19 +7,15 @@ using XQuinn.Extensions;
 using System.Text;
 using System.Collections;
 using System.Runtime.InteropServices;
-using XQuinn.ObjectModel;
+
 using System.Runtime.CompilerServices;
 using System.Linq;
 using XQuinn.Runtime.NavigatorEngine;
-using System.ComponentModel;
-using XQuinn.Private;
-
 
 namespace XQuinn.Reflection
 {
     public static partial class TypeRegister
     {
-
         public static IEnumerable<string> Keys()
         {
             foreach (GenericKey key in s_registry.Keys)
@@ -35,7 +30,7 @@ namespace XQuinn.Reflection
 
         internal static readonly Dictionary<GenericKey, Type> s_registry = new();
 
-        readonly static string[] s_illegal_keys = new string[] { "null", "default", "base", "this", bool.FalseString, bool.TrueString }; ///Reserved "language" keywords
+        readonly static string[] s_illegal_keys = new string[] { "null", "default", "base", "this", bool.FalseString, bool.TrueString };
 
         static TypeRegister()
         {
@@ -53,8 +48,8 @@ namespace XQuinn.Reflection
                 GenericKey gkey = new(name, type);
                 s_registry[gkey] = type;
             }
-            Type[] preCachedTypes = new Type[] //Most types are cached with a name based on their type object's name property
-            {                                   //so its easier to just add new ones to the array
+            Type[] preCachedTypes = new Type[]
+            {
             typeof(object), typeof(string),
             typeof(sbyte),  typeof(byte),
             typeof(char), typeof(double),
@@ -86,8 +81,8 @@ namespace XQuinn.Reflection
             Assembly mscorlib = Assembly.Load("System.Private.CoreLib");
             Type runtimeType = mscorlib.GetType("System.RuntimeType", true)!;
             GenericKey key = new(typeof(Type).Name, runtimeType);
-            s_registry[key] = runtimeType; //There is a desync between Type's resolved method overloads and RuntimeType's resolved method overloads.
-        }                                               //Type becomes RuntimeType at runtime, so it is irrelevent to us, we cache RuntimeType instead.
+            s_registry[key] = runtimeType;
+        }
 
         public static bool Contains(string name) => s_registry.ContainsKey(GenericKey.TypeQuery(name));
         public static bool TryGetType(string name, out Type? cachedtype) => s_registry.TryGetValue(GenericKey.TypeQuery(name), out cachedtype);
@@ -97,7 +92,7 @@ namespace XQuinn.Reflection
                 return cachedtype;
             return null;
         }
-        public static Type GetTypeOrThrow(string name)//ReadOnlyDictionary<string, Type>? book = null)
+        public static Type GetTypeOrThrow(string name)
         {
             GenericKey key = GenericKey.TypeQuery(name);
             return GetTypeOrThrow(key);
@@ -110,11 +105,10 @@ namespace XQuinn.Reflection
             throw new ArgumentException($"Could not find cached type with key {key.Name} and generic arg count {key.Args}.");
         }
 
-
         public static bool CacheType(Type type, string key)
         {
-            if(type.IsNested)
-            return false;
+            if (type.IsNested)
+                return false;
             if (type.IsDefined(typeof(CompilerGeneratedAttribute), true) || TypeBook.IsFileType(type))
                 return false;
             if (type.IsGenericType && !type.IsGenericTypeDefinition)
@@ -142,7 +136,6 @@ namespace XQuinn.Reflection
         {
             foreach (Type type in types)
                 CacheType(type, fullname);
-
         }
 
         public static void CacheTypes(IEnumerable<Type> types, bool fullname, string append)
@@ -156,7 +149,6 @@ namespace XQuinn.Reflection
 
         public static void CacheTypes(IEnumerable<Type> types, Func<Type, string?> keyProvider)
         {
-
             foreach (Type type in types)
             {
                 string? key = keyProvider.Invoke(type);
@@ -164,7 +156,23 @@ namespace XQuinn.Reflection
                     CacheType(type, key);
             }
         }
-
+        public static List<(string key, Type type)>? CacheTypesSkipDuplicates(IEnumerable<Type> types, bool fullname)
+        {
+            List<(string, Type)>? dic = null;
+            foreach (Type type in types)
+            {
+                try
+                {
+                    CacheType(type, fullname);
+                }
+                catch (DuplicateKeyException ex)
+                {
+                    dic ??= new();
+                    dic.Add((ex.GKey.ToString(), type));
+                }
+            }
+            return dic;
+        }
         public static string GetCompatibleName(Type type, bool fullname)
         {
             string name = fullname ? type.FullName ?? throw new ArgumentNullException(nameof(fullname), $"Type {type} returned null for fullname.") : type.Name;
@@ -174,8 +182,6 @@ namespace XQuinn.Reflection
                 return name.Replace('+', '.');
             else
                 return name;
-
-
         }
 
         static StringBuilder SnipGenericName(string name)
@@ -220,22 +226,8 @@ namespace XQuinn.Reflection
                         throw new ArgumentException($"Member access must be followed by an underscore or a letter for namespaces. Bad Key: {key}");
                     accessor = false;
                 }
-
             }
-
         }
-        // if (key.Length >= 2)
-        // {
-
-        //     if (key.Length >= 3)
-        //     {
-        //         int finalIndex = key.Length - 1;
-        //         int beforeFinalIndex = finalIndex - 1;
-        //         (char beforeFinal, char final) last = (key[beforeFinalIndex], key[finalIndex]);
-        //         if (last == ('[', ']'))
-        //             skip = beforeFinalIndex;
-        //     }
-        // }
 
         static bool CheckDuplicateOrCached(Type type, GenericKey key)
         {
@@ -245,19 +237,18 @@ namespace XQuinn.Reflection
         }
         struct _
         {
-
         }
     }
 
     internal class DuplicateKeyException : Exception
     {
-        internal DuplicateKeyException(Type type, Type insert, GenericKey name) : this(type, insert, name.ToString())
+        public readonly GenericKey GKey;
+        internal DuplicateKeyException(Type type, Type insert, GenericKey key) : this(type, insert, key.ToString())
         {
-
+            GKey = key;
         }
-        internal DuplicateKeyException(Type type, Type insert, string name) : base($"Conflict detected when trying to cache {insert.FullName} with key {name}. Key has already been used for type {type.FullName}. Key names are not case sensitive.")
+        DuplicateKeyException(Type type, Type insert, string name) : base($"Conflict detected when trying to cache {insert.FullName} with key {name}. Key has already been used for type {type.FullName}. Key names are not case sensitive.")
         {
-
         }
     }
 }

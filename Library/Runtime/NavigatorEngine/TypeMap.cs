@@ -7,19 +7,16 @@ using System.Linq;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
-
     internal static class TypeMap
     {
-
         internal static void MapType(Dictionary<MethodKey, MethodBase>? _methods, Dictionary<string, FieldInfo>? _fields, Type type, Dictionary<string, PropertyInfo>? _props, bool @new = true)
         {
-
             if (_methods != null)
             {
                 _methods.Clear();
                 List<MethodBase> methods = GetUnfilteredMethods(type, @new);
                 FilterSupportedMethods(methods);
-                GenericKey[] distinctKeys = methods.Select(x=> new GenericKey(x)).Distinct().ToArray();
+                GenericKey[] distinctKeys = methods.Select(x => new GenericKey(x)).Distinct().ToArray();
                 foreach (GenericKey key in distinctKeys)
                     SortMethods(methods, key, _methods);
             }
@@ -36,12 +33,10 @@ namespace XQuinn.Runtime.NavigatorEngine
             }
         }
 
-
-
         internal static List<MethodBase> GetUnfilteredMethods(Type type, bool @new)
         {
             List<MethodBase> methods = new(type.GetMethods(Flag));
-            if (@new == true) //we always get methods even if new == true, because methods can also be named new of course
+            if (@new == true)
             {
                 ConstructorInfo[] ctors = type.GetConstructors(Flag);
                 methods.AddRange(ctors);
@@ -83,12 +78,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                     i--;
                     matches++;
                 }
-
             }
-
         }
-
-
-
     }
 }
