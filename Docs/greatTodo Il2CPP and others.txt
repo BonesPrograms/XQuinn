@@ -1,0 +1,260 @@
+okay what i was planning on doing was... playing. getting 40 dudes. expanding my squad if that doesnt work. spawning a squad that i can command if that doesnt work (how do i spawn squads that i can command). I also need to install ReShade again, that is why i quit, but make sure to save my prefs (and rename it so i can have the default pref still be there). i have a timeskipper that im gonna use to test il2cpp delegates and i havent tested expandsquad yet
+ 
+MrBeast — 3:51 AM
+moving the sun, night mode, day mode, crt mode -
+I need to figure out how to move the sun,. not change time
+
+Reinstall reshade, make a good day mode pref, then make a night mode version of that that uses gamma/bleach to make it brighter. I also want a CRT mode that uses CRT and I think vibrance (you know that thing i shifted all the way to the left at the top) to make it look cool. also something to make it green
+toggle aim plan:
+Find out where aim is turned off by releasing rmb. I will make it so that when you aim with rmb, it flips a static bool that prevents aim off from being called if that bool is true. Then, if you aim with rmb again, and that bool is true, i flip it off, so that it can be regained by the ai off thing
+
+Is SystemInfo cached
+
+
+A mod that detects if im in a bush and reduces target factor
+
+GITHUB: I accidentally selected "Always" for commit, i wanna undo that
+
+Fun: DIC custom vector serializer
+
+SymbolBinding
+NavigationCore
+
+InstanceReader - BindingFlags
+
+IL2CPP Navigator - Properties dont show PropertyType
+
+
+wait - i think i can return type objects using types.of? valid unity i2lcpp types - test with airfore manager. The inner method used by types of returns types wo generics but i dont need that i think if i can just do types of
+
+
+
+Fun:
+Fun: lexical analysis () is special and makes a string a method. <> args and such
+Fun ParamStrings: Strings as C# Objects
+Fun stringids compact data only versuons of genericstrings
+
+had some plans of "fun" qud experiments
+
+
+nested generic types not working for reflection printer
+
+3 limitatjons
+Nested types in general specifically reifying the nestor with args
+Nested type fullnames if a nestor is generix
+Struct member assignment
+Method gorups as delegates
+Overload res
+Nested member access
+autochain
+paramtype method search
+
+StackTrace to log, but not to hat.
+
+# dougs relic reaver thing
+
+arg == thingyh
+
+
+: whitespae support for : indexers
+
+Dynamic Namespace Resolution
+
+
+
+LAST:
+
+
+
+
+
+
+feed will have a private ctor and static field of itself
+
+SHOW PRENAMED TYPES AND SOME PRECACHED TYPES LIKE KVP
+
+qud should dupekey throw or print to log
+
+nested generic types have fucked upo names if top type is generic
+
+Efficency - for true arbitraries set a bool in valuestring istruearbitrary assumedly readarbitrary would be true on terminate i think thats it yeah. Enums bools members and variables afaik. Null and default too p sure. Not sure what else is a true arbitrary. Then later on in Parse we only check for fields props and varibles if its a true arbitrary 4 efficienc
+
+git find a way to turn off always and ignore obj and bin from that menu u get when u firt make a branch
+
+IApp - selector using my selector method. stringus.\
+
+
+
+Yes. You can create an IL2CPP-injected type and instantiate an IL2CPP object from it. My previous statement that your mod type could not become an IL2CPP type was wrong.
+
+With an IL2CPP interop framework, the exposed registration method is typically:
+
+csharp
+
+Copy
+
+
+ClassInjector.RegisterTypeInIl2Cpp<MyType>();
+After registration, MyType has an IL2CPP class representation and can be used as an IL2CPP object, subject to the framework’s inheritance and constructor requirements. It is no longer merely an ordinary mod-side managed type.
+
+The important distinction is:
+
+An ordinary mod class remains a managed .NET type.
+A class registered through ClassInjector.RegisterTypeInIl2Cpp<T>() becomes an injected IL2CPP type.
+Instances of that registered class can be created as IL2CPP objects and passed through IL2CPP APIs.
+The class must follow the injector’s requirements, such as deriving from an allowed IL2CPP base type and providing the required constructor pattern, commonly a constructor accepting IntPtr for IL2CPP-created instances.
+So the accurate answer is: yes, you can make your own type an IL2CPP type and create an IL2CPP object from it through type injection.
+im not sure how im going to properly cache the vwar assembly. maybe this
+    // static IEnumerable<Il2CppSystem.Type> GetIL2CPPTypes()
+    // {
+
+    //     System.Type[] types = GetTypes();
+    //     return types.Select(type=>Il2CppType.From(type)); //from should convert a system.type to an il2cpp type
+    // }
+}
+
+
+
+            Component[] comps = obj.GetComponentsInChildren(Il2CppType.Of<Component>());
+            List<Type> types = [.. comps.Select(comp => comp.GetIl2CppType())];
+
+
+need to use il2cpp system generic and stuff like that for collections
+
+il2cpp boxing shgit p muchBoxed Objects: If a game method expects a generic Il2CppSystem.Object (the IL2CPP version of a boxed object) instead of a primitive integer, you must box it explicitly using new Il2CppSystem.Object(myInt).
+
+
+idk i9 just lost some shit
+fucking nigger
+
+,, ), >,
+
+
+PRELAOD class
+
+Overload sresolver
+
+QUD WILL HAVE same returnop as vwar. will actually have an option to turn it off/a command as well. or to reverse it perhaps
+
+
+Combining readarbitrary and readidentifier
+COmbining readmain into just readarbtirary or wahtever wtih a method expecrted
+
+
+making chain default
+the system detects ; that are outisde of strings and chars
+if theres more than one it chaininvokes
+
+navigator will probably be per-gameload -  on gameload, it needs to be cleared. i will do that manually, clear will not be exposed. i was going to add a custom type for preloading so its easy for people to run preloads on every gameload.
+deeper explanation ab explicit cast + cant cast variables or fields
+
+new resolution project
+method sorting - the "GetUnfilteredMethods" method actually WILL filter methods - it will use a comparer and Sort() to sort methods by metadatatoken. smalelr on top, bigger on bottom. this ensures that methods will, guaranteed, always be in the same order for our resolver, rather than relying on an unofficial implementation detail. Will want to rename "SortMethods" and "GetUnfilteredMethods" sortmethods can probably be like MatchMethods or something and GetUnfiltered will be GetSorted
+- skip GetMethod if the name contains ":"
+methods need to be  grouped by name/generickey that way theyre next to eachother in the sort, as well as metadata token, smal and big
+
+GITHUB: I accidentally selected "Always" for commit, i wanna undo that
+
+im concerned that readgeneric isnt proeprly turning shit off, so we can invedstigate that with the debugger on generic's end branch
+
+
+
+ <PrivateImplementationDetails>+__StaticArrayInitTypeSize=12]
+so it is nested inside of a compiler generated type. hm. 
+i was going t otest something about nested generics - like top generic, nested generic, fullname, how does that work in the cahce, i think that would bust gkeys
+
+
+
+# proper new res - 3 way inherit. Mid type declares new. Does 3rd type see both or only new? Our plan is to heck on addbackwards if dic containskey. If it does then we know we got something new (Proper new resoltuion - I had a plan to use AccessTools at runtime to expediate the process of checking the methods of these types using GetMethods())
+
+
+
+- instancereader doesnt read collections anymlre
+
+- explicit invoke of base methods
+
+- nested member access, overload resolution, access off methods, delegate support for methodgroups
+
+- string delegates
+
+- >, ), and ,, / genericstring garbage data
+
+- public api for qud needs advice on wen to cache and a stacktrace disabler
+
+- in/out/ref experiments with reflection
+
+
+- variable assignment, struct member assignment fix - look into using typedreference and get/setvaluedirect
+
+- ! Return Operator for qud - in my "this" example do "!this" and explain return op
+
+
+- Boxed Objects: If a game method expects a generic Il2CppSystem.Object (the IL2CPP version of a boxed object) instead of a primitive integer, you must box it explicitly using new Il2CppSystem.Object(myInt).
+
+- readfirstchar/memberaccessing
+
+- it is possible that if a string doesnt have ( we can just take the last . For member access
+
+- check if memberaccessing is true before assigning, and set it to false more in readgeneric like wen ypu hit < and > maybe actually maybe not cuz int. > is invalid
+
+- readgeneric: checkfirstchar if memberaccesing is true and char is not <,>
+
+Il2cpp will proj use il2cppobjects instead of 'object'. Il2cpptypes for the typecache i thuni
+
+# maybe throw if memberaccdsing is true on readfield or method and dont turn memberaccdssing off as part of genericstrings return false it shouldnt do that its messing up security. Smthn about readfirstchar bool that bool is essentiallt the same as memberaccessing and i think readgeneric cecks for firstchar
+
+- updated invalidcast that works for structs dynamically 
+
+
+runtiem caster that uses relfection to gert explicit ops
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ln vbax fnv bax
+Order hdmi cables and audio wires
+Mouses and jeyboards
+Phonecharger
+insurance
+Miscahrges
+Burthday gifts
+B12 ins car ins
+floss / scrape teeth, b12, ins, car ins, mischarges, etc
+bday gifts, b12, ins , car ins, mischarges, surge prot
+wasp spray
+Bike lock
+Towels
+Clothes/Socks/Teeth
+
+something new i learned i wanted to add to codetips but iforgot
+
+also i saw a fancy forloop that didnt use numbers
+Surge prot
+ClayMore
+GiftS
+AoT
+BikePackaging Shit
+does reclaimer have no dad/esper son to a human girl?
+
+mischarges ins fnv bax ln bax, phone chsrger, surge prot, hdmi, audio cable, mouse, backups  patch kit
