@@ -9,9 +9,8 @@ namespace XQuinn.LangInterp.SyntaxTree
 {
     internal sealed class MethodString : GenericString, IMemberString
     {
-        internal readonly MethodString? _subParamOf;
-        public TypeString DeclaringType => _type;
-        readonly TypeString _type;
+        internal MethodString? SubParamOf {get; private init;}
+        public TypeString DeclaringType {get; private init;}
         public IReadOnlyList<ArgumentString> Params
         {
             get
@@ -26,8 +25,8 @@ namespace XQuinn.LangInterp.SyntaxTree
         }
         MethodString(string nameForSnipping, MethodString? paramOf, TypeString type) : base(nameForSnipping)
         {
-            _subParamOf = paramOf;
-            _type = type;
+            SubParamOf = paramOf;
+            DeclaringType = type;
         }
 
         public MethodInfo ConvertToGeneric(MethodInfo genericMethodDef, TypeBook? types = null)

@@ -6,12 +6,11 @@ namespace XQuinn.LangInterp.SyntaxTree
 {
     internal sealed class TypeString : GenericString
     {
-        internal static readonly TypeString s_this = new("this");
-        internal readonly GenericString? _typeArgOf;
-
+        internal static TypeString ThisRef { get; } = new("this");
+        internal GenericString? TypeArgOf { get; private init; }
         internal TypeString(string name, GenericString? typeArgOf = null) : base(name)
         {
-            _typeArgOf = typeArgOf;
+            TypeArgOf = typeArgOf;
         }
         internal static TypeString New(string name, GenericString? typeArgOf = null)
         {
@@ -22,10 +21,10 @@ namespace XQuinn.LangInterp.SyntaxTree
             GenericKey key = new(this);
             if (key.Args > 0)
             {
-                if (RuntimeCache.s_reified_generic_types.TryGetValue(StringID, out Type? type))
+                if (RuntimeCache.ReifiedGenericTypes.TryGetValue(StringID, out Type? type))
                     return type;
                 type = ConvertToGeneric(FindType(dic, key), dic);
-                RuntimeCache.s_reified_generic_types[StringID] = type;
+                RuntimeCache.ReifiedGenericTypes[StringID] = type;
                 return type;
             }
             return FindType(dic, key);

@@ -8,9 +8,7 @@ namespace XQuinn.LangInterp.SyntaxTree
 {
     internal abstract class GenericString : MetadataString
     {
-        public string StringID => _id;
-        string _id;
-
+        public string StringID  {get; private set;}
         public IReadOnlyList<TypeString> Generics
         {
             get
@@ -21,7 +19,7 @@ namespace XQuinn.LangInterp.SyntaxTree
         List<TypeString>? _type_args;
         protected GenericString(string name) : base(name)
         {
-            _id = name;
+            StringID = name;
         }
         protected static T New<T>(T genericString) where T : GenericString
         {
@@ -85,9 +83,9 @@ namespace XQuinn.LangInterp.SyntaxTree
             bool finishedReadingLeadName = false;
             int readingsubparams = 0;
             int lastread = 0;
-            for (int i = 0; i < _id.Length; i++)
+            for (int i = 0; i < StringID.Length; i++)
             {
-                char c = _id[i];
+                char c = StringID[i];
 
                 if (c == CallLexer.Whitespace)
                     continue;
@@ -101,7 +99,7 @@ namespace XQuinn.LangInterp.SyntaxTree
                     }
                     else
                     {
-                        currentGeneric._arg = sb.ToString();
+                        currentGeneric.Arg = sb.ToString();
                         sb.Length = 0;
                         finishedReadingLeadName = true;
                     }
@@ -120,7 +118,7 @@ namespace XQuinn.LangInterp.SyntaxTree
                             sb.Length = 0;
                         }
                         TypeString currentArg = (TypeString)currentGeneric;
-                        currentGeneric = currentArg._typeArgOf!;
+                        currentGeneric = currentArg.TypeArgOf!;
                         if (readingsubparams > 0)
                             readingsubparams--;
                         continue;
@@ -135,7 +133,7 @@ namespace XQuinn.LangInterp.SyntaxTree
                 else sb.Append(c);
             }
             if (lastread > 0)
-                throw new LexicalException($"Nested generics not properly terminated. You can usually fix this by throwing an extra > at the end. Generic:", _id);
+                throw new LexicalException($"Nested generics not properly terminated. You can usually fix this by throwing an extra > at the end. Generic:", StringID);
         }
 
         TypeString NewArg(StringBuilder sb)
@@ -150,7 +148,7 @@ namespace XQuinn.LangInterp.SyntaxTree
 
         public override string ToString()
         {
-            return _id;
+            return StringID;
         }
 
         void GenericID(StringBuilder sb)
@@ -159,7 +157,7 @@ namespace XQuinn.LangInterp.SyntaxTree
             sb.Append('<');
             sb.AppendMany(Generics, ",");
             sb.Append('>');
-            _id = sb.ToString();
+            StringID = sb.ToString();
         }
     }
 }

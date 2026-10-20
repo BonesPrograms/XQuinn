@@ -7,11 +7,10 @@ namespace XQuinn.LangInterp.SyntaxTree
 
     internal sealed class FieldString : MetadataString, IMemberString
     {
-        public TypeString DeclaringType => _type;
-        readonly TypeString _type;
+        public TypeString DeclaringType { get; private init; }
         internal FieldString(string name, TypeString declaredIn) : base(name)
         {
-            _type = declaredIn;
+            DeclaringType = declaredIn;
         }
 
         public override string ToString()

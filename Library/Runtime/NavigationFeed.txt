@@ -29,6 +29,8 @@ namespace XQuinn.Runtime
             StackTrace = stacktrace;
         }
 
+        public void Clear() => _core.Clear();
+
         public string ChainInstruct(params string[] args)
         {
             StringBuilder sb = new();
@@ -60,7 +62,7 @@ namespace XQuinn.Runtime
             _feed.AppendLine();
             _feed.Append($"Instruction :");
             _feed.AppendLine(input);
-            ProcessReturn(_core.Instruct(input));
+            ProcessReturn(_core.ChainInstruct(input));
             AppendNavigData();
             string output = _feed.ToString();
             _feed.Length = 0;
@@ -69,15 +71,17 @@ namespace XQuinn.Runtime
 
         void ProcessReturn(object? ret)
         {
-            ReferenceBinding? variable = ret as ReferenceBinding;
-            if (variable != null)
+            Reference? reference = null;
+            if(ret is Reference refobj)
+            reference = refobj;
+            if (reference != null)
             {
-                _feed.Append($"Variable: ");
-                _feed.AppendLine(variable.ToString());
-                ret = variable.Object;
+                _feed.Append($"Reference: ");
+                _feed.AppendLine(reference.ToString());
+                ret = reference.Value.Object;
             }
             IEnumerable? enumerator = ret is string ? null : ret as IEnumerable;
-            if (variable == null || enumerator != null)
+            if (reference == null || enumerator != null)
                 _feed.AppendLine("Returned: ");
             if (enumerator != null)
             {
@@ -98,24 +102,24 @@ namespace XQuinn.Runtime
                     _feed.AppendLine();
                 }
             }
-            else if (variable == null)
+            else if (reference == null)
                 _feed.AppendLine(ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString() ?? "null");
         }
 
         void AppendNavigData()
         {
-            if (_core._static_type != null)
+            if (_core.StaticType != null)
             {
-                _feed.Append($"Loaded Type: ");
-                _feed.AppendLine(ReflectionPrinter.Print(_core._static_type, false));
-                if (_core._object_type != null)
+                _feed.Append($"Type: ");
+                _feed.AppendLine(ReflectionPrinter.Print(_core.StaticType, false));
+                if (_core.ObjectType != null)
                 {
-                    _feed.Append($"Loaded Instance Type: ");
-                    _feed.AppendLine(ReflectionPrinter.Print(_core._object_type, false));
-                    if (_core._variable != null)
+                    _feed.Append($"Instance Type: ");
+                    _feed.AppendLine(ReflectionPrinter.Print(_core.ObjectType, false));
+                    if (_core.Reference != null)
                     {
-                        _feed.Append($"Loaded Variable: ");
-                        _feed.AppendLine(_core._variable);
+                        _feed.Append($"Reference: ");
+                        _feed.AppendLine(_core.Reference);
                     }
                 }
             }

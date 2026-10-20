@@ -11,6 +11,8 @@ using System.Runtime.InteropServices;
 using System.Runtime.CompilerServices;
 using System.Linq;
 using XQuinn.Runtime.NavigatorEngine;
+using XQuinn.Runtime;
+using XQuinn.ObjectModel;
 
 namespace XQuinn.Reflection
 {
@@ -18,20 +20,18 @@ namespace XQuinn.Reflection
     {
         public static IEnumerable<string> Keys()
         {
-            foreach (GenericKey key in s_registry.Keys)
+            foreach (GenericKey key in Registry.Keys)
                 yield return key.ToString();
         }
-        public static ICollection<Type> Values => s_registry.Values;
+        public static ICollection<Type> Values => Registry.Values;
         public static IEnumerable<KeyValuePair<string, Type>> Enumerate()
         {
-            foreach (KeyValuePair<GenericKey, Type> obj in s_registry)
+            foreach (KeyValuePair<GenericKey, Type> obj in Registry)
                 yield return new(obj.Key.ToString(), obj.Value);
         }
 
-        internal static readonly Dictionary<GenericKey, Type> s_registry = new();
-
-        readonly static string[] s_illegal_keys = new string[] { "null", "default", "base", "this", bool.FalseString, bool.TrueString };
-
+        static Dictionary<GenericKey, Type> Registry { get; } = new();
+        static string[] IllegalKeys { get; } = new string[] { "null", "default", "base", "this", bool.FalseString, bool.TrueString };
         static TypeRegister()
         {
             (string, Type)[] preNamedTypes = new (string, Type)[]
@@ -40,13 +40,14 @@ namespace XQuinn.Reflection
               ("short", typeof(short)), ("ushort", typeof(ushort)),
               ("long", typeof(long)), ("ulong", typeof(ulong)),
               ("float", typeof(float)), ("bool", typeof(bool)),
-              ("Tuple", typeof(ValueTuple)), ("KVP", typeof(KeyValuePair<,>))
+              ("Tuple", typeof(ValueTuple)), ("KVP", typeof(KeyValuePair<,>)),
+              ("Runtime.Navigator", typeof(Navigator))
             };
             for (int i = 0; i < preNamedTypes.Length; i++)
             {
                 (string name, Type type) = preNamedTypes[i];
                 GenericKey gkey = new(name, type);
-                s_registry[gkey] = type;
+                Registry[gkey] = type;
             }
             Type[] preCachedTypes = new Type[]
             {
@@ -59,7 +60,7 @@ namespace XQuinn.Reflection
             typeof(Nullable<>), typeof(Nullable),
             typeof(IDisposable),
 
-            typeof(Types), typeof(TypeRegister),
+            typeof(Types), typeof(TypeRegister), typeof(InstanceReader),
 
             typeof(Assembly), typeof(Activator),
             typeof(Environment), typeof(AppDomain),
@@ -76,16 +77,16 @@ namespace XQuinn.Reflection
                 Type type = preCachedTypes[i];
                 string name = GetCompatibleName(type, false);
                 GenericKey gkey = new(name, type);
-                s_registry[gkey] = type;
+                Registry[gkey] = type;
             }
             Assembly mscorlib = Assembly.Load("System.Private.CoreLib");
             Type runtimeType = mscorlib.GetType("System.RuntimeType", true)!;
             GenericKey key = new(typeof(Type).Name, runtimeType);
-            s_registry[key] = runtimeType;
+            Registry[key] = runtimeType;
         }
 
-        public static bool Contains(string name) => s_registry.ContainsKey(GenericKey.TypeQuery(name));
-        public static bool TryGetType(string name, out Type? cachedtype) => s_registry.TryGetValue(GenericKey.TypeQuery(name), out cachedtype);
+        public static bool Contains(string name) => Registry.ContainsKey(GenericKey.TypeQuery(name));
+        public static bool TryGetType(string name, out Type? cachedtype) => Registry.TryGetValue(GenericKey.TypeQuery(name), out cachedtype);
         public static Type? GetTypeCached(string name)
         {
             if (TryGetType(name, out Type? cachedtype))
@@ -100,7 +101,7 @@ namespace XQuinn.Reflection
 
         internal static Type GetTypeOrThrow(GenericKey key)
         {
-            if (s_registry.TryGetValue(key, out Type? cachedType))
+            if (Registry.TryGetValue(key, out Type? cachedType))
                 return cachedType;
             throw new ArgumentException($"Could not find cached type with key {key.Name} and generic arg count {key.Args}.");
         }
@@ -117,7 +118,7 @@ namespace XQuinn.Reflection
             GenericKey trueKey = new(key, type);
             if (CheckDuplicateOrCached(type, trueKey))
                 return false;
-            s_registry[trueKey] = type;
+            Registry[trueKey] = type;
             return true;
         }
         public static bool CacheType<T>(string key)
@@ -206,8 +207,8 @@ namespace XQuinn.Reflection
                 throw new ArgumentException($"Keys cannot begin with a digit. Bad Key: {key}");
             if (key[0] == CallLexer.MemberAccessOrDecimal)
                 throw new ArgumentException($"Keys cannot begin with a period. Bad Key {key}");
-            for (int i = 0; i < s_illegal_keys.Length; i++)
-                if (s_illegal_keys[i].EqualsCaseless(key))
+            for (int i = 0; i < IllegalKeys.Length; i++)
+                if (IllegalKeys[i].EqualsCaseless(key))
                     throw new ArgumentException($"This key is restricted and cannot be registered. Bad Key {key}.");
             bool accessor = false;
             for (int i = 0; i < key.Length; i++)
@@ -231,13 +232,11 @@ namespace XQuinn.Reflection
 
         static bool CheckDuplicateOrCached(Type type, GenericKey key)
         {
-            if (s_registry.TryGetValue(key, out Type? cachedtype))
+            if (Registry.TryGetValue(key, out Type? cachedtype))
                 return type == cachedtype ? true : throw new DuplicateKeyException(cachedtype!, type, key);
             return false;
         }
-        struct _
-        {
-        }
+
     }
 
     internal class DuplicateKeyException : Exception

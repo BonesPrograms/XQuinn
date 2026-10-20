@@ -21,22 +21,23 @@ namespace XQuinn.Runtime.NavigatorEngine
                 return false;
             return !parameters.Any(x => x.IsOut || x.IsIn || x.ParameterType.IsByRef);
         }
+        
 
         internal Type FindReference(IMemberString member, out object? instance)
         {
-            if (_core._variables.TryGetValue(member.DeclaringType.StringID, out ReferenceBinding? variable))
+            if (Core.References.TryGetValue(member.DeclaringType.StringID, out Reference reference))
             {
-                instance = variable.Object;
-                return variable.Object.GetType();
+                instance = reference.Object;
+                return reference.Object.GetType();
             }
-            if (_core._fields.TryGetValue(member.DeclaringType.StringID, out FieldInfo? field))
+            if (Core.Fields.TryGetValue(member.DeclaringType.StringID, out FieldInfo? field))
             {
-                instance = field.GetValue(_core._object) ?? throw new ArgumentException($"Field {field} in type {_core._static_type} returned null and it's member methods and fields cannot be invoked.");
+                instance = field.GetValue(Core.Object) ?? throw new ArgumentException($"Field {field} in type {Core.StaticType} returned null and it's member methods and fields cannot be invoked.");
                 return instance.GetType();
             }
-            if (_core._props.TryGetValue(member.DeclaringType.StringID, out PropertyInfo? prop))
+            if (Core.Props.TryGetValue(member.DeclaringType.StringID, out PropertyInfo? prop))
             {
-                instance = prop.GetValue(_core._object, NavigatorCore.Flag, null, null, null) ?? throw new ArgumentException($"Property {member.DeclaringType.Name} in type {_core._static_type} returned null and it's member methods and fields cannot be invoked.");
+                instance = prop.GetValue(Core.Object, NavigatorCore.Flag, null, null, null) ?? throw new ArgumentException($"Property {member.DeclaringType.Name} in type {Core.StaticType} returned null and it's member methods and fields cannot be invoked.");
                 return instance.GetType();
             }
 
@@ -44,31 +45,31 @@ namespace XQuinn.Runtime.NavigatorEngine
             return FindType(member.DeclaringType, false);
         }
 
-        internal Type FindType(TypeString typename, bool staticLoadOrCasting)
+        internal Type FindType(TypeString typename, bool cast)
         {
-            if (!staticLoadOrCasting)
+            if (!cast)
             {
                 if (typename.StringID.EqualsCaseless("this"))
-                    return _core._object_type == null ? throw new InvalidOperationException("Cannot pass this, instance is null.") : _core._static_type!;
-                if (typename.StringID.EqualsCaseless(_core._implicit_this?.StringID))
-                    return _core._static_type!;
+                    return Core.ObjectType == null ? throw new InvalidOperationException("Cannot pass this, instance is null.") : Core.StaticType!;
+                if (typename.StringID.EqualsCaseless(Core.ImplicitRef?.StringID))
+                    return Core.StaticType!;
             }
             if (typename.StringID.EqualsCaseless("base"))
             {
-                if (_core._object_type == null)
+                if (Core.ObjectType == null)
                     throw new InvalidOperationException("Cannot get instance base, instance is null.");
-                return _core._object_type.BaseType ?? throw new ArgumentException("Base type of instance is null.");
+                return Core.ObjectType.BaseType ?? throw new ArgumentException("Base type of instance is null.");
             }
-            return typename.ToType(_core.LocalCache);
+            return typename.ToType(Core.LocalCache);
         }
 
         internal MethodBase FindMethod(MethodString method)
         {
-            _core._methods.TryGetValue(MethodKey.MethodQuery(method), out MethodBase? methodbase);
+            Core.Methods.TryGetValue(MethodKey.MethodQuery(method), out MethodBase? methodbase);
             if (methodbase == null)
-                throw new MissingMethodException($"No method named {method.Name}  with generic arg count {method.Generics.Count} found in {_core._static_type}'s method dictionary. It may have been removed due to having a ref return type or in/out/ref parameters.");
+                throw new MissingMethodException($"No method named {method.Name}  with generic arg count {method.Generics.Count} found in {Core.StaticType}'s method dictionary. It may have been removed due to having a ref return type or in/out/ref parameters.");
             if (methodbase.IsGenericMethodDefinition && methodbase is MethodInfo actualmethod)
-                methodbase = method.ConvertToGeneric(actualmethod, _core.LocalCache);
+                methodbase = method.ConvertToGeneric(actualmethod, Core.LocalCache);
             return methodbase;
         }
 
@@ -105,17 +106,16 @@ namespace XQuinn.Runtime.NavigatorEngine
         }
     }
 
-    internal sealed class ReferenceBinding
+    internal readonly struct Reference
     {
         public readonly object Object;
-        internal ReferenceBinding(object instance)
+        internal Reference(object instance)
         {
             Object = instance;
         }
         public override string ToString()
         {
-            string? objToStr = Object is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : Object.ToString();
-            return $"ObjectType: {ReflectionPrinter.Print(Object.GetType(), false)} :: ToString: {objToStr}";
+            return $"ObjectType: {Object.GetType().ToReflectionString()} :: ToString: {Object.ToReflectionString()}";
         }
     }
 }

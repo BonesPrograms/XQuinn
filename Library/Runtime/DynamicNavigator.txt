@@ -97,7 +97,6 @@ namespace XQuinn.Runtime
         {
             if (_box == null) return null;
             _monitor._core.Clear();
-            NavigatorCore.FlushStaticCache();
             _assembly = null;
             WeakReference monitor = new(_box, trackResurrection: true);
             _box?.Unload();

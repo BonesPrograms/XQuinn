@@ -7,32 +7,29 @@ namespace XQuinn.Runtime.NavigatorEngine
 {
     static class RuntimeCache
     {
-        internal static readonly Dictionary<Type, HashSet<string>> s_ambiguous_matches = new();
-        internal static readonly Dictionary<Type, Dictionary<string, MemberInfo>> s_global_metadata = new();
-        internal static readonly Dictionary<string, Type> s_reified_generic_types = new(StringComparer.OrdinalIgnoreCase);
+        internal static Dictionary<Type, HashSet<string>> AmbiguousMatches { get; } = new();
+        internal static Dictionary<Type, Dictionary<string, MemberInfo>> GlobalMetadata { get; } = new();
+        internal static Dictionary<string, Type> ReifiedGenericTypes { get; } = new(StringComparer.OrdinalIgnoreCase);
 
         internal static bool CheckAmbiguousMatch(Type fromType, MethodString mthdString, out Type cachedType, out HashSet<string>? cachedMatches)
         {
             cachedMatches = null;
             cachedType = fromType.IsGenericType && !fromType.IsGenericTypeDefinition ? fromType.GetGenericTypeDefinition() : fromType;
-            s_ambiguous_matches.TryGetValue(cachedType, out cachedMatches);
+            AmbiguousMatches.TryGetValue(cachedType, out cachedMatches);
             return cachedMatches?.Contains(mthdString.Name) ?? false;
         }
 
-        public static void FlushStaticCache(bool ambiguousMatches = false, bool typeMembers = true, bool reifiedGenerics = true)
+        internal static void FlushStaticCache()
         {
-            if (ambiguousMatches)
-                s_ambiguous_matches.Clear();
-            if (typeMembers)
-                s_global_metadata.Clear();
-            if (reifiedGenerics)
-                s_reified_generic_types.Clear();
+            AmbiguousMatches.Clear();
+            GlobalMetadata.Clear();
+            ReifiedGenericTypes.Clear();
         }
 
         internal static T? FromCache<T>(string key, Type fromType, out bool typeCached, out bool memberCached) where T : MemberInfo
         {
             memberCached = false;
-            typeCached = s_global_metadata.TryGetValue(fromType, out Dictionary<string, MemberInfo>? cachedMembers);
+            typeCached = GlobalMetadata.TryGetValue(fromType, out Dictionary<string, MemberInfo>? cachedMembers);
             if (typeCached)
             {
                 memberCached = cachedMembers!.TryGetValue(key, out MemberInfo? member);
@@ -47,7 +44,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             if (cachedMatches == null)
             {
                 cachedMatches = new(StringComparer.OrdinalIgnoreCase);
-                s_ambiguous_matches[cachedType] = cachedMatches;
+                AmbiguousMatches[cachedType] = cachedMatches;
             }
             cachedMatches.Add(mthdString.Name);
         }
@@ -58,11 +55,11 @@ namespace XQuinn.Runtime.NavigatorEngine
                 return;
             Dictionary<string, MemberInfo> cachedMembers;
             if (typeCached)
-                cachedMembers = s_global_metadata[fromType];
+                cachedMembers = GlobalMetadata[fromType];
             else
             {
                 cachedMembers = new(StringComparer.OrdinalIgnoreCase);
-                s_global_metadata[fromType] = cachedMembers;
+                GlobalMetadata[fromType] = cachedMembers;
             }
             cachedMembers[key] = member;
         }

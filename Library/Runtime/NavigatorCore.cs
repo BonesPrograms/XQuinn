@@ -8,38 +8,39 @@ using System.Collections.Generic;
 using XQuinn.LangInterp;
 using System.Text;
 using XQuinn.Runtime.NavigatorEngine;
+using System.Collections;
 
 namespace XQuinn.Runtime
 {
+
+
     internal sealed class NavigatorCore
     {
-        internal TypeBook? LocalCache;
-        internal readonly CallLexer _lexer = new();
-        internal readonly Parser _parser;
-        internal readonly Reflector _reflector;
-        internal readonly Invoker _invoker;
-        internal object? _object;
-        internal string? _variable;
-        internal Type? _object_type => _object?.GetType();
-        internal Type? _static_type;
-        internal TypeString? _implicit_this;
-        internal readonly Dictionary<MethodKey, MethodBase> _methods = new();
-        internal readonly Dictionary<string, FieldInfo> _fields = new(StringComparer.OrdinalIgnoreCase);
-        internal readonly Dictionary<string, PropertyInfo> _props = new(StringComparer.OrdinalIgnoreCase);
-        internal readonly Dictionary<string, ReferenceBinding> _variables = new(StringComparer.OrdinalIgnoreCase);
 
-        bool _chaining;
-        public bool StackTrace;
+
+        internal TypeBook? LocalCache { get; set; }
+        CallLexer Lexer { get; init; } = new();
+        internal Parser Parser { get; private init; }
+        internal Reflector Reflector { get; private init; }
+        internal Invoker Invoker { get; private init; }
+        internal object? Object { get; private set; }
+        internal string? Reference { get; private set; }
+        internal Type? ObjectType => Object?.GetType();
+        internal Type? StaticType { get; private set; }
+        internal TypeString? ImplicitRef { get; private set; }
+        internal Dictionary<MethodKey, MethodBase> Methods { get; private init; } = new();
+        internal Dictionary<string, FieldInfo> Fields { get; private init; } = new(StringComparer.OrdinalIgnoreCase);
+        internal Dictionary<string, PropertyInfo> Props { get; private init; } = new(StringComparer.OrdinalIgnoreCase);
+        internal Dictionary<string, Reference> References { get; private init; } = new(StringComparer.OrdinalIgnoreCase);
+
         internal const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
-
         public NavigatorCore()
         {
-            _parser = new(this);
-            _reflector = new(this);
-            _invoker = new(this);
+            Parser = new(this);
+            Reflector = new(this);
+            Invoker = new(this);
         }
-
-        public object? Instruct(string invocation)
+        internal object? Instruct(string invocation)
         {
             char controller = default;
             int substring = -1;
@@ -53,45 +54,44 @@ namespace XQuinn.Runtime
                 }
             }
             if (substring == -1)
-                return "No instruction detected.";
+                return new EmptyInstruction();
             return controller switch
             {
-                '+' => AddVariable(invocation.Substring(substring)),
-                '-' => RemoveVariable(invocation.Substring(substring)),
-                '@' => LoadTypeStatic(invocation.Substring(substring)),
-                '*' => LoadInstance(invocation.Substring(substring)),
-                '^' => CastInstance(invocation.Substring(substring)),
-                '~' => ChainInvoke(invocation.Substring(substring).Split(';')),
+                '+' => NewRef(invocation.Substring(substring)),
+                '-' => RemoveRef(invocation.Substring(substring)),
+                '$' => LoadStatic(invocation.Substring(substring)),
+                '#' or '*' => LoadObject(invocation.Substring(substring)),
+                '^' => Cast(invocation.Substring(substring)),
                 '?' => Query(invocation.Substring(substring)),
-                _ => InvokeOrAssign(invocation)
+                _ => ReturnOrAssign(invocation)
             };
         }
 
         IEnumerable<string> Query(string invocation)
         {
             invocation = invocation.Trim();
-            if (invocation.EqualsCaseless("vars"))
-                return _variables.Select(x => $"Key: {x.Key} :: {x.Value}");
-            if (_static_type == null)
+            if (invocation.EqualsCaseless("vars") || invocation.EqualsCaseless("refs"))
+                return References.Select(x => $"Key: {x.Key} :: {x.Value}");
+            if (StaticType == null)
                 throw new InvalidOperationException("No loaded type to query. Use the static methods Fields/Methods/Props in class Types to query unloaded types.");
             if (MiniLexer.ImplicitThisMethodCall(invocation))
             {
-                MethodString query = _lexer.MethodTemplate(invocation, _implicit_this!, _implicit_this);
+                MethodString query = Lexer.MethodTemplate(invocation, ImplicitRef!, ImplicitRef);
                 if (query.Name.EqualsCaseless("methods"))
-                    return ParseQuery(_methods, query);
+                    return ParseQuery(Methods, query);
                 if (query.Name.EqualsCaseless("fields"))
-                    return ParseQuery(_fields, query);
+                    return ParseQuery(Fields, query);
                 if (query.Name.EqualsCaseless("props"))
-                    return ParseQuery(_props, query);
+                    return ParseQuery(Props, query);
             }
             else
             {
                 if (invocation.EqualsCaseless("methods"))
-                    return Types.ReadMembers(_methods, null, Flag);
+                    return Types.ReadMembers(Methods, null, Flag);
                 if (invocation.EqualsCaseless("fields"))
-                    return Types.ReadMembers(_fields, null, Flag);
-                if (invocation.Equals("props"))
-                    return Types.ReadMembers(_props, null, Flag);
+                    return Types.ReadMembers(Fields, null, Flag);
+                if (invocation.EqualsCaseless("props"))
+                    return Types.ReadMembers(Props, null, Flag);
             }
             throw new ArgumentException("Invalid query");
         }
@@ -100,117 +100,74 @@ namespace XQuinn.Runtime
         {
             if (query.Params.Count <= 2)
             {
-                string? contains = query.Params.Count >= 1 ? (string?)_parser.NewArg(query.Params[0], typeof(string)) : null;
-                BindingFlags flags = query.Params.Count == 2 ? (BindingFlags)_parser.NewArg(query.Params[1], typeof(BindingFlags))! : Flag;
+                string? contains = query.Params.Count >= 1 ? (string?)Parser.NewArg(query.Params[0], typeof(string)) : null;
+                BindingFlags flags = query.Params.Count == 2 ? (BindingFlags)Parser.NewArg(query.Params[1], typeof(BindingFlags))! : Flag;
                 return Types.ReadMembers(dic, contains, flags);
             }
             throw new TargetParameterCountException("Local query is max 2 params: a containig string and bindingflags search flags.");
         }
 
-        List<string> ChainInvoke(params string[] commands)
-        {
-            if (_chaining)
-                throw new NotSupportedException("Cannot invoke nested chains.");
-            _chaining = true;
-            List<string> invocations = new(commands.Length);
-            for (int i = 0; i < commands.Length; i++)
-            {
-                string cmd = commands[i];
-                try
-                {
-                    object? ret = Instruct(cmd);
-                    if (ret is string s && s == "No instruction detected.")
-                        continue;
-                    string? retstring = ret is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : ret?.ToString();
-                    invocations.Add($"[Instruction: {cmd} :: Returned: {retstring ?? "null"}]");
-                }
-                catch (Exception ex)
-                {
-                    _chaining = false;
-                    StringBuilder sb = new();
-                    sb.CatchException(ex, StackTrace);
-                    invocations.Insert(0, sb.ToString());
-                    invocations.Add($"!!! EXCEPTION on [Instructinon: {cmd}]");
-                    return invocations;
-                }
-            }
-            _chaining = false;
-            return invocations;
-        }
-
-        public Type LoadTypeStatic(string typeName)
+        public Type LoadStatic(string typeName)
         {
             TypeString tstring = TypeString.New(typeName.Trim());
-            Type t = _reflector.FindType(tstring, true);
-            _implicit_this = tstring;
+            Type t = tstring.ToType();
+            ImplicitRef = tstring;
             LoadTypeMembers(t);
-            _object = null;
-            _variable = null;
+            Object = null;
+            Reference = null;
             return t;
         }
 
-        void LoadInstance(object instance)
-        {
-            _object = instance;
-            LoadTypeMembers(_object_type!);
-            _implicit_this = TypeString.s_this;
-        }
-        void LoadTypeMembers(Type type)
-        {
-            _static_type = type;
-            TypeMap.MapType(_methods, _fields, type, _props);
-        }
-
-        object LoadInstance(string invocation)
+        object LoadObject(string invocation)
         {
             invocation = invocation.Trim();
             object? instance = null;
-            _variable = null;
-            if (_variables.TryGetValue(invocation, out ReferenceBinding? variable))
+            Reference = null;
+            bool referenced = false;
+            if (References.TryGetValue(invocation, out Reference reference))
             {
-                _variable = invocation;
-                instance = variable.Object;
+                Reference = invocation;
+                instance = reference.Object;
+                referenced = true;
             }
-            instance ??= InvokeOrAssign(invocation) ?? throw new ArgumentException($"Failed to load new instance from {invocation}, invocation returned null!");
+            instance ??= ReturnOrAssign(invocation) ?? throw new ArgumentException($"Failed to load new instance from {invocation}, invocation returned null!");
             LoadInstance(instance);
-            return variable ?? instance;
+            return referenced ? reference : instance;
         }
 
-        object? InvokeOrAssign(string invocation)
+        object? ReturnOrAssign(string invocation)
         {
             if (Assignment(invocation, out object? assigned))
                 return assigned;
-            string typeName = MiniLexer.ResolveMemberAccessOrLiteral(invocation, out string member, out bool field) ?? _implicit_this?.StringID ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
-            if (typeName != _implicit_this?.StringID)
-                typeName = typeName.Trim();
+            invocation = invocation.Trim();
+            if (References.TryGetValue(invocation, out Reference reference))
+                return reference;
+            if (invocation.EqualsCaseless("this"))
+                return Object;
+            string typeName = MiniLexer.ResolveMemberAccessOrLiteral(invocation, out string member, out bool field)?.Trim() ?? ImplicitRef?.StringID ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
             if (!field)
             {
-                TypeString declaringtype = ThisOrNew(typeName);
-                MethodString method = _lexer.MethodTemplate(member, declaringtype, _implicit_this);
-                return _invoker.InvokeMethod(method);
+                TypeString declaringtype = TypeString.New(typeName);
+                MethodString method = Lexer.MethodTemplate(member, declaringtype, ImplicitRef);
+                return Invoker.InvokeMethod(method);
             }
             else
             {
-                member = member.Trim();
-                if (member.EqualsCaseless("this"))
-                    return _object ?? "null";
-                if (_variables.TryGetValue(member, out ReferenceBinding? variable))
-                    return variable;
-                TypeString declaringtype = ThisOrNew(typeName);
-                FieldString fieldStr = new(member, declaringtype);
-                return _invoker.InvokeFieldOrProperty(fieldStr);
+                TypeString declaringtype = TypeString.New(typeName);
+                FieldString fieldStr = new(member.Trim(), declaringtype);
+                return Invoker.InvokeFieldOrProperty(fieldStr);
             }
         }
 
-        Type CastInstance(string invocation)
+        Type Cast(string invocation)
         {
-            if (_object == null)
+            if (Object == null)
                 throw new InvalidOperationException("Cannot cast, instance is null.");
             TypeString tstring = TypeString.New(invocation.Trim());
-            Type t = _reflector.FindType(tstring, true);
-            _implicit_this = tstring;
-            if (!t.IsAssignableFrom(_object_type))
-                throw new InvalidCastException($"{_object_type} cannot cast to {t}.");
+            Type t = Reflector.FindType(tstring, true);
+            if (!t.IsAssignableFrom(ObjectType))
+                throw new InvalidCastException($"{ObjectType} cannot cast to {t}.");
+            ImplicitRef = tstring;
             LoadTypeMembers(t);
             return t;
         }
@@ -227,117 +184,156 @@ namespace XQuinn.Runtime
             righthand = righthand.Trim();
             if (!lefthandfield)
                 throw new ArgumentException($"Can only assign to fields or properties. Bad input: {lefthand}");
-            Type? lefthandtype;
-            object? lefthandInstance;
-            Reflector.Assignment assigningTo;
+            Reflector.Assignment assigningTo = LefthandExpression(lefthand, lefthandTypeName, out Type lefthandtype, out object? lefthandInstance, invocation);
+            assignedValue = RighthandExpression(righthand, assigningTo.ObjectType);
+            assigningTo.SetValue(Invoker.TargetInstance(lefthandtype, lefthandInstance), assignedValue);
+            return true;
+        }
 
+        Reflector.Assignment LefthandExpression(string lefthand, string? lefthandTypeName, out Type lefthandtype, out object? lefthandInstance, string invocation)
+        {
             if (lefthandTypeName == null)
             {
-                lefthandtype = _static_type ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {invocation}");
-                lefthandInstance = _object;
+                lefthandtype = StaticType ?? throw new ArgumentException($"There is no loaded type to assign fields to. Bad input: {invocation}");
+                lefthandInstance = Object!;
             }
             else
             {
-                TypeString typestring = ThisOrNew(lefthandTypeName);
+                TypeString typestring = TypeString.New(lefthandTypeName);
                 FieldString fieldStr = new(lefthand, typestring);
-                lefthandtype = _reflector.FindReference(fieldStr, out object? variable);
-                lefthandInstance = variable;
+                lefthandtype = Reflector.FindReference(fieldStr, out object? reference);
+                lefthandInstance = reference;
             }
-            if (lefthandtype != _static_type && (!lefthandtype?.IsClass ?? false))
+            if (lefthandtype != StaticType && (!lefthandtype?.IsClass ?? false))
                 throw new NotSupportedException($"Assigning to the members of struct fields is currently unsupported due to constraints related to boxing.See \"Assignment\" in public API doc for more info.");
-
             FieldInfo? field = lefthandtype!.GetField(lefthand, Flag);
             if (field != null)
-                assigningTo = new Reflector.Assignment(field);
+                return new Reflector.Assignment(field);
             else
             {
                 PropertyInfo? prop = lefthandtype.GetProperty(lefthand, Flag) ?? throw new MissingMemberException($"No field or property found named {lefthand} in {lefthandtype}.");
-                assigningTo = new Reflector.Assignment(prop);
+                return new Reflector.Assignment(prop);
             }
+        }
 
+        object? RighthandExpression(string righthand, Type objecttype)
+        {
             string? righthandTypeName = MiniLexer.ResolveMemberAccessOrLiteral(righthand, out righthand, out bool righthandfield);
             righthand = righthand.Trim();
             if (righthandTypeName != null)
             {
                 righthandTypeName = righthandTypeName.Trim();
-                TypeString typeStr = ThisOrNew(righthandTypeName);
+                TypeString typeStr = TypeString.New(righthandTypeName);
                 if (righthandfield)
                 {
                     FieldString fieldStr = new(righthand, typeStr);
-                    assignedValue = _invoker.InvokeFieldOrProperty(fieldStr);
+                    return Invoker.InvokeFieldOrProperty(fieldStr);
                 }
                 else
                 {
-                    MethodString methodStr = _lexer.MethodTemplate(righthand, typeStr, _implicit_this);
-                    assignedValue = _invoker.InvokeMethod(methodStr);
+                    MethodString methodStr = Lexer.MethodTemplate(righthand, typeStr, ImplicitRef);
+                    return Invoker.InvokeMethod(methodStr);
                 }
             }
             else if (!righthandfield && MiniLexer.ImplicitThisMethodCall(righthand))
             {
-                if (_static_type == null)
+                if (StaticType == null)
                     throw new ArgumentException("Cannot perform implicit this call, no type is loaded.");
-                MethodString methodStr = _lexer.MethodTemplate(righthand, _implicit_this!, _implicit_this);
-                assignedValue = _invoker.InvokeMethod(methodStr);
+                MethodString methodStr = Lexer.MethodTemplate(righthand, ImplicitRef!, ImplicitRef);
+                return Invoker.InvokeMethod(methodStr);
             }
             else
             {
                 ValueString valueStr = new(righthand);
-                assignedValue = _parser.ParseValue(valueStr, assigningTo.ObjectType);
+                return Parser.ParseValue(valueStr, objecttype);
             }
-
-            assigningTo.SetValue(_invoker.TargetInstance(lefthandtype, lefthandInstance), assignedValue);
-            return true;
         }
 
-        string RemoveVariable(string key)
+        string NewRef(string key)
         {
-            key = key.Trim();
-            if (key.EqualsCaseless(_variable))
-                _variable = null;
-            return _variables.Remove(key) ? $"{key} removed from variables." : $"No variable named {key}.";
-        }
-
-        string AddVariable(string key)
-        {
-            if (_object == null)
-                throw new InvalidOperationException("No instance is loaded.");
-            key = key.Trim();
-            TypeRegister.ThrowIfBadKey(key);
-            if (TypeRegister.s_registry.ContainsKey(new(key)))
-                throw new ArgumentException($"Key {key} is taken by a cached type, and cannot be used as a name for a local variable. Names are not case sensitive.");
-            if (_variables.TryGetValue(key, out ReferenceBinding? variable))
+            if (MiniLexer.AssignmentSubstring(key, out string? left, out string? right))
             {
-                if (!ReferenceEquals(_object, variable.Object))
-                    throw new ArgumentException("Duplicate keyname detected.");
-                return $"The current instance already is a variable named {key}.";
+                left = left!.Trim();
+                if (left.EqualsCaseless(Reference))
+                    throw new NotSupportedException("Cannot reassign a reference if it is the currently loaded instance.");
+                VerifyKey(left);
+                object? value = RighthandExpression(right!, typeof(object));
+                if (value == null)
+                {
+                    if (References.TryGetValue(left, out Reference reference1))
+                    {
+                        Reflector.NotNullable(reference1.Object.GetType(), value);
+                        References.Remove(left);
+                        return $"Removed reference {left}.";
+                    }
+                    return $"No reference named {left}.";
+                }
+                else
+                {
+                    Reference reference = new(value);
+                    References[left] = reference;
+                    return $"Created reference {left}.";
+                }
             }
-            _variables[key] = new(_object);
-            _variable = key;
-            return $"Added current instance as variable {key}.";
+            else
+            {
+                if (Object == null)
+                    throw new InvalidOperationException("No instance is loaded.");
+                key = key.Trim();
+                VerifyKey(key);
+                // if (References.TryGetValue(key, out Reference existingref))
+                // {
+                //     if (!ReferenceEquals(Object, existingref.Object))
+                //         throw new ArgumentException("Duplicate keyname detected.");
+                //     return $"The current instance already is a reference named {key}.";
+                // }
+                References[key] = new(Object);
+                Reference = key;
+                return $"Added current instance as reference {key}.";
+            }
         }
-
-        public static void FlushStaticCache(bool ambiguousMatches = false, bool typeMembers = true, bool reifiedGenerics = true)
+        string RemoveRef(string key)
         {
-            RuntimeCache.FlushStaticCache(ambiguousMatches, typeMembers, reifiedGenerics);
+            key = key.Trim();
+            if (key.EqualsCaseless(Reference))
+                Reference = null;
+            return References.Remove(key) ? $"{key} removed from references." : $"No reference named {key}.";
+        }
+        void LoadInstance(object instance)
+        {
+            Object = instance;
+            LoadTypeMembers(ObjectType!);
+            ImplicitRef = TypeString.ThisRef;
+        }
+        void LoadTypeMembers(Type type)
+        {
+            StaticType = type;
+            TypeMap.MapType(Methods, Fields, type, Props);
         }
 
         public void Clear()
         {
-            _variables.Clear();
-            _methods.Clear();
-            _fields.Clear();
-            _props.Clear();
+            References.Clear();
+            Methods.Clear();
+            Fields.Clear();
+            Props.Clear();
             LocalCache = null;
-            _object = null;
-            _static_type = null;
-            _implicit_this = null;
-            _chaining = false;
-            _variable = null;
+            Object = null;
+            StaticType = null;
+            ImplicitRef = null;
+            Reference = null;
+        }
+        static void VerifyKey(string key)
+        {
+            TypeRegister.ThrowIfBadKey(key);
+            if (TypeRegister.Contains(key))
+                throw new ArgumentException($"Key {key} is taken by a cached type, and cannot be used as a name for a local reference. Names are not case sensitive.");
+        }
+        internal struct EmptyInstruction
+        {
+
+
         }
 
-        TypeString ThisOrNew(string typename)
-        {
-            return typename.EqualsCaseless(_implicit_this?.StringID) ? _implicit_this! : TypeString.New(typename);
-        }
     }
 }

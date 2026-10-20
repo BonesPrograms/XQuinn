@@ -33,30 +33,14 @@ namespace XQuinn.Runtime.NavigatorEngine
             TypeMap.MapType(methods, null, t, null, contains?.EqualsCaseless("new") ?? true);
             return ReadMembers(methods, contains, search);
         }
-
-        public static void FlushStaticCache(bool ambiguousMatches = true, bool accessedMembers = true, bool reifiedGenerics = true)
-        {
-            NavigatorCore.FlushStaticCache(ambiguousMatches, accessedMembers, reifiedGenerics);
-        }
-
         public static Type Of<T>() => typeof(T);
         public static Type Of(string name) => GetTypeOrThrow(name);
         public static T Num<T>(T obj = default) where T : struct => obj;
         public static T Enum<T>(T obj) where T : Enum => obj;
-        public static string String(string txt) => txt;
         public static T[] Array<T>(params T[] arr) => arr.Length == 0 ? System.Array.Empty<T>() : arr;
         public static T[] Array<T>(int i) => i == 0 ? System.Array.Empty<T>() : new T[i];
-        public static bool LateCache(string assemblyName, string targetTypeName, string keyForCaching)
-        {
-            Assembly assembly = Assembly.Load(assemblyName);
-            return LateCache(assembly, targetTypeName, keyForCaching);
-        }
-        public static bool LateCache(Assembly assembly, string targetTypeName, string keyForCaching)
-        {
-            Type targetType = assembly.GetType(targetTypeName, false, true) ?? throw new ArgumentException($"No type found in assembly {assembly.FullName} named {targetTypeName}. Requires full name.");
-            return CacheType(targetType, keyForCaching);
-        }
 
+        [HideFromNavigator]
         internal static IEnumerable<string> ReadMembers<K, V>(IEnumerable<KeyValuePair<K, V>> members, string? key, BindingFlags flags) where V : MemberInfo
         {
             if (key != null)

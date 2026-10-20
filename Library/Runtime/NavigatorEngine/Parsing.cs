@@ -21,116 +21,92 @@ namespace XQuinn.Runtime.NavigatorEngine
             if (reqAmount == 0)
                 return inputAmount == 0 ? Array.Empty<object>() : throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {parameters.Length} method name {method.StringID}");
             object?[] args = new object[parameters.Length];
-            if (method.Params.Count != reqAmount)
-                UnequalParamCount(inputAmount, reqAmount, parameters, args, method, lastparam);
+            if (inputAmount < reqAmount)
+                DefaultArgs(inputAmount, reqAmount, parameters, args, method);
             else if (parameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
-                ParamsArray(lastparam, parameters, args, method);
-            else
-                for (int i = 0; i < parameters.Length; i++)
-                    args[i] = NewArg(method.Params[i], parameters[i].ParameterType);
+               return NewArray(lastparam, parameters, args, method);
+            else if (inputAmount > reqAmount)
+                throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {parameters.Length} method name {method.Name}");
+            for (int i = 0; i < inputAmount; i++)
+                args[i] = NewArg(method.Params[i], parameters[i].ParameterType);
             return args;
         }
 
-        void UnequalParamCount(int inputAmount, int reqAmount, ParameterInfo[] parameters, object?[] args, MethodString method, int lastparam)
+        static void DefaultArgs(int inputAmount, int reqAmount, ParameterInfo[] parameters, object?[] args, MethodString method)
         {
-            if (inputAmount < reqAmount)
+
+            for (int i = inputAmount; i < reqAmount; i++)
             {
-                for (int i = inputAmount; i < reqAmount; i++)
+                ParameterInfo parameter = parameters[i];
+                if (parameter.HasDefaultValue)
+                    args[i] = parameter.DefaultValue;
+                else if (parameter.IsDefined(typeof(ParamArrayAttribute)))
                 {
-                    ParameterInfo parameter = parameters[i];
-                    if (parameter.HasDefaultValue)
-                        args[i] = parameter.DefaultValue;
-                    else if (parameter.IsDefined(typeof(ParamArrayAttribute)))
-                    {
-                        Type elementType = parameters[i].ParameterType.GetElementType() ?? throw new ArgumentNullException();
-                        args[i] = Array.CreateInstance(elementType, 0);
-                    }
-                    else
-                        throw new TargetParameterCountException($"Parameter {parameter} does not have a default value. Input param count {inputAmount} Required count {reqAmount} method name {method.StringID}");
+                    Type elementType = parameters[i].ParameterType.GetElementType() ?? throw new ArgumentNullException();
+                    args[i] = Array.CreateInstance(elementType, 0);
                 }
-                for (int i = 0; i < inputAmount; i++)
-                    args[i] = NewArg(method.Params[i], parameters[i].ParameterType);
+                else
+                    throw new TargetParameterCountException($"Parameter {parameter} does not have a default value. Input param count {inputAmount} Required count {reqAmount} method name {method.StringID}");
             }
-            else if (lastparam >= 0 && parameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
-            {
-                ParamsArray(lastparam, parameters, args, method);
-            }
-            else
-                throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {parameters.Length} method name {method.Name}");
         }
 
-        void ParamsArray(int lastparam, ParameterInfo[] parameters, object?[] args, MethodString method)
+        object?[] NewArray(int lastparam, ParameterInfo[] parameters, object?[] args, MethodString method)
         {
             for (int i = 0; i < lastparam; i++)
                 args[i] = NewArg(method.Params[i], parameters[i].ParameterType);
             Type elementType = parameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentNullException();
-            object? defaultValue = elementType.GetDefaultValue();
             if (method.Params.Count == parameters.Length)
             {
                 ArgumentString parameter = method.Params[lastparam];
-                if (parameter is ValueString val && (val.Argument.EqualsCaseless("null") || val.Argument.EqualsCaseless("default")))
-                    args[lastparam] = null;
-                else
+                if (!(parameter is ValueString val && (val.Argument.EqualsCaseless("null") || val.Argument.EqualsCaseless("default"))))
                 {
                     object? arg = NewArg(parameter, elementType);
                     if (!arg?.GetType().IsArray ?? true)
                     {
-                        Array singleArgArray = Array.CreateInstance(elementType, 1);
-                        if (arg != null && !arg.Equals(defaultValue))
-                            singleArgArray.SetValue(arg, 0);
-                        arg = singleArgArray;
+                        Array newArray = Array.CreateInstance(elementType, 1);
+                        newArray.SetValue(arg, 0);
+                        arg = newArray;
                     }
                     args[lastparam] = arg;
                 }
+                else
+                    args[lastparam] = null;
             }
             else
             {
-                Array paramsArray = Array.CreateInstance(elementType, method.Params.Count - lastparam);
+                Array newArray = Array.CreateInstance(elementType, method.Params.Count - lastparam);
                 for (int i = lastparam; i < method.Params.Count; i++)
                 {
                     object? arg = NewArg(method.Params[i], elementType);
-                    if (arg != null && !arg.Equals(defaultValue))
-                        paramsArray.SetValue(arg, i - lastparam);
+                    newArray.SetValue(arg, i - lastparam);
                 }
-                args[lastparam] = paramsArray;
+                args[lastparam] = newArray;
             }
+            return args;
         }
 
         internal object? NewArg(ArgumentString arg, Type paramType)
         {
             object? obj = arg switch
             {
-                FieldString field => _core._invoker.InvokeFieldOrProperty(field),
-                MethodString method => _core._invoker.InvokeMethod(method),
+                FieldString field => Core.Invoker.InvokeFieldOrProperty(field),
+                MethodString method => Core.Invoker.InvokeMethod(method),
                 ValueString value => ParseValue(value, paramType),
                 _ => throw new NotSupportedException()
             };
-
             Reflector.NotNullable(paramType, obj);
             return obj;
         }
         internal object? ParseValue(ValueString value, Type paramType)
         {
-            string strng = value.Argument;
-            if (strng.EqualsCaseless("this"))
-            {
-                if (_core._object == null)
-                    throw new InvalidOperationException("Cannot pass this as parameter, instance is null.");
-
-                return _core._object;
-            }
-            if (_core._variables.TryGetValue(strng, out ReferenceBinding? variable))
-            {
-                return variable.Object;
-            }
-            if (_core._fields.TryGetValue(strng, out FieldInfo? field))
-            {
-                return field.GetValue(_core._object);
-            }
-            if (_core._props.TryGetValue(strng, out PropertyInfo? prop))
-            {
-                return prop.GetValue(_core._object, NavigatorCore.Flag, null, null, null);
-            }
+            if (value.Argument.EqualsCaseless("this"))
+                return Core.Object ?? throw new InvalidOperationException("Cannot pass this as parameter, instance is null.");
+            if (Core.References.TryGetValue(value.Argument, out Reference reference))
+                return reference.Object;
+            if (Core.Fields.TryGetValue(value.Argument, out FieldInfo? field))
+                return field.GetValue(Core.Object); 
+            if (Core.Props.TryGetValue(value.Argument, out PropertyInfo? prop))  
+                return prop.GetValue(Core.Object, NavigatorCore.Flag, null, null, null);   
             return value.Parse(paramType);
         }
     }

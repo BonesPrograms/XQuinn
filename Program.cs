@@ -24,119 +24,47 @@ using static XQuinn.Reflection.ByteSizes;
 using XQuinn.Runtime.NavigatorEngine;
 using XQuinn.NetConsole;
 
+#if IAPP_BUILD
+namespace XQuinn.Private
+{
+    static void Main()
+    {
+        XQuinn.NetConsole.Apps.IApp.RunApp();
+    }
+}
+#else
+
 namespace XQuinn.Private
 {
 
 
     static class Program
     {
+
+        static Dictionary<GenericKey, Type> Registry { get; } = GetReg();
+        static Dictionary<GenericKey, Type>? RegCopy { get; set; }
+        internal static Type? InitType { get; set; }
         static void Main()
         {
-#if IAPP_BUILD
-            XQuinn.NetConsole.Apps.IApp.RunApp();
-        }
-    }
-}
-#else
             Cache();
-            ConsoleTools.WriteMany(TypeRegister.s_registry, "\n");
             RunNavigator();
-        }
-        static void method()
-        {
-            int[] array = new int[] { 8, 16, 32 };
-        }
-
-
-        static Dictionary<GenericKey, Type>? s_reg_copy;
-
-        static void NamespaceRevert()
-        {
-            if (s_reg_copy == null)
-                throw new InvalidOperationException();
-            TypeRegister.s_registry.Clear();
-            s_reg_copy.ForEach(x => TypeRegister.s_registry[x.Key] = x.Value);
-            s_reg_copy = null;
-        }
-
-        static void NamespaceTest()
-        {
-            s_reg_copy = new(TypeRegister.s_registry);
-            foreach (var obj in s_reg_copy)
-            {
-                GenericKey key = obj.Key;
-                Type value = obj.Value;
-                GenericKey newkey = new($"xq.{key.Name}", key.Args);
-                TypeRegister.s_registry[newkey] = value;
-                TypeRegister.s_registry.Remove(key);
-            }
         }
         static void RunNavigator()
         {
-            NavigationFeed monitor = new(true);
-            monitor.StackTrace = true;
-            string flag = NavigatorCore.Flag.ToString().Replace(',', '|');
-            string path = Path.Combine(XQuinn.IO.Finders.CodeLabFinder.s_path, @"XQuinnLib\dump\instance.log");
+            Navigator.Logger = new ConsoleLogger();
             string[] instructions = new string[]
-            {$"~ *types . enum < bindingFlags > ( {flag} ); +flag;",
-        //    $"*InstanceReader . new (  @\"{path}\"  , true,  types . of < object > () ); +reader;",
-            "*class<float>.new();",
-            "Program.NamespaceTest();",
-            "* xq.class <xq.object> .new();",
-            "*xq . KVP<xq. int,xq .string> .  new(22, \"Hello World\"); +kv;",
-            "*xq.class<xq.object>.new();",
-            "*xq.types.of(\"XQ.Class<T>\"); +class_T_def;",
-            "*class_T_def.MakeGenericType( xq.Types. Array<xq.Type>(xq .Types .Of<XQ. Object>())); + class_typeof_object;",
-            "* GetMethod ( \"Func\" ); +method_func;",
-            " * xq.class<xq.float>.new(); +float_class; *method_func; xq.class<xq.string> . s_obj = \"Hello World\";",
-            "Invoke:1 ( XQ.Class<XQ.Object>.new() , XQ.Types.Array <XQ.Object> ( XQ.Class <XQ.Int> . S_Obj, XQ . Class< XQ. String> . S_OBJ)));",
-            "* xq.class<xq.object>.new();",
-            "func2:1( xq.class<xq.int>. s_obj  , xq . types. array <xq.object> (xq. class. ret( xq.class.s_obj ) ), xq.class<xq . object>  .  func(xq.class <xq.string> .new(), \"fingas\"));"
-            ,"xq.program.namespaceRevert(); types.FlushStaticCache();",
-                      
-        //     "*xq.Types.Of<xq.Class<xq.Object>>(); *GetMethod(\"RefRet\"); +refret;",
-        //     "xq.class<xq.int>.s_obj = 14003214;",
-        //     "*xq.Types . Array <xq.object> ( xq.class<xq.int> . s_obj ); +args;",
-        //    "refret . invoke:1 ( null,xq. Types . Array <xq.object> (xq. class<xq.int> . s_obj )); xq.class<xq.int> . s_obj" };  
-            
-            "*Types.Of<Class<Object>>(); *GetMethod(\"RefRet\"); +refret;",
-            "class<int>.s_obj = 14003214;",
-            "*Types . Array <object> ( class<int> . s_obj ); +args;",
-           "refret . invoke:1 ( null, Types . Array <object> ( class<int> . s_obj )); class<int> . s_obj"};
-            //"xq.Class< xq . kvp< xq . string , xq . int>>.new()"};
-            StringBuilder sb = new();
-            sb.AppendMany(instructions, ";");
-            string ret = monitor.SafeInstruct(sb.ToString());
-            Console.WriteLine(ret);
-            monitor._core.Clear();
-            NavigatorCore.FlushStaticCache();
-            Console.WriteLine("Navigator core state reset!\nRuntimeCache flushed!");
-            sb.Length = 0;
-            instructions = new string[]
             {
-                "~",
-                $"* Types.Enum<BindingFlags>({flag})", "+ flag", "+ flags",
-                $"* InstanceReader.new(@\"{path}\", true)", "+ reader",
-                "* StringBuilder.new()", "+ sb",
-                "* Types.Array:1<int>(8)", "+ arr", // for viewing backing fields via getfields
-                "* Program.s_arr_init_type", "+ init_type",
-                "* Activator.CreateInstance:3 (init_type)", "+ init_obj",
-                "* arr.GetType()", "+ arr_type",
-                "* init_type"
+                $"+ flag = Runtime.Navigator.Flag", "# flag", "+ flags"
             };
-            sb.AppendMany(instructions, ";");
-            ret = monitor.SafeInstruct(sb.ToString());
-            Console.WriteLine(ret);
-          //   ConsoleTools.WriteMany(TypeRegister.s_registry, "\n");
+            Navigator.Instruct(instructions);
             while (true)
             {
                 string? msg = Console.ReadLine();
                 if (msg != null)
-                    Console.WriteLine(monitor.SafeInstruct(msg));
+                    Navigator.Instruct(msg);
             }
         }
 
-        internal static Type? s_arr_init_type;
         static void Cache()
         {
             Assembly xquinn = Assembly.Load("XQuinn");
@@ -146,7 +74,7 @@ namespace XQuinn.Private
                 Type t = types[i];
                 if (t.Name == "__StaticArrayInitTypeSize=12")
                 {
-                    s_arr_init_type = t;
+                    InitType = t;
                     types.Remove(t);
                     break;
                 }
@@ -157,9 +85,60 @@ namespace XQuinn.Private
             TypeRegister.CacheType<StringBuilder>(false);
             TypeRegister.CacheType(typeof(StringBuilderExtensions), "sbe");
             TypeRegister.CacheType<ValueType>(false);
-            TypeRegister.CacheType(typeof(Path),false);
+            TypeRegister.CacheType(typeof(Path), false);
+            TypeRegister.CacheType<WeakReference>(false);
+            TypeRegister.CacheType(typeof(WeakReference<>), false);
         }
 
+        static void NamespaceRevert()
+        {
+            if (RegCopy == null)
+                throw new InvalidOperationException();
+            Registry.Clear();
+            RegCopy.ForEach(x => Registry[x.Key] = x.Value);
+            RegCopy = null;
+        }
+
+        static void NamespaceTest()
+        {
+            RegCopy = new(Registry);
+            foreach (var obj in RegCopy)
+            {
+                GenericKey key = obj.Key;
+                Type value = obj.Value;
+                GenericKey newkey = new($"xq.{key.Name}", key.Args);
+                Registry[newkey] = value;
+                Registry.Remove(key);
+            }
+        }
+
+        static Dictionary<GenericKey, Type> GetReg()
+        {
+            Type reg = typeof(TypeRegister);
+            PropertyInfo prop = reg.GetProperty("Registry", BindingFlags.Static | BindingFlags.NonPublic)!;
+            object value = prop.GetValue(null, BindingFlags.Static | BindingFlags.NonPublic, null, null, null)!;
+            return (Dictionary<GenericKey, Type>)value;
+        }
+
+        static void method()
+        {
+            int[] array = new int[] { 8, 16, 32 };
+        }
+
+
+    }
+
+    class ConsoleLogger : NavigatorLogger
+    {
+
+        public override void ToLog(string text)
+        {
+            Console.WriteLine(text);
+        }
+        public override void ToChat(string text)
+        {
+
+        }
     }
 
     class The
@@ -234,7 +213,13 @@ namespace XQuinn.Private
         {
             return arr;
         }
+
+        public void Func(int x, int y = 2)
+        {
+            
+        }
     }
+
 
 
 }

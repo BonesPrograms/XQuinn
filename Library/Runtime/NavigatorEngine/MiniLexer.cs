@@ -1,9 +1,65 @@
+using System.Collections.Generic;
 using XQuinn.LangInterp;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
     static class MiniLexer
     {
+
+
+        internal static void Autochain(List<string> chain, string invocation)
+        {
+            chain.Clear();
+            bool readstr = false;
+            bool noesc = false;
+            int lastbreak = 0;
+            invocation = $"{invocation};";
+            for (int i = 0; i < invocation.Length; i++)
+            {
+                char c = invocation[i];
+                if (!readstr)
+                {
+                    if (c == CallLexer.Break)
+                    {
+                        string section = invocation.Substring(lastbreak, i - lastbreak);
+                        chain.Add(section);
+                        lastbreak = i + 1;
+                    }
+                    if (c == CallLexer.CharDeclr)
+                    {
+                        i = i + 2;
+                        c = invocation[i];
+                        if (c != CallLexer.CharDeclr)
+                            throw new LexicalException("Invalid char format", invocation);
+                        continue;
+                    }
+                    if (c == CallLexer.NoEscDeclr)
+                    {
+                        i++;
+                        c = invocation[i];
+                        noesc = true;
+                        if (c != CallLexer.StringDeclr)
+                            throw new LexicalException("@ must be followed immediately by a quote when declaring a string.", invocation);
+                    }
+                }
+                if (c == CallLexer.EscSeq && readstr && !noesc)
+                {
+                    i++;
+                    continue;
+                }
+                if (c == CallLexer.StringDeclr)
+                {
+                    if (readstr)
+                    {
+                        noesc = false;
+                        readstr = false;
+                    }
+                    else
+                        readstr = true;
+                }
+            }
+
+        }
         internal static bool AssignmentSubstring(string invocation, out string? left, out string? right)
         {
             left = null;
@@ -29,34 +85,35 @@ namespace XQuinn.Runtime.NavigatorEngine
 
         internal static string? ResolveMemberAccessOrLiteral(string invocation, out string member, out bool notMethod)
         {
-            int sublength = invocation.IndexOf(CallLexer.MethodDeclr);
-            notMethod = sublength < 0;
-            sublength = notMethod ? invocation.Length : sublength;
             member = invocation;
             int? lastAccessorIndex = null;
-            if (notMethod)
+            notMethod = true;
+            for (int i = 0; i < invocation.Length; i++)
             {
-                for (int i = 0; i < sublength; i++)
+                char value = invocation[i];
+                if (value != CallLexer.Whitespace)
                 {
-                    char value = invocation[i];
-                    if (value != CallLexer.Whitespace)
-                    {
-                        if (IsLiteral(value))
-                            return null;
-                        else
-                            break;
-                    }
+                    if (IsLiteral(value))
+                        return null;
+                    else
+                        break;
                 }
             }
-            for (int i = 0; i < sublength; i++)
+
+            for (int i = 0; i < invocation.Length; i++)
             {
                 char c = invocation[i];
+                if (c == CallLexer.MethodDeclr)
+                {
+                    notMethod = false;
+                    break;
+                }
                 if (c == CallLexer.GenericDeclr)
                 {
                     int nest = 0;
                     int lastcount = 0;
                     bool beginNest = false;
-                    for (int x = i; x < sublength; x++)
+                    for (int x = i; x < invocation.Length; x++)
                     {
                         c = invocation[x];
                         if (c == CallLexer.GenericDeclr)

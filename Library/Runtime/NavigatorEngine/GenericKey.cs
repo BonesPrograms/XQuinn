@@ -9,8 +9,8 @@ namespace XQuinn.Runtime.NavigatorEngine
 {
     internal readonly struct GenericKey : IEquatable<GenericKey>
     {
-        public readonly string Name;
-        public readonly int Args;
+        public string Name { get; init; }
+        public int Args { get; init; }
         public static GenericKey TypeQuery(string typename)
         {
             CountGenericArgs(ref typename, out int count);

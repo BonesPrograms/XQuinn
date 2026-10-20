@@ -7,8 +7,8 @@ namespace XQuinn.Runtime.NavigatorEngine
 {
     internal readonly struct MethodKey : IEquatable<MethodKey>
     {
-        public readonly int MatchIndex;
-        public readonly GenericKey GKey;
+        public int MatchIndex { get; init; }
+        public GenericKey GKey { get; init; }
         internal MethodKey(int index, GenericKey key)
         {
             MatchIndex = index;

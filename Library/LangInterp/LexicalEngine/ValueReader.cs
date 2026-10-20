@@ -6,43 +6,43 @@ namespace XQuinn.LangInterp.LexicalEngine
 {
     sealed class ValueReader : LexicalObject
     {
-        internal bool _noEscape;
-        internal bool _readNoEscDeclr;
-        internal bool _readORDelimit;
-        internal bool _readORVal;
+        internal bool NoEscape { get; set; }
+        internal bool ReadNoEscDeclr { get; set; }
+        internal bool ReadORDelimit { get; set; }
+        internal bool ReadORVal { get; set; }
 
-        internal bool _readFloat;
-        bool _finishedReadChar;
-        bool _readCharValue;
-        bool _stringEnding;
+        internal bool ReadFloat { get; set; }
+        bool FinishedReadChar { get; set; }
+        bool ReadCharValue { get; set; }
+        bool StringEnding { get; set; }
 
-        bool _escaping;
-        bool _justEscaped;
+        bool Escaping { get; set; }
+        bool JustEscaped { get; set; }
 
         internal void Clear()
         {
-            _readFloat = false;
-            _finishedReadChar = false;
-            _readCharValue = false;
-            _stringEnding = false;
-            _noEscape = false;
-            _readNoEscDeclr = false;
-            _escaping = false;
-            _justEscaped = false;
-            _readORDelimit = false;
-            _readORVal = false;
+            ReadFloat = false;
+            FinishedReadChar = false;
+            ReadCharValue = false;
+            StringEnding = false;
+            NoEscape = false;
+            ReadNoEscDeclr = false;
+            Escaping = false;
+            JustEscaped = false;
+            ReadORDelimit = false;
+            ReadORVal = false;
         }
 
         public ValueReader(CallLexer lexer) : base(lexer)
         {
-            _lexer = lexer;
+            Lexer = lexer;
         }
         internal void ReadParam()
         {
-            string prm = _lexer._writer.ToString();
+            string prm = Lexer.Writer.ToString();
             ValueString param = new(prm);
-            _lexer._writer.Length = 0;
-            _lexer._curr_method!.AddParameter(param);
+            Lexer.Writer.Length = 0;
+            Lexer.CurrentMethod!.AddParameter(param);
         }
 
         void SkipTrailingWhitespace(ref int i, string invocation)
@@ -50,146 +50,146 @@ namespace XQuinn.LangInterp.LexicalEngine
             while (i < invocation.Length)
             {
                 i++;
-                _lexer._curr_char = invocation[i];
+                Lexer.Character = invocation[i];
                 if (WhitespaceEnd())
                     return;
-                if (_lexer._curr_char != CallLexer.Whitespace)
-                    throw new LexicalException("Detected trailing input after whitespace.", invocation, _lexer._curr_char, _lexer._writer, i);
+                if (Lexer.Character != CallLexer.Whitespace)
+                    throw new LexicalException("Detected trailing input after whitespace.", invocation, Lexer.Character, Lexer.Writer, i);
             }
         }
 
         internal ControlFlow ReadEnumOR(string invocation)
         {
-            if (Termination(_lexer._curr_char))
+            if (Termination(Lexer.Character))
             {
-                if (_readORDelimit)
-                    throw new LexicalException("Invalid enum OR args.", invocation, _lexer._curr_char, _lexer._writer);
-                _lexer._read_enumOR = false;
-                _readORVal = false;
+                if (ReadORDelimit)
+                    throw new LexicalException("Invalid enum OR args.", invocation, Lexer.Character, Lexer.Writer);
+                Lexer.ReadEnumOR = false;
+                ReadORVal = false;
                 return ControlFlow.Release;
             }
-            if (_lexer._curr_char == CallLexer.Whitespace)
+            if (Lexer.Character == CallLexer.Whitespace)
             {
-                _lexer._skipping = true;
+                Lexer.Skipping = true;
             }
-            else if (_lexer._curr_char == EnumOR)
+            else if (Lexer.Character == EnumOR)
             {
-                if (_readORDelimit)
-                    throw new LexicalException("Invalid enum OR args.", invocation, _lexer._curr_char, _lexer._writer);
-                _readORDelimit = true;
-                _readORVal = false;
+                if (ReadORDelimit)
+                    throw new LexicalException("Invalid enum OR args.", invocation, Lexer.Character, Lexer.Writer);
+                ReadORDelimit = true;
+                ReadORVal = false;
             }
-            else if (_readORDelimit && !_readORVal)
+            else if (ReadORDelimit && !ReadORVal)
             {
-                _lexer._arbitrary_reader.ValidIdentifierFirstCharOrThrow(_lexer._curr_char, invocation);
-                _readORVal = true;
+                Lexer.ArbitraryReader.ValidIdentifierFirstCharOrThrow(Lexer.Character, invocation);
+                ReadORVal = true;
             }
-            else if (_readORVal)
+            else if (ReadORVal)
             {
-                if (_lexer._skipping && !_readORDelimit)
-                    throw new LexicalException("Invalid enum OR args.", invocation, _lexer._curr_char, _lexer._writer);
-                _lexer.ValidIdentifier(_lexer._curr_char, invocation);
-                _readORDelimit = false;
-                _lexer._skipping = false;
+                if (Lexer.Skipping && !ReadORDelimit)
+                    throw new LexicalException("Invalid enum OR args.", invocation, Lexer.Character, Lexer.Writer);
+                Lexer.ValidIdentifier(Lexer.Character, invocation);
+                ReadORDelimit = false;
+                Lexer.Skipping = false;
             }
             return ControlFlow.Append;
         }
         internal ControlFlow ReadChar(ref int i, string invocation)
         {
-            if (!_readCharValue)
+            if (!ReadCharValue)
             {
-                _readCharValue = true;
+                ReadCharValue = true;
                 return ControlFlow.Append;
             }
-            else if (!_finishedReadChar)
+            else if (!FinishedReadChar)
             {
-                if (_lexer._curr_char != CharDeclr)
-                    throw new LexicalException("Characer declarations must be enclosed with apostrophes.", invocation, _lexer._curr_char, _lexer._writer, i);
-                _finishedReadChar = true;
+                if (Lexer.Character != CharDeclr)
+                    throw new LexicalException("Characer declarations must be enclosed with apostrophes.", invocation, Lexer.Character, Lexer.Writer, i);
+                FinishedReadChar = true;
                 return ControlFlow.Append;
             }
-            else if (_lexer._curr_char == CallLexer.Whitespace)
+            else if (Lexer.Character == CallLexer.Whitespace)
             {
                 SkipTrailingWhitespace(ref i, invocation);
-                _lexer._read_char = false;
-                _finishedReadChar = false;
-                _readCharValue = false;
+                Lexer.ReadChar = false;
+                FinishedReadChar = false;
+                ReadCharValue = false;
             }
-            if (_finishedReadChar)
+            if (FinishedReadChar)
             {
-                _finishedReadChar = false;
-                _readCharValue = false;
-                _lexer._read_char = false;
+                FinishedReadChar = false;
+                ReadCharValue = false;
+                Lexer.ReadChar = false;
             }
             return ControlFlow.Release;
         }
         internal ControlFlow ReadNum(ref int i, string invocation)
         {
-            if (char.IsDigit(_lexer._curr_char))
+            if (char.IsDigit(Lexer.Character))
                 return ControlFlow.Append;
-            if (_lexer._curr_char == CallLexer.Whitespace)
+            if (Lexer.Character == CallLexer.Whitespace)
             {
                 SkipTrailingWhitespace(ref i, invocation);
-                _lexer._read_digit = false;
-                _readFloat = false;
+                Lexer.ReadDigit = false;
+                ReadFloat = false;
                 return ControlFlow.Release;
             }
             else
             {
-                if (_lexer._curr_char == MemberAccessOrDecimal)
+                if (Lexer.Character == MemberAccessOrDecimal)
                 {
-                    if (_readFloat)
-                        throw new LexicalException("Floats cannot contain multiple decimals.", invocation, _lexer._curr_char, _lexer._writer, i);
-                    _readFloat = true;
+                    if (ReadFloat)
+                        throw new LexicalException("Floats cannot contain multiple decimals.", invocation, Lexer.Character, Lexer.Writer, i);
+                    ReadFloat = true;
                     return ControlFlow.Append;
                 }
-                if (Termination(_lexer._curr_char))
+                if (Termination(Lexer.Character))
                 {
-                    _lexer._read_digit = false;
-                    _readFloat = false;
+                    Lexer.ReadDigit = false;
+                    ReadFloat = false;
                     return ControlFlow.Release;
                 }
-                throw new LexicalException("Numbers can only contain a sign, digits and one decimal.", invocation, _lexer._curr_char, _lexer._writer, i);
+                throw new LexicalException("Numbers can only contain a sign, digits and one decimal.", invocation, Lexer.Character, Lexer.Writer, i);
             }
         }
 
         internal ControlFlow ReadString(ref int i, string invocation)
         {
-            if (_stringEnding)
+            if (StringEnding)
             {
-                if (_lexer._curr_char == CallLexer.Whitespace)
+                if (Lexer.Character == CallLexer.Whitespace)
                     SkipTrailingWhitespace(ref i, invocation);
-                _stringEnding = false;
-                _lexer._read_string = false;
-                _noEscape = false;
-                _escaping = false;
-                _readNoEscDeclr = false;
-                _justEscaped = false;
+                StringEnding = false;
+                Lexer.ReadString = false;
+                NoEscape = false;
+                Escaping = false;
+                ReadNoEscDeclr = false;
+                JustEscaped = false;
                 return ControlFlow.Release;
             }
-            if (_escaping)
+            if (Escaping)
             {
-                _escaping = false;
-                _justEscaped = true;
+                Escaping = false;
+                JustEscaped = true;
             }
-            if (!_noEscape && _lexer._curr_char == EscSeq)
+            if (!NoEscape && Lexer.Character == EscSeq)
             {
-                if (!_justEscaped)
-                    _escaping = true;
+                if (!JustEscaped)
+                    Escaping = true;
                 else
-                    _justEscaped = false;
+                    JustEscaped = false;
             }
-            if (_lexer._curr_char == StringDeclr)
+            if (Lexer.Character == StringDeclr)
             {
-                if (!_readNoEscDeclr)
+                if (!ReadNoEscDeclr)
                 {
-                    if (!_justEscaped)
-                        _stringEnding = true;
+                    if (!JustEscaped)
+                        StringEnding = true;
                     else
-                        _justEscaped = false;
+                        JustEscaped = false;
                 }
                 else
-                    _readNoEscDeclr = false;
+                    ReadNoEscDeclr = false;
             }
             return ControlFlow.Append;
         }

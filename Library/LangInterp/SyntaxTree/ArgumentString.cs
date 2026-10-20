@@ -2,20 +2,20 @@ namespace XQuinn.LangInterp.SyntaxTree
 {
     internal abstract class ArgumentString
     {
-        protected string _arg;
+        protected string Arg {get; set;}
         internal ArgumentString(string String)
         {
-            _arg = String;
+            Arg = String;
         }
         public override string ToString()
         {
-            return _arg;
+            return Arg;
         }
     }
 
     internal abstract class MetadataString : ArgumentString
     {
-        public string Name => _arg;
+        public string Name => Arg;
         protected MetadataString(string arg) : base(arg)
         {
         }

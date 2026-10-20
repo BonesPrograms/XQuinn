@@ -21,55 +21,52 @@ namespace XQuinn.LangInterp
         internal const char NoEscDeclr = '@';
         internal const char GenericDeclr = '<';
         internal const char GenericTerminate = '>';
+        internal const char Break = ';';
         internal static Whitespace Whitespace => Whitespace._whitespace;
-        internal readonly StringBuilder _writer = new();
-        internal readonly ValueReader _value_reader;
-        internal readonly ArbitraryReader _arbitrary_reader;
-        internal MethodString? _main;
-        internal MethodString? _curr_method;
-        internal TypeString? _declr_type;
-        internal TypeString? _implicit_this;
-        internal char _curr_char;
-        internal bool _start = true;
-
-        internal bool _read_char;
-        internal bool _read_arbitrary_legal_value;
-        internal bool _read_qualified_member;
-        internal bool _read_digit;
-        internal bool _read_string;
-        internal bool _read_enumOR;
-        internal bool _read_generic_args;
-
-        internal bool _skipping;
-
-        internal bool _method_params_began;
-        internal bool _terminated;
-
-        internal int _reading_sub_params;
-        internal int _last_nested_read_count;
+        internal StringBuilder Writer { get; private init; } = new();
+        internal ValueReader ValueReader { get; private init; }
+        internal ArbitraryReader ArbitraryReader { get; private init; }
+        internal MethodString? Main { get; set; }
+        internal MethodString? CurrentMethod { get; set; }
+        internal TypeString? MainRef { get; private set; }
+        internal TypeString? ImplicitRef { get; private set; }
+        internal char Character { get; set; }
+        internal bool Start { get; set; } = true;
+        internal bool ReadChar { get; set; }
+        internal bool ReadArbitraryLegal { get; set; }
+        internal bool ReadQualifiedMember { get; set; }
+        internal bool ReadDigit { get; set; }
+        internal bool ReadString { get; set; }
+        internal bool ReadEnumOR { get; set; }
+        internal bool ReadGenericArgs { get; set; }
+        internal bool Skipping { get; set; }
+        internal bool MethodParamsBegan { get; set; }
+        internal bool Terminated { get; set; }
+        internal int ReadingSubParams { get; set; }
+        internal int LastNestedReadCount { get; set; }
         Read ReadState
         {
             get
             {
-                if (_start)
+                if (Start)
                     return Read.Start;
-                if (_read_generic_args)
+                if (ReadGenericArgs)
                     return Read.ReadGeneric;
-                if (_read_enumOR)
+                if (ReadEnumOR)
                     return Read.ReadEnumOR;
-                if (_read_string)
+                if (ReadString)
                     return Read.ReadString;
-                if (_read_char)
+                if (ReadChar)
                     return Read.ReadChar;
-                if (_read_digit)
+                if (ReadDigit)
                     return Read.ReadDigit;
-                if (_read_arbitrary_legal_value)
+                if (ReadArbitraryLegal)
                     return Read.ReadArbitrary;
-                if (_read_qualified_member)
+                if (ReadQualifiedMember)
                     return Read.ReadQualified;
-                if (_curr_char == Whitespace)
+                if (Character == Whitespace)
                     return Read.Whitespace;
-                if (_terminated || _method_params_began)
+                if (Terminated || MethodParamsBegan)
                     return Read.Context;
                 return Read.Releasing;
             }
@@ -77,41 +74,39 @@ namespace XQuinn.LangInterp
 
         internal CallLexer()
         {
-            _value_reader = new(this);
-            _arbitrary_reader = new(this);
+            ValueReader = new(this);
+            ArbitraryReader = new(this);
         }
 
-        internal MethodString MethodTemplate(string invocation, TypeString declaringType, TypeString? implicitAccess)
+        internal MethodString MethodTemplate(string invocation, TypeString declaringType, TypeString? implicitRef)
         {
             Clear();
-            int? breakpoint = Breakpoint(invocation);
-            _declr_type = declaringType;
-            _implicit_this = implicitAccess;
+            int breakpoint = Breakpoint(invocation) ?? invocation.Length;
+            MainRef = declaringType;
+            ImplicitRef = implicitRef;
             StringBuffer(invocation, breakpoint);
             FatalLexicalError(invocation);
-            MethodString method = _main!;
+            MethodString method = Main!;
             Clear();
             return method;
         }
 
-        void StringBuffer(string invocation, int? breakpoint)
+        void StringBuffer(string invocation, int breakpoint)
         {
             int i = 0;
-            while (i < invocation.Length)
+            while (i < breakpoint)
             {
-                if (i == breakpoint)
-                    break;
-                _curr_char = invocation[i];
+                Character = invocation[i];
                 ControlFlow flow = ReadState switch
                 {
-                    Read.Start => _arbitrary_reader.ReadMainMethod(ref i, invocation),
-                    Read.ReadGeneric => _arbitrary_reader.ReadGeneric(invocation),
-                    Read.ReadEnumOR => _value_reader.ReadEnumOR(invocation),
-                    Read.ReadDigit => _value_reader.ReadNum(ref i, invocation),
-                    Read.ReadString => _value_reader.ReadString(ref i, invocation),
-                    Read.ReadChar => _value_reader.ReadChar(ref i, invocation),
-                    Read.ReadArbitrary => _arbitrary_reader.ReadArbitrary(ref i, invocation),
-                    Read.ReadQualified => _arbitrary_reader.ReadQualifiedMember(ref i, invocation),
+                    Read.Start => ArbitraryReader.ReadMainMethod(ref i, invocation),
+                    Read.ReadGeneric => ArbitraryReader.ReadGeneric(invocation),
+                    Read.ReadEnumOR => ValueReader.ReadEnumOR(invocation),
+                    Read.ReadDigit => ValueReader.ReadNum(ref i, invocation),
+                    Read.ReadString => ValueReader.ReadString(ref i, invocation),
+                    Read.ReadChar => ValueReader.ReadChar(ref i, invocation),
+                    Read.ReadArbitrary => ArbitraryReader.ReadArbitrary(ref i, invocation),
+                    Read.ReadQualified => ArbitraryReader.ReadQualifiedMember(ref i, invocation),
                     Read.Context => GetContext(),
                     Read.Whitespace => ControlFlow.Increment,
                     Read.Releasing => ControlFlow.Release,
@@ -121,29 +116,29 @@ namespace XQuinn.LangInterp
                     goto Append;
                 if (flow == ControlFlow.Increment)
                     goto Increment;
-                if (_last_nested_read_count > _reading_sub_params)
+                if (LastNestedReadCount > ReadingSubParams)
                 {
-                    _curr_method = _curr_method!._subParamOf;
-                    _last_nested_read_count--;
+                    CurrentMethod = CurrentMethod!.SubParamOf;
+                    LastNestedReadCount--;
                 }
-                if (_curr_char == MethodTerminate)
+                if (Character == MethodTerminate)
                 {
-                    if (_reading_sub_params > 0)
-                        _reading_sub_params--;
+                    if (ReadingSubParams > 0)
+                        ReadingSubParams--;
                 }
-                if (Termination(_curr_char))
+                if (Termination(Character))
                 {
-                    if (_writer.Length != 0)
+                    if (Writer.Length != 0)
                     {
-                        _value_reader.ReadParam();
-                        _read_arbitrary_legal_value = false;
-                        _terminated = true;
+                        ValueReader.ReadParam();
+                        ReadArbitraryLegal = false;
+                        Terminated = true;
                     }
                     goto Increment;
                 }
-                ValidIdentifier(_curr_char, invocation);
+                ValidIdentifier(Character, invocation);
             Append:
-                _writer.Append(_curr_char);
+                Writer.Append(Character);
             Increment:
                 i++;
             }
@@ -151,29 +146,29 @@ namespace XQuinn.LangInterp
 
         ControlFlow GetContext()
         {
-            if (_curr_char == CharDeclr)
-                _read_char = true;
-            else if (_curr_char == StringDeclr || _curr_char == NoEscDeclr)
+            if (Character == CharDeclr)
+                ReadChar = true;
+            else if (Character == StringDeclr || Character == NoEscDeclr)
             {
-                if (_curr_char == NoEscDeclr)
+                if (Character == NoEscDeclr)
                 {
-                    _value_reader._noEscape = true;
-                    _value_reader._readNoEscDeclr = true;
+                    ValueReader.NoEscape = true;
+                    ValueReader.ReadNoEscDeclr = true;
                 }
-                _read_string = true;
+                ReadString = true;
             }
-            else if (_curr_char == NegSign || _curr_char == MemberAccessOrDecimal || char.IsDigit(_curr_char))
+            else if (Character == NegSign || Character == MemberAccessOrDecimal || char.IsDigit(Character))
             {
-                _read_digit = true;
-                if (_curr_char == MemberAccessOrDecimal)
-                    _value_reader._readFloat = true;
+                ReadDigit = true;
+                if (Character == MemberAccessOrDecimal)
+                    ValueReader.ReadFloat = true;
             }
-            else if (ValidIdentifierFirstChar(_curr_char))
-                _read_arbitrary_legal_value = true;
-            if (_read_digit || _read_string || _read_arbitrary_legal_value || _read_char)
+            else if (ValidIdentifierFirstChar(Character))
+                ReadArbitraryLegal = true;
+            if (ReadDigit || ReadString || ReadArbitraryLegal || ReadChar)
             {
-                _terminated = false;
-                _method_params_began = false;
+                Terminated = false;
+                MethodParamsBegan = false;
                 return ControlFlow.Append;
             }
             return ControlFlow.Release;
@@ -181,28 +176,28 @@ namespace XQuinn.LangInterp
 
         void FatalLexicalError(string invocation)
         {
-            if (_last_nested_read_count > 0)
-                throw new LexicalException("Nested method parameters not properly terminated. You can usually throw another ending parenthesis at the end of your invocation to fix this. ", invocation, _writer);
-            if (_read_generic_args)
-                throw new LexicalException("Invalid generic arguments.", invocation, _writer);
-            if (_read_char)
-                throw new LexicalException("Chars require a closing apostrophe character.", invocation, _writer);
-            if (_read_digit)
-                throw new LexicalException("Digit parameter not terminated.", invocation, _writer);
-            if (_read_string)
-                throw new LexicalException("Strings require a closing quotation character.", invocation, _writer);
-            if (_read_arbitrary_legal_value)
-                throw new LexicalException("Parameter or method not terminated.", invocation, _writer);
-            if (_read_qualified_member)
-                throw new LexicalException("Member access requires a terminator after the member's name; either a ( leading parenthesis for method names, or a , comma for fields.", invocation, _writer);
-            if (_start)
-                throw new LexicalException("Method name was unable to be read due to missing ( leading parenthesis.", invocation, _writer);
+            if (LastNestedReadCount > 0)
+                throw new LexicalException("Nested method parameters not properly terminated. You can usually throw another ending parenthesis at the end of your invocation to fix this. ", invocation, Writer);
+            if (ReadGenericArgs)
+                throw new LexicalException("Invalid generic arguments.", invocation, Writer);
+            if (ReadChar)
+                throw new LexicalException("Chars require a closing apostrophe character.", invocation, Writer);
+            if (ReadDigit)
+                throw new LexicalException("Digit parameter not terminated.", invocation, Writer);
+            if (ReadString)
+                throw new LexicalException("Strings require a closing quotation character.", invocation, Writer);
+            if (ReadArbitraryLegal)
+                throw new LexicalException("Parameter or method not terminated.", invocation, Writer);
+            if (ReadQualifiedMember)
+                throw new LexicalException("Member access requires a terminator after the member's name; either a ( leading parenthesis for method names, or a , comma for fields.", invocation, Writer);
+            if (Start)
+                throw new LexicalException("Method name was unable to be read due to missing ( leading parenthesis.", invocation, Writer);
         }
 
         internal void ValidIdentifier(char value, string invocation)
         {
             if (value != ':' && Illegal(value))
-                throw new LexicalException("Detected illegal character in identifier.", invocation, value, _writer);
+                throw new LexicalException("Detected illegal character in identifier.", invocation, value, Writer);
         }
         internal static bool Illegal(char val) => val != ValidNonAlphaNumeric && !char.IsDigit(val) && !char.IsLetter(val);
         internal static bool Termination(char value) => value == ParamTerminate || value == MethodTerminate;
@@ -210,28 +205,28 @@ namespace XQuinn.LangInterp
 
         void Clear()
         {
-            _main = null;
-            _declr_type = null;
-            _implicit_this = null;
-            _curr_char = default;
-            _start = true;
-            _skipping = false;
-            _curr_method = null;
-            _read_digit = false;
-            _read_string = false;
-            _read_generic_args = false;
-            _skipping = false;
-            _read_qualified_member = false;
-            _read_char = false;
-            _read_enumOR = false;
-            _read_arbitrary_legal_value = false;
-            _method_params_began = false;
-            _terminated = false;
-            _reading_sub_params = 0;
-            _last_nested_read_count = 0;
-            _writer.Length = 0;
-            _value_reader.Clear();
-            _arbitrary_reader.Clear();
+            Main = null;
+            MainRef = null;
+            ImplicitRef = null;
+            Character = default;
+            Start = true;
+            Skipping = false;
+            CurrentMethod = null;
+            ReadDigit = false;
+            ReadString = false;
+            ReadGenericArgs = false;
+            Skipping = false;
+            ReadQualifiedMember = false;
+            ReadChar = false;
+            ReadEnumOR = false;
+            ReadArbitraryLegal = false;
+            MethodParamsBegan = false;
+            Terminated = false;
+            ReadingSubParams = 0;
+            LastNestedReadCount = 0;
+            Writer.Length = 0;
+            ValueReader.Clear();
+            ArbitraryReader.Clear();
         }
         int? Breakpoint(string invocation)
         {
@@ -242,7 +237,7 @@ namespace XQuinn.LangInterp
                 char val = invocation[i];
                 if (val == Whitespace)
                     continue;
-                if (val == ';')
+                if (val == Break)
                     breaking = true;
                 else if (breaking)
                 {
@@ -252,12 +247,15 @@ namespace XQuinn.LangInterp
                         break;
                     }
                     else
-                        throw new LexicalException("Invalid method termination. ", invocation, val, _writer);
+                        throw new LexicalException("Invalid method termination. ", invocation, val, Writer);
                 }
                 else if (val == MethodTerminate)
+                {
+                    breakpoint = i + 1;
                     break;
+                }
                 else
-                    throw new LexicalException("Detected trailing input after method termination or lack of method termination. ", invocation, val, _writer);
+                    throw new LexicalException("Detected trailing input after method termination or lack of method termination. ", invocation, val, Writer);
             }
             return breakpoint;
         }

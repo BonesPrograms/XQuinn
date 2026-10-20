@@ -9,6 +9,8 @@ namespace XQuinn.Runtime.NavigatorEngine
 {
     internal static class TypeMap
     {
+
+        public static bool HiddenFromNavigator(MemberInfo obj) => obj.GetCustomAttribute<HideFromNavigatorAttribute>() != null;
         internal static void MapType(Dictionary<MethodKey, MethodBase>? _methods, Dictionary<string, FieldInfo>? _fields, Type type, Dictionary<string, PropertyInfo>? _props, bool @new = true)
         {
             if (_methods != null)
@@ -16,9 +18,9 @@ namespace XQuinn.Runtime.NavigatorEngine
                 _methods.Clear();
                 List<MethodBase> methods = GetUnfilteredMethods(type, @new);
                 FilterSupportedMethods(methods);
-                GenericKey[] distinctKeys = methods.Select(x => new GenericKey(x)).Distinct().ToArray();
-                foreach (GenericKey key in distinctKeys)
-                    SortMethods(methods, key, _methods);
+                GenericKey[] gKeys = methods.Select(x => new GenericKey(x)).Distinct().ToArray();
+                foreach (GenericKey gkey in gKeys)
+                    SortMethods(methods, gkey, _methods);
             }
             if (_fields != null)
             {
@@ -49,7 +51,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             for (int i = methods.Count - 1; i >= 0; i--)
             {
                 MethodBase method = methods[i];
-                if (method.GetCustomAttribute<CompilerGeneratedAttribute>() != null || !Reflector.SupportedMember(method, method.GetParameters()))
+                if (method.GetCustomAttribute<CompilerGeneratedAttribute>() != null || HiddenFromNavigator(method) || !Reflector.SupportedMember(method, method.GetParameters()))
                     methods.Remove(method);
             }
         }
@@ -58,7 +60,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             for (int i = memberArray.Length - 1; i >= 0; i--)
             {
                 T member = memberArray[i];
-                if (member.GetCustomAttribute<CompilerGeneratedAttribute>() == null && (pred?.Invoke(member) ?? true))
+                if (member.GetCustomAttribute<CompilerGeneratedAttribute>() == null && !HiddenFromNavigator(member) && (pred?.Invoke(member) ?? true))
                     storage[member.Name] = member;
             }
         }

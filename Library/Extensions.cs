@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System;
 using System.Linq;
 using System.Collections;
+using System.Reflection;
+using XQuinn.Reflection;
 
 namespace XQuinn.Extensions
 {
@@ -10,13 +12,12 @@ namespace XQuinn.Extensions
     {
         public static StringBuilder AppendMany(this StringBuilder sb, IEnumerable many, string? delimiter = null, bool appendIndex = false, Func<object?, string?>? toString = null)
         {
-            int length;
+            int length = 0;
             if (many is ICollection col)
                 length = col.Count;
             else
                 checked
                 {
-                    length = 0;
                     foreach (object? element in many)
                         length++;
                 }
@@ -38,29 +39,25 @@ namespace XQuinn.Extensions
         {
             if (appendIndex)
                 sb.Append($"[{i}] ");
-            string? text;
-            if (toString == null)
-                text = element?.ToString();
-            else
-                text = toString.Invoke(element);
-            sb.Append(text ?? "null");
+            string text = toString != null ? toString.Invoke(element) ?? "null" : element.ToReflectionString();
+            sb.Append(text);
             if (delimiter != null && For.SmartDelimiter(length, i))
                 sb.Append(delimiter);
             i++;
         }
-        public static void CatchException(this StringBuilder sb, Exception ex, bool stacktrace)
-        {
-            sb.AppendLine($"Exception Type: {ex.GetType()}");
-            sb.AppendLine($"Message: {ex.Message}");
-            if (stacktrace)
-            {
-                sb.AppendLine($"Inner Exception: {ex.InnerException?.ToString() ?? "<none>"}");
-                sb.AppendLine($"Stack Trace: {ex.StackTrace}");
-                sb.AppendLine($"Data: {ex.Data}");
-                sb.AppendLine($"Target Site: {ex.TargetSite?.ToString() ?? "<none>"}");
-                sb.AppendLine($"Source: {ex.Source ?? "<none>"}");
-            }
-        }
+        // public static void CatchException(this StringBuilder sb, Exception ex, bool stacktrace)
+        // {
+        //     sb.AppendLine($"Exception Type: {ex.GetType()}");
+        //     sb.AppendLine($"Message: {ex.Message}");
+        //     if (stacktrace)
+        //     {
+        //         sb.AppendLine($"Inner Exception: {ex.InnerException?.ToString() ?? "<none>"}");
+        //         sb.AppendLine($"Stack Trace: {ex.StackTrace}");
+        //         sb.AppendLine($"Data: {ex.Data}");
+        //         sb.AppendLine($"Target Site: {ex.TargetSite?.ToString() ?? "<none>"}");
+        //         sb.AppendLine($"Source: {ex.Source ?? "<none>"}");
+        //     }
+        // }
     }
 
     public static class CollectionExtensions
@@ -72,6 +69,20 @@ namespace XQuinn.Extensions
         }
     }
 
+
+    public static class ObjectExtensions
+    {
+
+        public static string ToReflectionString<T>(this T? obj)
+        {
+            return obj is MemberInfo inf ? ReflectionPrinter.Print(inf, false) : obj.ToNullString();
+        }
+        public static string ToNullString<T>(this T? obj)
+        {
+            return obj?.ToString() ?? "null";
+        }
+
+    }
     public static class StringExtensions
     {
         public static bool EqualsCaseless(this string strng, string? txt)
