@@ -48,7 +48,7 @@ namespace XQuinn.ObjectModel
 
         readonly struct Get
         {
-            public readonly MemberInfo Getter;
+            public MemberInfo Getter {get; private init;}
             public readonly bool GetValue(object obj, out object? got)
             {
                 if (Getter is FieldInfo field)

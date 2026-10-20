@@ -138,7 +138,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         object? FinalizeInvoke(MethodBase call, ParameterInfo[] parameters, MethodString mthdString, Type fromType, object? reference)
         {
             object? obj = null;
-            object?[] args = Core.Parser.ParseParameters(parameters, mthdString);
+            object?[] args = Core.Parser.ParseArguments(parameters, mthdString);
             try
             {
                 obj = call is ConstructorInfo ctor ? ctor.Invoke(args) : call.Invoke(TargetInstance(fromType, reference), args);

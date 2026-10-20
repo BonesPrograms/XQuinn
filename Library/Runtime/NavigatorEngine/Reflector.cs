@@ -83,8 +83,8 @@ namespace XQuinn.Runtime.NavigatorEngine
         }
         internal readonly struct Assignment
         {
-            public readonly MemberInfo Member;
-            public readonly Type ObjectType;
+            public MemberInfo Member {get; private init;}
+            public Type ObjectType {get; private init;}
             public Assignment(MemberInfo member)
             {
                 ObjectType = member switch
@@ -108,7 +108,7 @@ namespace XQuinn.Runtime.NavigatorEngine
 
     internal readonly struct Reference
     {
-        public readonly object Object;
+        public object Object {get; private init;}
         internal Reference(object instance)
         {
             Object = instance;

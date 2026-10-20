@@ -7,12 +7,12 @@ namespace XQuinn.Parsing
     //Currently only for strings though
     internal static class NativeIntNet20
     {
-        internal static readonly bool s_64bit;
+        internal static bool Is64bit {get;}
         static NativeIntNet20()
         {
             unsafe
             {
-                s_64bit = sizeof(nint) == sizeof(long);
+                Is64bit = sizeof(nint) == sizeof(long);
             }
         }
 
@@ -22,7 +22,7 @@ namespace XQuinn.Parsing
         public static bool TryParse(string value, out nint num)
         {
             num = default;
-            if (s_64bit)
+            if (Is64bit)
             {
                 if (long.TryParse(value, out long int64))
                 {
@@ -44,7 +44,7 @@ namespace XQuinn.Parsing
         public static bool TryParse(string value, out nuint num)
         {
             num = default;
-            if (s_64bit)
+            if (Is64bit)
             {
                 if (ulong.TryParse(value, out ulong uint64))
                 {

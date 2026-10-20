@@ -13,7 +13,7 @@ namespace XQuinn.Runtime.NavigatorEngine
         {
         }
 
-        public object?[] ParseParameters(ParameterInfo[] parameters, MethodString method)
+        public object?[] ParseArguments(ParameterInfo[] parameters, MethodString method)
         {
             int inputAmount = method.Params.Count;
             int reqAmount = parameters.Length;

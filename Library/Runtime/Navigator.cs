@@ -150,7 +150,7 @@ namespace XQuinn.Runtime
             public Return(object? obj, string cmd)
             {
                 Object = obj;
-                AsString = $"Instruction: {cmd} :: Returned: {obj.ToReflectionString()}";
+                AsString = $"[Instruction: {cmd} :: Returned: {obj.ToReflectionString()}]";
             }
 
             public override string ToString()
