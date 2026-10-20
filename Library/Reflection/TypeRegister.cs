@@ -40,8 +40,7 @@ namespace XQuinn.Reflection
               ("short", typeof(short)), ("ushort", typeof(ushort)),
               ("long", typeof(long)), ("ulong", typeof(ulong)),
               ("float", typeof(float)), ("bool", typeof(bool)),
-              ("Tuple", typeof(ValueTuple)), ("KVP", typeof(KeyValuePair<,>)),
-              ("Runtime.Navigator", typeof(Navigator))
+              ("Tuple", typeof(ValueTuple)), ("KVP", typeof(KeyValuePair<,>))
             };
             for (int i = 0; i < preNamedTypes.Length; i++)
             {

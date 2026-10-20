@@ -184,9 +184,9 @@ namespace XQuinn.Runtime
             righthand = righthand.Trim();
             if (!lefthandfield)
                 throw new ArgumentException($"Can only assign to fields or properties. Bad input: {lefthand}");
-            Reflector.Assignment assigningTo = LefthandExpression(lefthand, lefthandTypeName, out Type lefthandtype, out object? lefthandInstance, invocation);
-            assignedValue = RighthandExpression(righthand, assigningTo.ObjectType);
-            assigningTo.SetValue(Invoker.TargetInstance(lefthandtype, lefthandInstance), assignedValue);
+            Reflector.Assignment assignment = LefthandExpression(lefthand, lefthandTypeName, out Type lefthandtype, out object? lefthandInstance, invocation);
+            assignedValue = RighthandExpression(righthand, assignment.ObjectType);
+            assignment.SetValue(Invoker.TargetInstance(lefthandtype, lefthandInstance), assignedValue);
             return true;
         }
 
@@ -272,7 +272,7 @@ namespace XQuinn.Runtime
                 {
                     Reference reference = new(value);
                     References[left] = reference;
-                    return $"Created reference {left}.";
+                    return $"Assigned reference {left} :: {reference}.";
                 }
             }
             else

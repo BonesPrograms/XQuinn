@@ -23,12 +23,6 @@ namespace XQuinn.Runtime
                     ToChat(text);
             }
             ToLog(text);
-            Flush();
         }
-        public virtual void Flush()
-        {
-
-        }
-
     }
 }

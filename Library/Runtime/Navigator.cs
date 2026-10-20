@@ -21,7 +21,6 @@ namespace XQuinn.Runtime
             get => _logger == null ? throw new InvalidOperationException("Logger not initialized!") : _logger;
             set => _logger = value;
         }
-        public const BindingFlags Flag = NavigatorCore.Flag;
         static NavigatorLogger? _logger;
         static NavigatorCore Core { get; } = new();
         static List<string> Instructions { get; } = new();
@@ -108,15 +107,15 @@ namespace XQuinn.Runtime
         }
         static void ProcessReturn(object? ret)
         {
-            bool returnedref = false;
+            bool referenced = false;
             if (ret is Reference reference)
             {
                 Logger.Print($"Reference: {reference}");
                 ret = reference.Object;
-                returnedref = true;
+                referenced = true;
             }
             IEnumerable? enumerator = ret is string ? null : ret as IEnumerable;
-            if (!returnedref || enumerator != null)
+            if (!referenced || enumerator != null)
                 Logger.Print("Returned: ");
             if (enumerator != null)
             {
@@ -138,7 +137,7 @@ namespace XQuinn.Runtime
                     Logger.Print(EnumerableWriter, true);
                 }
             }
-            else if (!returnedref)
+            else if (!referenced)
                 Logger.Print(ret);
 
         }
