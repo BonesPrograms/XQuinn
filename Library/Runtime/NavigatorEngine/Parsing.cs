@@ -57,10 +57,10 @@ namespace XQuinn.Runtime.NavigatorEngine
             Type elementType = parameters[lastparam].ParameterType.GetElementType() ?? throw new ArgumentNullException();
             if (method.Params.Count == parameters.Length)
             {
-                ArgumentString parameter = method.Params[lastparam];
-                if (!(parameter is ValueString val && (val.Argument.EqualsCaseless("null") || val.Argument.EqualsCaseless("default"))))
+                ArgumentString argument = method.Params[lastparam];
+                if (!(argument is ValueString val && (val.Argument.EqualsCaseless("null") || val.Argument.EqualsCaseless("default"))))
                 {
-                    object? arg = NewArg(parameter, elementType);
+                    object? arg = NewArg(argument, elementType);
                     if (!arg?.GetType().IsArray ?? true)
                     {
                         Array newArray = Array.CreateInstance(elementType, 1);
