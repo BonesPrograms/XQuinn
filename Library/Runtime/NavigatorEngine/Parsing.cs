@@ -3,8 +3,6 @@ using XQuinn.Extensions;
 using XQuinn.LangInterp.SyntaxTree;
 using System;
 
-using HarmonyLib;
-
 namespace XQuinn.Runtime.NavigatorEngine
 {
     sealed class Parser : CoreObject
@@ -24,7 +22,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             if (inputAmount < reqAmount)
                 DefaultArgs(inputAmount, reqAmount, parameters, args, method);
             else if (parameters[lastparam].IsDefined(typeof(ParamArrayAttribute)))
-               return NewArray(lastparam, parameters, args, method);
+                return NewArray(lastparam, parameters, args, method);
             else if (inputAmount > reqAmount)
                 throw new TargetParameterCountException($"input param count: {method.Params.Count} required count: {parameters.Length} method name {method.Name}");
             for (int i = 0; i < inputAmount; i++)
@@ -104,9 +102,9 @@ namespace XQuinn.Runtime.NavigatorEngine
             if (Core.References.TryGetValue(value.Argument, out Reference reference))
                 return reference.Object;
             if (Core.Fields.TryGetValue(value.Argument, out FieldInfo? field))
-                return field.GetValue(Core.Object); 
-            if (Core.Props.TryGetValue(value.Argument, out PropertyInfo? prop))  
-                return prop.GetValue(Core.Object, NavigatorCore.Flag, null, null, null);   
+                return field.GetValue(Core.Object);
+            if (Core.Props.TryGetValue(value.Argument, out PropertyInfo? prop))
+                return prop.GetValue(Core.Object, NavigatorCore.Flag, null, null, null);
             return value.Parse(paramType);
         }
     }

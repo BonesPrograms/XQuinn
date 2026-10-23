@@ -10,7 +10,7 @@ namespace XQuinn.Extensions
 {
     public static class StringBuilderExtensions
     {
-        public static StringBuilder AppendMany(this StringBuilder sb, IEnumerable many, string? delimiter = null, bool appendIndex = false, Func<object?, string?>? toString = null)
+        public static StringBuilder AppendMany(this StringBuilder sb, IEnumerable many, string? delimiter = null, bool appendIndex = false, Func<object?, string>? toString = null)
         {
             int length = 0;
             if (many is ICollection col)
@@ -26,7 +26,7 @@ namespace XQuinn.Extensions
                 AppendMany(length, ref i, sb, element, delimiter, appendIndex, toString);
             return sb;
         }
-        public static StringBuilder AppendMany<T>(this StringBuilder sb, IEnumerable<T?> many, string? delimiter = null, bool appendIndex = false, Func<T?, string?>? toString = null)
+        public static StringBuilder AppendMany<T>(this StringBuilder sb, IEnumerable<T?> many, string? delimiter = null, bool appendIndex = false, Func<T?, string>? toString = null)
         {
             int length = many.Count();
             int i = 0;
@@ -35,11 +35,11 @@ namespace XQuinn.Extensions
             return sb;
         }
 
-        static void AppendMany<T>(int length, ref int i, StringBuilder sb, T? element, string? delimiter = null, bool appendIndex = false, Func<T?, string?>? toString = null)
+        static void AppendMany<T>(int length, ref int i, StringBuilder sb, T? element, string? delimiter = null, bool appendIndex = false, Func<T?, string>? toString = null)
         {
             if (appendIndex)
                 sb.Append($"[{i}] ");
-            string text = toString != null ? toString.Invoke(element) ?? "null" : element.ToReflectionString();
+            string text = toString != null ? toString(element) : element.ToNullString();
             sb.Append(text);
             if (delimiter != null && For.SmartDelimiter(length, i))
                 sb.Append(delimiter);

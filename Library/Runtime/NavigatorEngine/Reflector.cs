@@ -1,6 +1,5 @@
 using System.Reflection;
 using XQuinn.Extensions;
-using XQuinn.Reflection;
 using XQuinn.LangInterp.SyntaxTree;
 using System.Linq;
 using System;
@@ -21,7 +20,7 @@ namespace XQuinn.Runtime.NavigatorEngine
                 return false;
             return !parameters.Any(x => x.IsOut || x.IsIn || x.ParameterType.IsByRef);
         }
-        
+
 
         internal Type FindReference(IMemberString member, out object? instance)
         {
@@ -83,8 +82,8 @@ namespace XQuinn.Runtime.NavigatorEngine
         }
         internal readonly struct Assignment
         {
-            public MemberInfo Member {get; private init;}
-            public Type ObjectType {get; private init;}
+            public MemberInfo Member { get; private init; }
+            public Type ObjectType { get; private init; }
             public Assignment(MemberInfo member)
             {
                 ObjectType = member switch
@@ -108,7 +107,7 @@ namespace XQuinn.Runtime.NavigatorEngine
 
     internal readonly struct Reference
     {
-        public object Object {get; private init;}
+        public object Object { get; private init; }
         internal Reference(object instance)
         {
             Object = instance;

@@ -8,7 +8,7 @@ namespace XQuinn.LangInterp.SyntaxTree
 {
     internal abstract class GenericString : MetadataString
     {
-        public string StringID  {get; private set;}
+        public string StringID { get; private set; }
         public IReadOnlyList<TypeString> Generics
         {
             get

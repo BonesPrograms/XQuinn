@@ -7,11 +7,9 @@ using XQuinn.Extensions;
 using System.Text;
 using System.Collections;
 using System.Runtime.InteropServices;
-
 using System.Runtime.CompilerServices;
 using System.Linq;
 using XQuinn.Runtime.NavigatorEngine;
-using XQuinn.Runtime;
 using XQuinn.ObjectModel;
 
 namespace XQuinn.Reflection
@@ -151,7 +149,7 @@ namespace XQuinn.Reflection
         {
             foreach (Type type in types)
             {
-                string? key = keyProvider.Invoke(type);
+                string? key = keyProvider(type);
                 if (key != null)
                     CacheType(type, key);
             }

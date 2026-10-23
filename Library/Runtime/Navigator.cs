@@ -3,7 +3,6 @@ using System.Collections;
 using XQuinn.Runtime.NavigatorEngine;
 using XQuinn.Extensions;
 using System.Text;
-using System.Reflection;
 using System.Collections.Generic;
 
 namespace XQuinn.Runtime
@@ -37,7 +36,7 @@ namespace XQuinn.Runtime
         {
             Logger.ToLog(DateTime.Now.ToString());
             Logger.ToLog($"Instruction: {instruction}");
-            MiniLexer.Autochain(Instructions, instruction);
+            SimpleLex.Autochain(Instructions, instruction);
             bool exception = false;
             foreach (string cmd in Instructions)
             {
@@ -133,7 +132,7 @@ namespace XQuinn.Runtime
                 else
                 {
                     EnumerableWriter.Length = 0;
-                    EnumerableWriter.AppendMany(enumerator, Environment.NewLine, true);
+                    EnumerableWriter.AppendMany(enumerator, Environment.NewLine, true, x => x.ToReflectionString());
                     Logger.Print(EnumerableWriter, true);
                 }
             }

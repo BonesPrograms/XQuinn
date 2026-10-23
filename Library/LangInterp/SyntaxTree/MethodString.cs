@@ -9,8 +9,8 @@ namespace XQuinn.LangInterp.SyntaxTree
 {
     internal sealed class MethodString : GenericString, IMemberString
     {
-        internal MethodString? SubParamOf {get; private init;}
-        public TypeString DeclaringType {get; private init;}
+        internal MethodString? SubParamOf { get; private init; }
+        public TypeString DeclaringType { get; private init; }
         public IReadOnlyList<ArgumentString> Params
         {
             get

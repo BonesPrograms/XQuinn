@@ -2,9 +2,7 @@ using System.Reflection;
 using System;
 using System.Collections.Generic;
 using System.Collections;
-
 using System.CodeDom.Compiler;
-
 using XQuinn.Runtime.NavigatorEngine;
 
 namespace XQuinn.Reflection

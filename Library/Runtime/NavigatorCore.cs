@@ -6,9 +6,7 @@ using System.Linq;
 using System;
 using System.Collections.Generic;
 using XQuinn.LangInterp;
-using System.Text;
 using XQuinn.Runtime.NavigatorEngine;
-using System.Collections;
 
 namespace XQuinn.Runtime
 {
@@ -74,7 +72,7 @@ namespace XQuinn.Runtime
                 return References.Select(x => $"Key: {x.Key} :: {x.Value}");
             if (StaticType == null)
                 throw new InvalidOperationException("No loaded type to query. Use the static methods Fields/Methods/Props in class Types to query unloaded types.");
-            if (MiniLexer.ImplicitThisMethodCall(invocation))
+            if (SimpleLex.ImplicitThisMethodCall(invocation))
             {
                 MethodString query = Lexer.MethodTemplate(invocation, ImplicitRef!, ImplicitRef);
                 if (query.Name.EqualsCaseless("methods"))
@@ -122,7 +120,6 @@ namespace XQuinn.Runtime
         {
             invocation = invocation.Trim();
             object? instance = null;
-            Reference = null;
             bool referenced = false;
             if (References.TryGetValue(invocation, out Reference reference))
             {
@@ -132,6 +129,7 @@ namespace XQuinn.Runtime
             }
             instance ??= ReturnOrAssign(invocation) ?? throw new ArgumentException($"Failed to load new instance from {invocation}, invocation returned null!");
             LoadInstance(instance);
+            Reference = referenced ? invocation : null;
             return referenced ? reference : instance;
         }
 
@@ -144,7 +142,7 @@ namespace XQuinn.Runtime
                 return reference;
             if (invocation.EqualsCaseless("this"))
                 return Object;
-            string typeName = MiniLexer.ResolveMemberAccessOrLiteral(invocation, out string member, out bool field)?.Trim() ?? ImplicitRef?.StringID ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
+            string typeName = SimpleLex.ResolveMemberAccessOrLiteral(invocation, out string member, out bool field)?.Trim() ?? ImplicitRef?.StringID ?? throw new ArgumentException($"No type loaded to return fields from, or no type name given for isolated invocation.");
             if (!field)
             {
                 TypeString declaringtype = TypeString.New(typeName);
@@ -175,11 +173,11 @@ namespace XQuinn.Runtime
         bool Assignment(string invocation, out object? assignedValue)
         {
             assignedValue = null;
-            if (!MiniLexer.AssignmentSubstring(invocation, out string? left, out string? right))
+            if (!SimpleLex.AssignmentSubstring(invocation, out string? left, out string? right))
                 return false;
             string lefthand = left!;
             string righthand = right!;
-            string? lefthandTypeName = MiniLexer.ResolveMemberAccessOrLiteral(lefthand, out lefthand, out bool lefthandfield);
+            string? lefthandTypeName = SimpleLex.ResolveMemberAccessOrLiteral(lefthand, out lefthand, out bool lefthandfield);
             lefthand = lefthand.Trim();
             righthand = righthand.Trim();
             if (!lefthandfield)
@@ -218,7 +216,7 @@ namespace XQuinn.Runtime
 
         object? RighthandExpression(string righthand, Type objecttype)
         {
-            string? righthandTypeName = MiniLexer.ResolveMemberAccessOrLiteral(righthand, out righthand, out bool righthandfield);
+            string? righthandTypeName = SimpleLex.ResolveMemberAccessOrLiteral(righthand, out righthand, out bool righthandfield);
             righthand = righthand.Trim();
             if (righthandTypeName != null)
             {
@@ -235,7 +233,7 @@ namespace XQuinn.Runtime
                     return Invoker.InvokeMethod(methodStr);
                 }
             }
-            else if (!righthandfield && MiniLexer.ImplicitThisMethodCall(righthand))
+            else if (!righthandfield && SimpleLex.ImplicitThisMethodCall(righthand))
             {
                 if (StaticType == null)
                     throw new ArgumentException("Cannot perform implicit this call, no type is loaded.");
@@ -251,7 +249,7 @@ namespace XQuinn.Runtime
 
         string NewRef(string key)
         {
-            if (MiniLexer.AssignmentSubstring(key, out string? left, out string? right))
+            if (SimpleLex.AssignmentSubstring(key, out string? left, out string? right))
             {
                 left = left!.Trim();
                 if (left.EqualsCaseless(Reference))

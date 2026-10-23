@@ -3,7 +3,7 @@ using XQuinn.LangInterp;
 
 namespace XQuinn.Runtime.NavigatorEngine
 {
-    static class MiniLexer
+    static class SimpleLex
     {
 
 

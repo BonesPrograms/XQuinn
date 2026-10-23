@@ -2,7 +2,7 @@ namespace XQuinn.LangInterp.SyntaxTree
 {
     internal abstract class ArgumentString
     {
-        protected string Arg {get; set;}
+        protected string Arg { get; set; }
         internal ArgumentString(string String)
         {
             Arg = String;

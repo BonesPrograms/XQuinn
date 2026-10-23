@@ -1,11 +1,8 @@
 using System.Reflection;
 using XQuinn.Extensions;
-
 using XQuinn.LangInterp.SyntaxTree;
-
 using System;
 using System.Collections.Generic;
-
 using System.Runtime.ExceptionServices;
 
 namespace XQuinn.Runtime.NavigatorEngine

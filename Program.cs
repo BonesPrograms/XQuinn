@@ -34,6 +34,18 @@ namespace XQuinn.Private
 }
 #else
 
+enum MyEnum { A, B, C };
+
+static class EnumExt
+{
+    public static string Something<T>(T obj) where T : struct, Enum
+    {
+        if (obj.Equals(default(T)))
+            return "Hello world";
+        return "No!";
+    }
+}
+
 namespace XQuinn.Private
 {
 
@@ -216,7 +228,7 @@ namespace XQuinn.Private
 
         public void Func(int x, int y = 2)
         {
-            
+
         }
     }
 

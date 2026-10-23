@@ -60,7 +60,7 @@ namespace XQuinn.Runtime.NavigatorEngine
             for (int i = memberArray.Length - 1; i >= 0; i--)
             {
                 T member = memberArray[i];
-                if (member.GetCustomAttribute<CompilerGeneratedAttribute>() == null && !HiddenFromNavigator(member) && (pred?.Invoke(member) ?? true))
+                if (member.GetCustomAttribute<CompilerGeneratedAttribute>() == null && !HiddenFromNavigator(member) && (pred == null || pred(member)))
                     storage[member.Name] = member;
             }
         }
