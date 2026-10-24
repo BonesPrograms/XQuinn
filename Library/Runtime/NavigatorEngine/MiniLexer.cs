@@ -143,9 +143,14 @@ namespace XQuinn.Runtime.NavigatorEngine
                     break;
                 }
                 if (c == CallLexer.GenericDeclr)
+                {
                     i = GenericJump(i, invocation);
+                    continue;
+                }
                 else if (c == CallLexer.MemberAccessOrDecimal)
+                {
                     lastAccessorIndex = i;
+                }
             }
             if (lastAccessorIndex != null)
             {
