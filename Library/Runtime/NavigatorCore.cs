@@ -120,7 +120,10 @@ namespace XQuinn.Runtime
             object instance = ReturnOrAssign(invocation) ?? throw new ArgumentException($"Failed to load new instance from {invocation}, invocation returned null!");
             Reference? reference = null;
             if (instance is Reference)
+            {
                 reference = (Reference)instance;
+                instance = reference.Value.Object;
+            }
             Reference = reference == null ? null : invocation;
             LoadInstance(instance);
             return reference ?? instance;
