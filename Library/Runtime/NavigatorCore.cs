@@ -17,20 +17,19 @@ namespace XQuinn.Runtime
 
 
         internal TypeBook? LocalCache { get; set; }
-        CallLexer Lexer { get; init; } = new();
-        internal Parser Parser { get; private init; }
-        internal Reflector Reflector { get; private init; }
-        internal Invoker Invoker { get; private init; }
+        CallLexer Lexer { get; } = new();
+        internal Parser Parser { get; }
+        internal Reflector Reflector { get; }
+        internal Invoker Invoker { get; }
         internal object? Object { get; private set; }
         internal string? Reference { get; private set; }
         internal Type? ObjectType => Object?.GetType();
         internal Type? StaticType { get; private set; }
         internal TypeString? ImplicitRef { get; private set; }
-        internal Dictionary<MethodKey, MethodBase> Methods { get; private init; } = new();
-        internal Dictionary<string, FieldInfo> Fields { get; private init; } = new(StringComparer.OrdinalIgnoreCase);
-        internal Dictionary<string, PropertyInfo> Props { get; private init; } = new(StringComparer.OrdinalIgnoreCase);
-        internal Dictionary<string, Reference> References { get; private init; } = new(StringComparer.OrdinalIgnoreCase);
-
+        internal Dictionary<MethodKey, MethodBase> Methods { get; } = new();
+        internal Dictionary<string, FieldInfo> Fields { get; } = new(StringComparer.OrdinalIgnoreCase);
+        internal Dictionary<string, PropertyInfo> Props { get; } = new(StringComparer.OrdinalIgnoreCase);
+        internal Dictionary<string, Reference> References { get; } = new(StringComparer.OrdinalIgnoreCase);
         internal const BindingFlags Flag = BindingFlags.FlattenHierarchy | BindingFlags.IgnoreCase | BindingFlags.Static | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance;
         public NavigatorCore()
         {

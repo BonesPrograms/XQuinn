@@ -7,7 +7,7 @@ namespace XQuinn.LangInterp.LexicalEngine
 {
     sealed class ArbitraryReader : LexicalObject
     {
-        internal bool BeganReadingMainmethodName { get; set; }
+        internal bool BeganReadingMainmethodName { get; private set; }
         bool MemberAccessing { get; set; }
         bool GenericParamTerminate { get; set; }
         bool ReadFirstGeneric { get; set; }
@@ -27,23 +27,11 @@ namespace XQuinn.LangInterp.LexicalEngine
         public ArbitraryReader(CallLexer lexer) : base(lexer)
         {
         }
-        void CrossWhitespace(Func<bool>? pred)
-        {
-            while (Lexer.i < Lexer.Breakpoint)
-            {
-                Lexer.i++;
-                Lexer.Character = Lexer.invocation[Lexer.i];
-                if (WhitespaceEnd() || Lexer.Character == GenericDeclr || (pred != null && pred()))
-                    break;
-                else if (Lexer.Character != CallLexer.Whitespace)
-                    throw new LexicalException("Detected trailing input after whitespace.", Lexer.invocation, Lexer.Character, Lexer.Buffer);
-            }
-        }
 
         internal ControlFlow ReadArbitrary()
         {
             if (Lexer.Character == CallLexer.Whitespace)
-                CrossWhitespace(delegate { return Lexer.Character == MemberAccessOrDecimal || Lexer.Character == EnumOR; });
+                Lexer.CrossWhitespace(delegate { return Lexer.Character == GenericDeclr || Lexer.Character == MemberAccessOrDecimal || Lexer.Character == EnumOR; });
             if (Lexer.Character == EnumOR)
                 return ActivateReadEnumOR();
             else if (Lexer.Character == GenericDeclr)
@@ -66,7 +54,7 @@ namespace XQuinn.LangInterp.LexicalEngine
         internal ControlFlow ReadQualifiedMember()
         {
             if (Lexer.Character == CallLexer.Whitespace)
-                CrossWhitespace(delegate { return (MemberAccessing && Lexer.Character != CallLexer.Whitespace) || Lexer.Character == MemberAccessOrDecimal; });
+                Lexer.CrossWhitespace(delegate { return Lexer.Character == GenericDeclr || (MemberAccessing && Lexer.Character != CallLexer.Whitespace) || Lexer.Character == MemberAccessOrDecimal; });
             if (Lexer.Character == GenericDeclr)
                 return ActivateReadGeneric();
             if (Lexer.Character == MemberAccessOrDecimal)
@@ -156,7 +144,7 @@ namespace XQuinn.LangInterp.LexicalEngine
                 if (Lexer.ReadGenericArgs)
                     return ReadGeneric();
                 if (Lexer.Character == CallLexer.Whitespace)
-                    CrossWhitespace(null);
+                    Lexer.CrossWhitespace(delegate {return Lexer.Character == GenericDeclr;});
                 if (Lexer.Character == MethodDeclr)
                     return ReadMain();
                 if (Lexer.Character == GenericDeclr)
@@ -246,7 +234,7 @@ namespace XQuinn.LangInterp.LexicalEngine
         {
             char next = Lexer.Character;
             const string error = "Identifier names must Lexer.start with a letter or an underscore.";
-            if (!ValidIdentifierFirstChar(next))
+            if (!Lexer.ValidIdentifierFirstChar())
                 throw new LexicalException(error, Lexer.invocation, next, Lexer.Buffer);
             return true;
         }

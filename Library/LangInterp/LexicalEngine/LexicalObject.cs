@@ -10,8 +10,7 @@ namespace XQuinn.LangInterp.LexicalEngine
     }
     abstract class LexicalObject
     {
-        protected CallLexer Lexer { get; init; }
-        protected bool WhitespaceEnd() => CallLexer.Termination(Lexer.Character) || ((Lexer.ReadQualifiedMember || Lexer.ArbitraryReader.BeganReadingMainmethodName || Lexer.ReadArbitraryLegal) && Lexer.Character == CallLexer.MethodDeclr);
+        protected CallLexer Lexer { get;}
         public LexicalObject(CallLexer lexer)
         {
             Lexer = lexer;

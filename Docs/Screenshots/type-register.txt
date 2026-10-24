@@ -1,0 +1,25 @@
+Declaration: public static class TypeRegister
+
+> Contains("LIST<T>")
+True
+
+> GetTypeOrThrow("list<T>") == typeof(List<>)
+True
+
+> CacheType(typeof(DateTime), "Clock")
+True
+
+> CacheType(typeof(DateTime), "clock")
+False
+
+> TryGetType("CLOCK", out type) && type == typeof(DateTime)
+True
+
+> CacheType(typeof(List<>), "Items")
+True
+
+> GetTypeOrThrow("Items<T>") == typeof(List<>)
+True
+
+> GetTypeCached("MissingDocumentationType") == null
+True

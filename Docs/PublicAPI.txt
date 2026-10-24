@@ -1,2 +1,17 @@
-All namespaces and their types except XQuinn.NetConsole are available for public use in the release version of XQuinn.
-NetStandard2.0 edition lacks multiple types from the public API, see NetStandard2.0Support.txt
+Public API notes
+================
+
+Only public types and members are a supported C# host API. A namespace being
+present does not make its internal implementation types public.
+
+Current entry points include XQuinn.Runtime.Navigator,
+XQuinn.Runtime.NavigatorLogger, and XQuinn.Reflection.TypeRegister.
+TypeRegister is declared public static class TypeRegister (not partial).
+
+NavigatorCore, TypeBook, and NavigatorEngine.Types are internal. The Types helper
+is precached for use in Navigator instruction strings, not direct host calls.
+XQuinn.NetConsole contains console/test support rather than the library host API.
+
+See Runtime.Navigator.md and TypeRegister.md for formatted guides and source
+references. The project currently enables net10.0-windows only; the separate
+NetStandard2.0Support.txt file is historical platform guidance.

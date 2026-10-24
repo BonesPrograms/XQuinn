@@ -1,0 +1,53 @@
+Instruction: + greeting = "Hello; world"
+Returned: 
+Assigned reference greeting :: ObjectType: sealed class String :: ToString: Hello; world.
+
+
+Instruction: #greeting
+Reference: ObjectType: sealed class String :: ToString: Hello; world
+Type: sealed class String
+Object Type: sealed class String
+Reference: greeting
+
+
+Instruction: + numbers = List<int>.new()
+Returned: 
+Assigned reference numbers :: ObjectType: collection List<Int32> :: ToString: System.Collections.Generic.List`1[System.Int32].
+Type: sealed class String
+Object Type: sealed class String
+Reference: greeting
+
+
+Instruction: #numbers
+Reference: ObjectType: collection List<Int32> :: ToString: System.Collections.Generic.List`1[System.Int32]
+Returned: 
+Enumerable is empty.
+Type: collection List<Int32>
+Object Type: collection List<Int32>
+Reference: numbers
+
+
+Instruction: Add(22)
+Returned: 
+null
+Type: collection List<Int32>
+Object Type: collection List<Int32>
+Reference: numbers
+
+
+Instruction: numbers
+Reference: ObjectType: collection List<Int32> :: ToString: System.Collections.Generic.List`1[System.Int32]
+Returned: 
+[0] 22
+Type: collection List<Int32>
+Object Type: collection List<Int32>
+Reference: numbers
+
+
+Instruction: ?refs
+Returned: 
+[0] Key: greeting :: ObjectType: sealed class String :: ToString: Hello; world
+[1] Key: numbers :: ObjectType: collection List<Int32> :: ToString: System.Collections.Generic.List`1[System.Int32]
+Type: collection List<Int32>
+Object Type: collection List<Int32>
+Reference: numbers

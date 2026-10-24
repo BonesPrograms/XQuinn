@@ -14,7 +14,7 @@ using XQuinn.ObjectModel;
 
 namespace XQuinn.Reflection
 {
-    public static partial class TypeRegister
+    public static class TypeRegister
     {
         public static IEnumerable<string> Keys()
         {

@@ -1,13 +1,18 @@
 I am a fan of reflection and accessing objects at runtime via reflection. XQuinn has various types to make reflection easier and faster, and as well as various types for accessing
 objects and invoking methods at runtime with string inputs.
 
+Current guides: README.md, Runtime.Navigator.md, and TypeRegister.md in this
+directory. Those guides include checked source references and runtime captures.
+
 XQuinn's main runtime/reflection offers:
 
-CallInterpreter - Load a type or an instance at runtime via strings and invoke it's methods. Syntax guide is in the file.
+Navigator - Load a type or an instance at runtime via strings and invoke its
+members. See Runtime.Navigator.md for the current syntax and public host API.
 
-TypeCache - Pre cache types by string for faster string based reflection at runtime. Not case sensitive.
+TypeRegister - Precache types by name for string-based reflection. Keys are
+case-insensitive. This public static class is no longer partial; see TypeRegister.md.
 
-TypeBook - Convert a collection of types to a caseless string name dictionary for caching.
+TypeBook - Internal helper for name-based type caching; not a public host API.
 
 RuntimeCommand - Mark a class and method with an attribute to invoke it by string at runtime with parameter support, static only. 
 

@@ -22,15 +22,16 @@ namespace XQuinn.LangInterp
         internal const char GenericDeclr = '<';
         internal const char GenericTerminate = '>';
         internal const char Break = ';';
-        internal static Whitespace Whitespace => Whitespace._whitespace;
-        internal StringBuilder Buffer { get; private init; } = new();
-        internal ValueReader ValueReader { get; private init; }
-        internal ArbitraryReader ArbitraryReader { get; private init; }
+        internal static readonly Whitespace Whitespace = Whitespace._whitespace;
+        internal IStringBuffer Buffer { get; }
+        readonly StringBuilder _buffer = new();
+        internal ValueReader ValueReader { get; }
+        internal ArbitraryReader ArbitraryReader { get; }
         internal MethodString? Main { get; set; }
         internal MethodString? CurrentMethod { get; set; }
         internal TypeString? MainRef { get; private set; }
         internal TypeString? ImplicitRef { get; private set; }
-        internal char Character { get; set; }
+        internal char Character { get; private set; }
         internal bool Start { get; set; } = true;
         internal bool ReadChar { get; set; }
         internal bool ReadArbitraryLegal { get; set; }
@@ -44,9 +45,9 @@ namespace XQuinn.LangInterp
         internal bool Terminated { get; set; }
         internal int ReadingSubParams { get; set; }
         internal int LastNestedReadCount { get; set; }
-        internal int Breakpoint {get; private set;}
-        internal int i {get; set;}
-        internal string invocation {get => _invocation ?? throw new InvalidOperationException(); private set => _invocation = value;}
+        int Length { get; set; }
+        int i { get; set; }
+        internal string invocation { get => _invocation ?? throw new InvalidOperationException(); private set => _invocation = value; }
         string? _invocation;
         Read ReadState
         {
@@ -80,13 +81,14 @@ namespace XQuinn.LangInterp
         {
             ValueReader = new(this);
             ArbitraryReader = new(this);
+            Buffer = new(_buffer);
         }
 
         internal MethodString MethodTemplate(string invocation, TypeString declaringType, TypeString? implicitRef)
         {
             Clear();
             this.invocation = invocation;
-            Breakpoint = FindBreak() ?? invocation.Length;
+            Length = MethodBreak() ?? invocation.Length;
             MainRef = declaringType;
             ImplicitRef = implicitRef;
             StringBuffer();
@@ -98,7 +100,7 @@ namespace XQuinn.LangInterp
 
         void StringBuffer()
         {
-            while (i < Breakpoint)
+            while (i < Length)
             {
                 Character = invocation[i];
                 ControlFlow flow = ReadState switch
@@ -142,7 +144,7 @@ namespace XQuinn.LangInterp
                 }
                 ValidIdentifier();
             Append:
-                Buffer.Append(Character);
+                _buffer.Append(Character);
             Increment:
                 i++;
             }
@@ -167,7 +169,7 @@ namespace XQuinn.LangInterp
                 if (Character == MemberAccessOrDecimal)
                     ValueReader.ReadFloat = true;
             }
-            else if (ValidIdentifierFirstChar(Character))
+            else if (ValidIdentifierFirstChar())
                 ReadArbitraryLegal = true;
             if (ReadDigit || ReadString || ReadArbitraryLegal || ReadChar)
             {
@@ -205,7 +207,23 @@ namespace XQuinn.LangInterp
         }
         internal static bool Illegal(char val) => val != ValidNonAlphaNumeric && !char.IsDigit(val) && !char.IsLetter(val);
         internal bool Termination() => Character == ParamTerminate || Character == MethodTerminate;
-        internal static bool ValidIdentifierFirstChar(char value) => value == ValidNonAlphaNumeric || char.IsLetter(value);
+        internal bool ValidIdentifierFirstChar() => Character == ValidNonAlphaNumeric || char.IsLetter(Character);
+        bool WhitespaceEnd() =>
+        Termination() || ((ReadQualifiedMember || ArbitraryReader.BeganReadingMainmethodName || ReadArbitraryLegal) && Character == CallLexer.MethodDeclr);
+
+        public void CrossWhitespace(Func<bool>? pred = null)
+        {
+            while (i < Length)
+            {
+                i++;
+                Character = invocation[i];
+                if (WhitespaceEnd() || (pred != null && pred()))
+                    break;
+                else if (Character != CallLexer.Whitespace)
+                    throw new LexicalException("Detected trailing input after whitespace.", invocation, Character, Buffer);
+
+            }
+        }
 
         void Clear()
         {
@@ -230,12 +248,12 @@ namespace XQuinn.LangInterp
             LastNestedReadCount = 0;
             Buffer.Length = 0;
             i = 0;
-            Breakpoint = 0;
+            Length = 0;
             _invocation = null;
             ValueReader.Clear();
             ArbitraryReader.Clear();
         }
-        int? FindBreak()
+        int? MethodBreak()
         {
             bool breaking = false;
             int? breakpoint = null;
@@ -265,6 +283,22 @@ namespace XQuinn.LangInterp
                     throw new LexicalException("Detected trailing input after method termination or lack of method termination. ", invocation, val, Buffer);
             }
             return breakpoint;
+        }
+
+        public sealed class IStringBuffer
+        {
+            StringBuilder Buffer { get; }
+            public int Length { get => Buffer.Length; set => Buffer.Length = value; }
+            public new string ToString() => Buffer.ToString();
+
+            public static implicit operator IStringBuffer(StringBuilder sb) => new(sb);
+
+            public static implicit operator StringBuilder(IStringBuffer isb) => isb.Buffer;
+
+            public IStringBuffer(StringBuilder sb)
+            {
+                Buffer = sb;
+            }
         }
 
         enum Read

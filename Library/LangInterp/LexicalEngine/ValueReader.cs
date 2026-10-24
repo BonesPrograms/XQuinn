@@ -9,12 +9,10 @@ namespace XQuinn.LangInterp.LexicalEngine
         internal bool ReadNoEscDeclr { get; set; }
         internal bool ReadORDelimit { get; set; }
         internal bool ReadORVal { get; set; }
-
         internal bool ReadFloat { get; set; }
         bool FinishedReadChar { get; set; }
         bool ReadCharValue { get; set; }
         bool StringEnding { get; set; }
-
         bool Escaping { get; set; }
         bool JustEscaped { get; set; }
 
@@ -34,7 +32,6 @@ namespace XQuinn.LangInterp.LexicalEngine
 
         public ValueReader(CallLexer lexer) : base(lexer)
         {
-            Lexer = lexer;
         }
         internal void ReadParam()
         {
@@ -44,18 +41,6 @@ namespace XQuinn.LangInterp.LexicalEngine
             Lexer.CurrentMethod!.AddParameter(param);
         }
 
-        void SkipTrailingWhitespace()
-        {
-            while (Lexer.i < Lexer.Breakpoint)
-            {
-                Lexer.i++;
-                Lexer.Character = Lexer.invocation[Lexer.i];
-                if (WhitespaceEnd())
-                    return;
-                if (Lexer.Character != CallLexer.Whitespace)
-                    throw new LexicalException("Detected trailing input after whitespace.", Lexer.invocation, Lexer.Character, Lexer.Buffer);
-            }
-        }
 
         internal ControlFlow ReadEnumOR()
         {
@@ -109,7 +94,7 @@ namespace XQuinn.LangInterp.LexicalEngine
             }
             else if (Lexer.Character == CallLexer.Whitespace)
             {
-                SkipTrailingWhitespace();
+                Lexer.CrossWhitespace();
                 Lexer.ReadChar = false;
                 FinishedReadChar = false;
                 ReadCharValue = false;
@@ -128,7 +113,7 @@ namespace XQuinn.LangInterp.LexicalEngine
                 return ControlFlow.Append;
             if (Lexer.Character == CallLexer.Whitespace)
             {
-                SkipTrailingWhitespace();
+                Lexer.CrossWhitespace();
                 Lexer.ReadDigit = false;
                 ReadFloat = false;
                 return ControlFlow.Release;
@@ -157,7 +142,7 @@ namespace XQuinn.LangInterp.LexicalEngine
             if (StringEnding)
             {
                 if (Lexer.Character == CallLexer.Whitespace)
-                    SkipTrailingWhitespace();
+                    Lexer.CrossWhitespace();
                 StringEnding = false;
                 Lexer.ReadString = false;
                 NoEscape = false;

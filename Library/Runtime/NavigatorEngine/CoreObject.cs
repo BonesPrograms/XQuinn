@@ -2,7 +2,7 @@ namespace XQuinn.Runtime.NavigatorEngine
 {
     internal abstract class CoreObject
     {
-        protected NavigatorCore Core { get; private init; }
+        protected NavigatorCore Core { get; }
         public CoreObject(NavigatorCore navig)
         {
             Core = navig;

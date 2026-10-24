@@ -1,0 +1,26 @@
+Instruction: $List<int>
+Returned: 
+collection List<Int32>
+Type: collection List<Int32>
+
+
+Instruction: ?methods("new")
+Returned: 
+[0] [Key: GetNewCapacity :: private instance Int32 List<Int32>::GetNewCapacity(Int32 capacity)]
+[1] [Key: new :: public List<Int32>::.ctor()]
+[2] [Key: new:1 :: public List<Int32>::.ctor(Int32 capacity)]
+[3] [Key: new:2 :: public List<Int32>::.ctor(IEnumerable<Int32> collection)]
+Type: collection List<Int32>
+
+
+Instruction: ?methods("Add", public | instance)
+Returned: 
+[0] [Key: Add :: public sealed instance void List<Int32>::Add(Int32 item)]
+[1] [Key: AddRange :: public instance void List<Int32>::AddRange(IEnumerable<Int32> collection)]
+Type: collection List<Int32>
+
+
+Instruction: ?props("Count", public | instance)
+Returned: 
+[0] [Key: Count :: sealed struct Int32 : ValueType Count public get; ]
+Type: collection List<Int32>
