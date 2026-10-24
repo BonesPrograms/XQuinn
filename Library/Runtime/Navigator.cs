@@ -106,15 +106,15 @@ namespace XQuinn.Runtime
         }
         static void ProcessReturn(object? ret)
         {
-            bool referenced = false;
-            if (ret is Reference reference)
+            Reference? reference = null;
+            if (ret is Reference)
             {
+                reference = (Reference)ret;
                 Logger.Print($"Reference: {reference}");
-                ret = reference.Object;
-                referenced = true;
+                ret = reference.Value.Object;
             }
             IEnumerable? enumerator = ret is string ? null : ret as IEnumerable;
-            if (!referenced || enumerator != null)
+            if (reference == null || enumerator != null)
                 Logger.Print("Returned: ");
             if (enumerator != null)
             {
@@ -136,7 +136,7 @@ namespace XQuinn.Runtime
                     Logger.Print(EnumerableWriter, true);
                 }
             }
-            else if (!referenced)
+            else if (reference == null)
                 Logger.Print(ret);
 
         }

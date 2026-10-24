@@ -117,19 +117,13 @@ namespace XQuinn.Runtime
 
         object LoadObject(string invocation)
         {
-            invocation = invocation.Trim();
-            object? instance = null;
-            bool referenced = false;
-            if (References.TryGetValue(invocation, out Reference reference))
-            {
-                Reference = invocation;
-                instance = reference.Object;
-                referenced = true;
-            }
-            instance ??= ReturnOrAssign(invocation) ?? throw new ArgumentException($"Failed to load new instance from {invocation}, invocation returned null!");
+            object instance = ReturnOrAssign(invocation) ?? throw new ArgumentException($"Failed to load new instance from {invocation}, invocation returned null!");
+            Reference? reference = null;
+            if (instance is Reference)
+                reference = (Reference)instance;
+            Reference = reference == null ? null : invocation;
             LoadInstance(instance);
-            Reference = referenced ? invocation : null;
-            return referenced ? reference : instance;
+            return reference ?? instance;
         }
 
         object? ReturnOrAssign(string invocation)

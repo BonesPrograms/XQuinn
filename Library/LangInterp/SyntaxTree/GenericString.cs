@@ -122,8 +122,11 @@ namespace XQuinn.LangInterp.SyntaxTree
                         if (readingsubparams > 0)
                             readingsubparams--;
                         continue;
+
                     }
-                    break;
+                    if (lastread > 0)
+                        throw new LexicalException($"Nested generics not properly terminated. You can usually fix this by throwing an extra > at the end. Generic:", StringID);
+                    return;
                 }
                 else if (c == CallLexer.ParamTerminate)
                 {
@@ -132,8 +135,7 @@ namespace XQuinn.LangInterp.SyntaxTree
                 }
                 else sb.Append(c);
             }
-            if (lastread > 0)
-                throw new LexicalException($"Nested generics not properly terminated. You can usually fix this by throwing an extra > at the end. Generic:", StringID);
+            throw new LexicalException("Invalid generic args", StringID);
         }
 
         TypeString NewArg(StringBuilder sb)

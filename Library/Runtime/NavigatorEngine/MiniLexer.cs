@@ -83,6 +83,40 @@ namespace XQuinn.Runtime.NavigatorEngine
             return true;
         }
 
+        static int GenericJump(int i, string invocation)
+        {
+            int nest = 0;
+            int lastcount = 0;
+            bool beginNest = false;
+            for (int x = i; x < invocation.Length; x++)
+            {
+                char c = invocation[x];
+                if (c == CallLexer.MethodDeclr)
+                    throw new LexicalException("Invalid generic args", invocation);
+                if (c == CallLexer.GenericDeclr)
+                {
+                    if (beginNest)
+                    {
+                        nest++;
+                        lastcount++;
+                    }
+                    else
+                        beginNest = true;
+                }
+                else if (c == CallLexer.GenericTerminate)
+                {
+                    if (lastcount > nest)
+                        lastcount--;
+                    if (lastcount == 0)
+                        return x;
+                    if (nest > 0)
+                        nest--;
+                }
+            }
+            throw new LexicalException("Nested generics not properly i tterminated. You can fix this by slapping an ext a > on the end, usually.", invocation);
+
+        }
+
         internal static string? ResolveMemberAccessOrLiteral(string invocation, out string member, out bool notMethod)
         {
             member = invocation;
@@ -109,43 +143,9 @@ namespace XQuinn.Runtime.NavigatorEngine
                     break;
                 }
                 if (c == CallLexer.GenericDeclr)
-                {
-                    int nest = 0;
-                    int lastcount = 0;
-                    bool beginNest = false;
-                    for (int x = i; x < invocation.Length; x++)
-                    {
-                        c = invocation[x];
-                        if (c == CallLexer.GenericDeclr)
-                        {
-                            if (beginNest)
-                            {
-                                nest++;
-                                lastcount++;
-                            }
-                            else
-                                beginNest = true;
-                        }
-                        else if (c == CallLexer.GenericTerminate)
-                        {
-                            if (lastcount > nest)
-                                lastcount--;
-                            if (lastcount == 0)
-                            {
-                                i = x;
-                                break;
-                            }
-                            if (nest > 0)
-                                nest--;
-                        }
-                    }
-                    if (lastcount > 0)
-                        throw new LexicalException("Nested generics not properly terminated. You can fix this by slapping an ext a > on the end, usually.", invocation);
-                }
+                    i = GenericJump(i, invocation);
                 else if (c == CallLexer.MemberAccessOrDecimal)
-                {
                     lastAccessorIndex = i;
-                }
             }
             if (lastAccessorIndex != null)
             {
